@@ -1,0 +1,17 @@
+.settings
+.DS_Store
+
+.idea
+*.iml
+.classpath
+.project
+
+.java-version
+
+target/
+
+logs/
+
+dependency-reduced-pom.xml
+
+
