@@ -19,4 +19,4 @@
 
 name: transforms
 description: Transformation function
-functionClass: org.apache.pulsar.functions.transforms.TransformFunction
+functionClass: com.datastax.pulsar.functions.transforms.TransformFunction

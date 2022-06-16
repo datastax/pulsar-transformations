@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pulsar.functions.transforms;
+package com.datastax.pulsar.functions.transforms;
 
-import static org.apache.pulsar.functions.transforms.Utils.createTestAvroKeyValueRecord;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
@@ -31,7 +30,7 @@ public class CastStepTest {
 
   @Test
   void testKeyValueAvroToString() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     CastStep step = new CastStep(SchemaType.STRING, SchemaType.STRING);
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, step);
 

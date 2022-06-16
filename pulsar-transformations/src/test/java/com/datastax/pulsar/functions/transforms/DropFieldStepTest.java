@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pulsar.functions.transforms;
+package com.datastax.pulsar.functions.transforms;
 
-import static org.apache.pulsar.functions.transforms.Utils.createTestAvroKeyValueRecord;
-import static org.apache.pulsar.functions.transforms.Utils.getRecord;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertSame;
@@ -69,7 +67,7 @@ public class DropFieldStepTest {
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, step);
     assertEquals(message.getKey(), "test-key");
 
-    GenericData.Record read = getRecord(message.getSchema(), (byte[]) message.getValue());
+    GenericData.Record read = Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
     assertEquals(read.get("age"), 42);
     assertNull(read.getSchema().getField("firstName"));
     assertNull(read.getSchema().getField("lastName"));
@@ -80,18 +78,18 @@ public class DropFieldStepTest {
     DropFieldStep step =
         new DropFieldStep(
             Arrays.asList("keyField1", "keyField2"), Arrays.asList("valueField1", "valueField2"));
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(createTestAvroKeyValueRecord(), step);
+    Utils.TestTypedMessageBuilder<?> message = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
     KeyValue messageValue = (KeyValue) message.getValue();
 
     GenericData.Record keyAvroRecord =
-        getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
     assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
     assertNull(keyAvroRecord.getSchema().getField("keyField1"));
     assertNull(keyAvroRecord.getSchema().getField("keyField2"));
 
     GenericData.Record valueAvroRecord =
-        getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(valueAvroRecord.get("valueField3"), new Utf8("value3"));
     assertNull(valueAvroRecord.getSchema().getField("valueField1"));
     assertNull(valueAvroRecord.getSchema().getField("valueField2"));
@@ -127,7 +125,7 @@ public class DropFieldStepTest {
 
   @Test
   void testKeyValueAvroNotModified() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     DropFieldStep step =
         new DropFieldStep(
@@ -146,7 +144,7 @@ public class DropFieldStepTest {
 
   @Test
   void testKeyValueAvroCached() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     DropFieldStep step =
         new DropFieldStep(
@@ -154,7 +152,7 @@ public class DropFieldStepTest {
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, step);
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
 
-    message = Utils.process(createTestAvroKeyValueRecord(), step);
+    message = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema newMessageSchema = (KeyValueSchema) message.getSchema();
 
     // Schema was modified by process operation

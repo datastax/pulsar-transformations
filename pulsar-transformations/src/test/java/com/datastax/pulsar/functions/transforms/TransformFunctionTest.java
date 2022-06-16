@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pulsar.functions.transforms;
+package com.datastax.pulsar.functions.transforms;
 
-import static org.apache.pulsar.functions.transforms.Utils.createTestAvroKeyValueRecord;
-import static org.apache.pulsar.functions.transforms.Utils.getRecord;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 import static org.testng.AssertJUnit.assertNull;
@@ -107,7 +105,7 @@ public class TransformFunctionTest {
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
     TransformFunction transformFunction = new TransformFunction();
 
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
     transformFunction.process(record.getValue(), context);
@@ -117,13 +115,13 @@ public class TransformFunctionTest {
     KeyValue messageValue = (KeyValue) message.getValue();
 
     GenericData.Record keyAvroRecord =
-        getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
     assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
     assertNull(keyAvroRecord.getSchema().getField("keyField1"));
     assertNull(keyAvroRecord.getSchema().getField("keyField2"));
 
     GenericData.Record valueAvroRecord =
-        getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
     assertNull(valueAvroRecord.getSchema().getField("valueField1"));
     assertNull(valueAvroRecord.getSchema().getField("valueField3"));
@@ -145,7 +143,7 @@ public class TransformFunctionTest {
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
     TransformFunction transformFunction = new TransformFunction();
 
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
     transformFunction.process(record.getValue(), context);

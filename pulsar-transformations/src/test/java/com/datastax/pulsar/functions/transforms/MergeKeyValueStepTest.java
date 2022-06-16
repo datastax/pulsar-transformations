@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pulsar.functions.transforms;
+package com.datastax.pulsar.functions.transforms;
 
-import static org.apache.pulsar.functions.transforms.Utils.createTestAvroKeyValueRecord;
-import static org.apache.pulsar.functions.transforms.Utils.getRecord;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertSame;
@@ -37,13 +35,13 @@ public class MergeKeyValueStepTest {
 
   @Test
   void testKeyValueAvro() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new MergeKeyValueStep());
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
     KeyValue messageValue = (KeyValue) message.getValue();
 
     GenericData.Record read =
-        getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(
         read.toString(),
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\", "
@@ -96,13 +94,13 @@ public class MergeKeyValueStepTest {
 
   @Test
   void testKeyValueAvroCached() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     MergeKeyValueStep step = new MergeKeyValueStep();
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, step);
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
 
-    message = Utils.process(createTestAvroKeyValueRecord(), step);
+    message = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema newMessageSchema = (KeyValueSchema) message.getSchema();
 
     // Schema was modified by process operation

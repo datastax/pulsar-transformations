@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.pulsar.functions.transforms;
+package com.datastax.pulsar.functions.transforms;
 
-import static org.apache.pulsar.functions.transforms.Utils.createTestAvroKeyValueRecord;
-import static org.apache.pulsar.functions.transforms.Utils.getRecord;
 import static org.junit.Assert.assertSame;
 import static org.testng.Assert.assertEquals;
 
@@ -32,10 +30,10 @@ public class UnwrapKeyValueStepTest {
 
   @Test
   void testKeyValueUnwrapValue() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new UnwrapKeyValueStep(false));
 
-    GenericData.Record read = getRecord(message.getSchema(), (byte[]) message.getValue());
+    GenericData.Record read = Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
     assertEquals(
         read.toString(),
         "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": "
@@ -44,10 +42,10 @@ public class UnwrapKeyValueStepTest {
 
   @Test
   void testKeyValueUnwrapKey() throws Exception {
-    Record<GenericObject> record = createTestAvroKeyValueRecord();
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new UnwrapKeyValueStep(true));
 
-    GenericData.Record read = getRecord(message.getSchema(), (byte[]) message.getValue());
+    GenericData.Record read = Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
     assertEquals(
         read.toString(),
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
