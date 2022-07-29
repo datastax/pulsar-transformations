@@ -18,6 +18,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
 
+import java.util.Optional;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -39,11 +40,11 @@ public class FlattenStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     // when
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, FlattenStep.builder().build());
+    Record<GenericObject> outputRecord = Utils.process(record, FlattenStep.builder().build());
 
     // then (key & value remain unchanged)
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -69,12 +70,12 @@ public class FlattenStepTest {
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
+    Record<GenericObject> outputRecord =
         Utils.process(nestedKVRecord, FlattenStep.builder().build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -107,14 +108,13 @@ public class FlattenStepTest {
     Record<GenericObject> record = Utils.createNestedAvroRecord(4, "myKey");
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(record, FlattenStep.builder().part("value").build());
+    Record<?> outputRecord = Utils.process(record, FlattenStep.builder().part("value").build());
 
     // then
-    assertEquals(message.getKey(), "myKey");
+    assertEquals(outputRecord.getKey(), Optional.of("myKey"));
 
     GenericData.Record valueRecord =
-        Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
 
     // Assert value flattened
     GenericData.Record value = (GenericData.Record) record.getValue().getNativeObject();
@@ -128,13 +128,13 @@ public class FlattenStepTest {
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
+    Record<?> outputRecord =
         Utils.process(
             nestedKVRecord, FlattenStep.builder().delimiter("_CUSTOM_DELIMITER_").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -167,12 +167,12 @@ public class FlattenStepTest {
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
+    Record<?> outputRecord =
         Utils.process(nestedKVRecord, FlattenStep.builder().part("key").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -204,12 +204,12 @@ public class FlattenStepTest {
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
+    Record<?> outputRecord =
         Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         (GenericData.Record) ((GenericAvroRecord) messageValue.getKey()).getNativeObject();

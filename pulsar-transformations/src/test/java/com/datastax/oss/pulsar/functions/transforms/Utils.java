@@ -40,6 +40,7 @@ import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
 import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.api.schema.Field;
@@ -61,14 +62,13 @@ import org.slf4j.Logger;
 
 public class Utils {
 
-  public static TestTypedMessageBuilder<?> process(Record<GenericObject> record, TransformStep step)
+  public static Record<GenericObject> process(Record<GenericObject> record, TransformStep step)
       throws Exception {
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
     step.process(transformContext);
-    transformContext.send();
-    return context.getOutputMessage();
+    return transformContext.send();
   }
 
   public static GenericData.Record getRecord(Schema<?> schema, byte[] value) throws IOException {
@@ -381,7 +381,168 @@ public class Utils {
 
     @Override
     public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder() {
-      return null;
+      return FunctionRecord.from(
+          new Context() {
+            @Override
+            public Collection<String> getInputTopics() {
+              return null;
+            }
+
+            @Override
+            public String getOutputTopic() {
+              return "test-context-topic";
+            }
+
+            @Override
+            public Record<?> getCurrentRecord() {
+              return currentRecord;
+            }
+
+            @Override
+            public String getOutputSchemaType() {
+              return null;
+            }
+
+            @Override
+            public String getFunctionName() {
+              return null;
+            }
+
+            @Override
+            public String getFunctionId() {
+              return null;
+            }
+
+            @Override
+            public String getFunctionVersion() {
+              return null;
+            }
+
+            @Override
+            public Map<String, Object> getUserConfigMap() {
+              return null;
+            }
+
+            @Override
+            public Optional<Object> getUserConfigValue(String key) {
+              return Optional.empty();
+            }
+
+            @Override
+            public Object getUserConfigValueOrDefault(String key, Object defaultValue) {
+              return null;
+            }
+
+            @Override
+            public PulsarAdmin getPulsarAdmin() {
+              return null;
+            }
+
+            @Override
+            public <O> CompletableFuture<Void> publish(
+                String topicName, O object, String schemaOrSerdeClassName) {
+              return null;
+            }
+
+            @Override
+            public <O> CompletableFuture<Void> publish(String topicName, O object) {
+              return null;
+            }
+
+            @Override
+            public <O> TypedMessageBuilder<O> newOutputMessage(String topicName, Schema<O> schema)
+                throws PulsarClientException {
+              return null;
+            }
+
+            @Override
+            public <O> ConsumerBuilder<O> newConsumerBuilder(Schema<O> schema)
+                throws PulsarClientException {
+              return null;
+            }
+
+            @Override
+            public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder() {
+              return null;
+            }
+
+            @Override
+            public String getTenant() {
+              return null;
+            }
+
+            @Override
+            public String getNamespace() {
+              return null;
+            }
+
+            @Override
+            public int getInstanceId() {
+              return 0;
+            }
+
+            @Override
+            public int getNumInstances() {
+              return 0;
+            }
+
+            @Override
+            public Logger getLogger() {
+              return null;
+            }
+
+            @Override
+            public String getSecret(String secretName) {
+              return null;
+            }
+
+            @Override
+            public void putState(String key, ByteBuffer value) {}
+
+            @Override
+            public CompletableFuture<Void> putStateAsync(String key, ByteBuffer value) {
+              return null;
+            }
+
+            @Override
+            public ByteBuffer getState(String key) {
+              return null;
+            }
+
+            @Override
+            public CompletableFuture<ByteBuffer> getStateAsync(String key) {
+              return null;
+            }
+
+            @Override
+            public void deleteState(String key) {}
+
+            @Override
+            public CompletableFuture<Void> deleteStateAsync(String key) {
+              return null;
+            }
+
+            @Override
+            public void incrCounter(String key, long amount) {}
+
+            @Override
+            public CompletableFuture<Void> incrCounterAsync(String key, long amount) {
+              return null;
+            }
+
+            @Override
+            public long getCounter(String key) {
+              return 0;
+            }
+
+            @Override
+            public CompletableFuture<Long> getCounterAsync(String key) {
+              return null;
+            }
+
+            @Override
+            public void recordMetric(String metricName, double value) {}
+          });
     }
 
     @Override
