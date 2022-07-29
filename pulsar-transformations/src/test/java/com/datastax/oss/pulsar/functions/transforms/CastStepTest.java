@@ -32,10 +32,10 @@ public class CastStepTest {
   void testKeyValueAvroToString() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     CastStep step = new CastStep(SchemaType.STRING, SchemaType.STRING);
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, step);
+    Record<GenericObject> outputRecord = Utils.process(record, step);
 
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     assertSame(messageSchema.getKeySchema(), Schema.STRING);
     assertEquals(

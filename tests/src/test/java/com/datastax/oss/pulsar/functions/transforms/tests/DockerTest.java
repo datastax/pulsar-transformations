@@ -53,7 +53,7 @@ import org.testng.annotations.Test;
 public class DockerTest {
 
   private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_1.3";
-  private static final String IMAGE_PULSAR210 = "apachepulsar/pulsar:2.10.0";
+  private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.0";
 
   @DataProvider(name = "images")
   public static Object[][] validConfigs() {

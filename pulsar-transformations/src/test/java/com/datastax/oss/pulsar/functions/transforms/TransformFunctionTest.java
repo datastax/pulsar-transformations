@@ -108,11 +108,10 @@ public class TransformFunctionTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
-    transformFunction.process(record.getValue(), context);
+    Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
 
-    Utils.TestTypedMessageBuilder<?> message = context.getOutputMessage();
-    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
-    KeyValue messageValue = (KeyValue) message.getValue();
+    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValue messageValue = (KeyValue) outputRecord.getValue();
 
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -146,11 +145,10 @@ public class TransformFunctionTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
-    transformFunction.process(record.getValue(), context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
 
-    Utils.TestTypedMessageBuilder<?> message = context.getOutputMessage();
     assertEquals(
-        message.getValue(),
+        outputRecord.getValue(),
         "{\"keyField2\": \"key2\", \"keyField3\": \"key3\", \"valueField1\": "
             + "\"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
   }

@@ -25,7 +25,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.pulsar.client.api.Schema;
-import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.common.schema.KeyValue;
@@ -33,6 +32,7 @@ import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
+import org.apache.pulsar.functions.api.utils.FunctionRecord;
 
 @Slf4j
 @Data
@@ -60,13 +60,12 @@ public class TransformContext {
       this.keySchema = kvSchema.getKeySchema();
       this.keyObject =
           this.keySchema.getSchemaInfo().getType() == SchemaType.AVRO
-              ? ((org.apache.pulsar.client.api.schema.GenericRecord) kv.getKey()).getNativeObject()
+              ? ((GenericObject) kv.getKey()).getNativeObject()
               : kv.getKey();
       this.valueSchema = kvSchema.getValueSchema();
       this.valueObject =
           this.valueSchema.getSchemaInfo().getType() == SchemaType.AVRO
-              ? ((org.apache.pulsar.client.api.schema.GenericRecord) kv.getValue())
-                  .getNativeObject()
+              ? ((GenericObject) kv.getValue()).getNativeObject()
               : kv.getValue();
       this.keyValueEncodingType = kvSchema.getKeyValueEncodingType();
     } else {
@@ -76,7 +75,7 @@ public class TransformContext {
     }
   }
 
-  public void send() throws IOException {
+  public Record<GenericObject> send() throws IOException {
     if (keyModified
         && keySchema != null
         && keySchema.getSchemaInfo().getType() == SchemaType.AVRO) {
@@ -117,16 +116,23 @@ public class TransformContext {
     if (log.isDebugEnabled()) {
       log.debug("output {} schema {}", outputObject, outputSchema);
     }
-    TypedMessageBuilder<?> message =
+
+    FunctionRecord.FunctionRecordBuilder<GenericObject> recordBuilder =
         context
-            .newOutputMessage(outputTopic, outputSchema)
+            .newOutputRecordBuilder()
+            .destinationTopic(outputTopic)
+            .schema(outputSchema)
+            .value(outputObject)
             .properties(
-                properties == null ? context.getCurrentRecord().getProperties() : properties)
-            .value(outputObject);
+                this.properties == null
+                    ? context.getCurrentRecord().getProperties()
+                    : this.properties);
+
     if (keySchema == null && key != null) {
-      message.key(key);
+      recordBuilder.key(key);
     }
-    message.send();
+
+    return recordBuilder.build();
   }
 
   public static byte[] serializeGenericRecord(GenericRecord record) throws IOException {

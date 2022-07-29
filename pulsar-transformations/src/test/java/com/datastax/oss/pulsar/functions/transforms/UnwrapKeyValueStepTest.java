@@ -15,8 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import static org.junit.Assert.assertSame;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertSame;
 
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
@@ -31,9 +31,10 @@ public class UnwrapKeyValueStepTest {
   @Test
   void testKeyValueUnwrapValue() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new UnwrapKeyValueStep(false));
+    Record outputRecord = Utils.process(record, new UnwrapKeyValueStep(false));
 
-    GenericData.Record read = Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
     assertEquals(
         read.toString(),
         "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": "
@@ -43,9 +44,10 @@ public class UnwrapKeyValueStepTest {
   @Test
   void testKeyValueUnwrapKey() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new UnwrapKeyValueStep(true));
+    Record outputRecord = Utils.process(record, new UnwrapKeyValueStep(true));
 
-    GenericData.Record read = Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
     assertEquals(
         read.toString(),
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
@@ -58,10 +60,10 @@ public class UnwrapKeyValueStepTest {
             Schema.STRING,
             AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
             "test-key");
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, new UnwrapKeyValueStep(false));
+    Record<GenericObject> outputRecord = Utils.process(record, new UnwrapKeyValueStep(false));
 
-    assertSame(message.getSchema(), record.getSchema());
-    assertSame(message.getValue(), record.getValue().getNativeObject());
-    assertEquals(message.getKey(), record.getKey().orElse(null));
+    assertSame(outputRecord.getSchema(), record.getSchema());
+    assertSame(outputRecord.getValue(), record.getValue().getNativeObject());
+    assertEquals(outputRecord.getKey(), record.getKey());
   }
 }
