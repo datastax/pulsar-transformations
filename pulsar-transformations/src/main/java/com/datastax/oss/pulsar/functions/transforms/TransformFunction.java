@@ -79,7 +79,7 @@ import org.apache.pulsar.functions.api.Record;
  *     implementing the most common basic transformations</a>
  */
 @Slf4j
-public class TransformFunction implements Function<GenericObject, Void>, TransformStep {
+public class TransformFunction implements Function<GenericObject, Record<Object>>, TransformStep {
 
   private final List<TransformStep> steps = new ArrayList<>();
   private final Gson gson = new Gson();
@@ -120,7 +120,7 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
   }
 
   @Override
-  public Void process(GenericObject input, Context context) throws Exception {
+  public Record<Object> process(GenericObject input, Context context) throws Exception {
     Object nativeObject = input.getNativeObject();
     if (log.isDebugEnabled()) {
       Record<?> currentRecord = context.getCurrentRecord();
@@ -134,8 +134,7 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
 
     TransformContext transformContext = new TransformContext(context, nativeObject);
     process(transformContext);
-    transformContext.send();
-    return null;
+    return transformContext.send();
   }
 
   @Override
