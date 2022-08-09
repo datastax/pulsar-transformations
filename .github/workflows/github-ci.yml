@@ -36,3 +36,6 @@ jobs:
 
       - name: Unit tests
         run: mvn -B test -DfailIfNoTests=false -pl pulsar-transformations
+
+      - name: Integration tests
+        run: mvn -B test -DfailIfNoTests=false -pl tests
