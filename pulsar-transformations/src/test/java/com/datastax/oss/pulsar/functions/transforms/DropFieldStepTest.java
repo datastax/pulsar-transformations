@@ -78,7 +78,8 @@ public class DropFieldStepTest {
     DropFieldStep step =
         new DropFieldStep(
             Arrays.asList("keyField1", "keyField2"), Arrays.asList("valueField1", "valueField2"));
-    Utils.TestTypedMessageBuilder<?> message = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
+    Utils.TestTypedMessageBuilder<?> message =
+        Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
     KeyValue messageValue = (KeyValue) message.getValue();
 
