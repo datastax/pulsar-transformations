@@ -43,6 +43,7 @@ import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
+import org.apache.pulsar.functions.api.utils.FunctionRecord;
 import org.slf4j.Logger;
 
 public class Utils {
@@ -237,6 +238,11 @@ public class Utils {
 
     @Override
     public <X> ConsumerBuilder<X> newConsumerBuilder(Schema<X> schema) {
+      return null;
+    }
+
+    @Override
+    public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder() {
       return null;
     }
 
