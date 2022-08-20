@@ -51,6 +51,10 @@ import org.apache.pulsar.functions.api.Record;
  *   <li><code>unwrap-key-value</code>: if the record is a KeyValue, extract the KeyValue's value
  *       and make it the record value. If parameter <code>unwrapKey</code> is present and set to
  *       <code>true</code>, extract the KeyValue's key instead.
+ *   <li><code>flatten</code>: flattens a nested structure selected in the <code>part</code> by
+ *       concatenating nested field names with a '_' and populating them as top level fields. <code>
+ *       part</code> could be any of <code>key</code> or <code>value</code>. If not specify, flatten
+ *       will apply key and value. <code>true</code>, extract the KeyValue's key instead.
  * </ul>
  *
  * <p>The <code>TransformFunction</code> reads its configuration as Json from the {@link Context}
@@ -70,6 +74,9 @@ import org.apache.pulsar.functions.api.Record;
  *     },
  *     {
  *       "type": "cast", "schema-type": "STRING"
+ *     },
+ *     {
+ *       "type": "flatten", "part" : "value"
  *     }
  *   ]
  * }
@@ -112,6 +119,9 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
           break;
         case "unwrap-key-value":
           steps.add(newUnwrapKeyValueFunction(step));
+          break;
+        case "flatten":
+          steps.add(newFlattenFunction(step));
           break;
         default:
           throw new IllegalArgumentException("invalid step type: " + type);
@@ -177,6 +187,10 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
               }
             })
         .orElseGet(() -> new CastStep(schemaType, schemaType));
+  }
+
+  public static FlattenStep newFlattenFunction(Map<String, Object> step) {
+    return new FlattenStep(getStringConfig(step, "part"));
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(Map<String, Object> step) {
