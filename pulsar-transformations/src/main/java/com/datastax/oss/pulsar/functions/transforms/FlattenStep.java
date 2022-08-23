@@ -18,7 +18,9 @@ package com.datastax.oss.pulsar.functions.transforms;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.client.api.Schema;
@@ -26,76 +28,84 @@ import org.apache.pulsar.common.schema.SchemaType;
 
 @RequiredArgsConstructor
 public class FlattenStep implements TransformStep {
-  // TODO: Remove dependency on Avro's Field default value. It will not work with Union schemas "org.apache.avro.AvroTypeException: Invalid default for field a: "cloth" not a ["null","string"]"
   // TODO: Cache schema to flattened schema
-  // TODO: Make flatten delimiter configurable
-  // TODO: Validate flatten delimiter if possible
-  // TODO: Microbenchmark the flatten algorithm to optimize if needed
-  // TODO: Add unit tests for schemas other than string for the unnested schema
-  // TODO: Add unit test for non-KeyValue schemas
-  // TODO: Add unit tests for Union schemas
+  // TODO: Microbenchmark the flatten algorithm for performance optimization
+  // TODO: Validate flatten delimiter
   // TODO: Add integration test
 
-  private static final String FLATTEN_DELIMITER = "_"; // '.' in not valid in AVRO field names
+  private static final String DEFAULT_DELIMITER = "_"; // '.' in not valid in AVRO field names
+
+  private final Optional<String> delimiter;
   private final Optional<String> part;
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    Schema<?> keySchema = transformContext.getKeySchema();
-    if (keySchema == null) {
-      return;
-    }
-    if (keySchema.getSchemaInfo().getType() == SchemaType.AVRO
-        && transformContext.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-
-      if (!part.isPresent()) {
-        validateAvro(transformContext.getKeySchema().getSchemaInfo().getType());
-        validateAvro(transformContext.getValueSchema().getSchemaInfo().getType());
-        GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
-        GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-        transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
-        transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
-        transformContext.setKeyModified(true);
-        transformContext.setValueModified(true);
-      } else if (part.isPresent() && "key".equals(part.get())) {
-        validateAvro(transformContext.getKeySchema().getSchemaInfo().getType());
-        GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
-        transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
-        transformContext.setKeyModified(true);
-      } else if (part.isPresent() && "value".equals(part.get())) {
-        validateAvro(transformContext.getValueSchema().getSchemaInfo().getType());
-        GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-        transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
-        transformContext.setValueModified(true);
-      } else {
-        throw new IllegalArgumentException("Unsupported part for Flatten: " + part.get());
-      }
+    if (!part.isPresent()) {
+      validateAvro(transformContext.getKeySchema());
+      validateAvro(transformContext.getValueSchema());
+      GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
+      GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
+      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
+      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
+      transformContext.setKeyModified(true);
+      transformContext.setValueModified(true);
+    } else if (part.isPresent() && "key".equals(part.get())) {
+      validateAvro(transformContext.getKeySchema());
+      GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
+      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
+      transformContext.setKeyModified(true);
+    } else if (part.isPresent() && "value".equals(part.get())) {
+      validateAvro(transformContext.getValueSchema());
+      GenericRecord avroValueRecord =
+          (transformContext.getValueObject()
+                  instanceof org.apache.pulsar.client.api.schema.GenericRecord)
+              ? (GenericRecord)
+                  ((org.apache.pulsar.client.api.schema.GenericRecord)
+                          transformContext.getValueObject())
+                      .getNativeObject()
+              : (GenericRecord) transformContext.getValueObject();
+      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
+      transformContext.setValueModified(true);
+    } else {
+      throw new IllegalArgumentException("Unsupported part for Flatten: " + part.get());
     }
   }
 
-  void validateAvro(SchemaType schemaType) {
-    if (schemaType == SchemaType.AVRO) {
-      return;
+  void validateAvro(Schema<?> schema) {
+    if (schema == null) {
+      throw new IllegalStateException("Flatten requires non-null schemas!");
     }
 
-    throw new IllegalStateException("Unsupported schema type for Flatten: " + schemaType);
+    if (schema.getSchemaInfo().getType() != SchemaType.AVRO) {
+      throw new IllegalStateException(
+          "Unsupported schema type for Flatten: " + schema.getSchemaInfo().getType());
+    }
   }
 
   GenericRecord flattenGenericRecord(GenericRecord record) {
-    org.apache.avro.Schema modified = buildFlattenedSchema(record);
+    List<FieldValuePair> fieldValuePairs = buildFlattenedFields(record);
+    List<org.apache.avro.Schema.Field> fields =
+        fieldValuePairs.stream().map(pair -> pair.getField()).collect(Collectors.toList());
+    org.apache.avro.Schema modified = buildFlattenedSchema(record, fields);
     GenericRecord newRecord = new GenericData.Record(modified);
-    for (org.apache.avro.Schema.Field field : modified.getFields()) {
-      newRecord.put(field.name(), field.defaultVal());
-    }
+    fieldValuePairs.forEach(pair -> newRecord.put(pair.getField().name(), pair.getValue()));
     return newRecord;
   }
 
-  org.apache.avro.Schema buildFlattenedSchema(GenericRecord record) {
+  private List<FieldValuePair> buildFlattenedFields(GenericRecord record) {
+    List<FieldValuePair> flattenedFields = new ArrayList<>();
     org.apache.avro.Schema originalSchema = record.getSchema();
-    List<org.apache.avro.Schema.Field> flattenedFields = new ArrayList<>();
     for (org.apache.avro.Schema.Field field : originalSchema.getFields()) {
       flattenedFields.addAll(flattenField(record, field, ""));
     }
+
+    return flattenedFields;
+  }
+
+  org.apache.avro.Schema buildFlattenedSchema(
+      GenericRecord record, List<org.apache.avro.Schema.Field> flattenedFields) {
+    org.apache.avro.Schema originalSchema = record.getSchema();
+
     org.apache.avro.Schema flattenedSchema =
         org.apache.avro.Schema.createRecord(
             originalSchema.getName(),
@@ -107,31 +117,49 @@ public class FlattenStep implements TransformStep {
     return flattenedSchema;
   }
 
-  List<org.apache.avro.Schema.Field> flattenField(
+  List<FieldValuePair> flattenField(
       GenericRecord record, org.apache.avro.Schema.Field field, String flattenedFieldName) {
-    List<org.apache.avro.Schema.Field> flattenedFields = new ArrayList<>();
-    if (field.schema().getType() == org.apache.avro.Schema.Type.RECORD) {
-      for (org.apache.avro.Schema.Field nestedField : field.schema().getFields()) {
+    List<FieldValuePair> flattenedFields = new ArrayList<>();
+    // Because of UNION schemas, we cannot tell for sure if the current field is a record, so we
+    // have to use reflection
+    if (record.get(field.name()) instanceof GenericRecord) {
+      GenericRecord genericRecord = (GenericRecord) record.get(field.name());
+      for (org.apache.avro.Schema.Field nestedField : genericRecord.getSchema().getFields()) {
         flattenedFields.addAll(
             flattenField(
-                (GenericRecord) record.get(field.name()),
+                genericRecord,
                 nestedField,
-                flattenedFieldName + field.name() + FLATTEN_DELIMITER));
+                flattenedFieldName + field.name() + delimiter.orElse(DEFAULT_DELIMITER)));
       }
 
       return flattenedFields;
     }
 
     org.apache.avro.Schema.Field flattenedField =
-        new org.apache.avro.Schema.Field(
-            flattenedFieldName + field.name(),
-            field.schema(),
-            field.doc(),
-            record.get(field.name()),
-            field.order());
-
-    flattenedFields.add(flattenedField);
+        createField(field, flattenedFieldName + field.name());
+    FieldValuePair fieldValuePair = new FieldValuePair(flattenedField, record.get(field.name()));
+    flattenedFields.add(fieldValuePair);
 
     return flattenedFields;
+  }
+
+  /**
+   * Creates a new Field instance with the same schema, doc, defaultValue, and order as field has
+   * with changing the name to the specified one. It also copies all the props and aliases.
+   */
+  org.apache.avro.Schema.Field createField(org.apache.avro.Schema.Field field, String name) {
+    org.apache.avro.Schema.Field newField =
+        new org.apache.avro.Schema.Field(
+            name, field.schema(), field.doc(), field.defaultVal(), field.order());
+    newField.putAll(field);
+    field.aliases().forEach(alias -> field.addAlias(alias));
+
+    return newField;
+  }
+
+  @Value
+  private static class FieldValuePair {
+    private org.apache.avro.Schema.Field field;
+    private Object value;
   }
 }

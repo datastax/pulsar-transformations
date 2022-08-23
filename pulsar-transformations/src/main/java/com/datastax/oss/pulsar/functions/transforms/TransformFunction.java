@@ -52,9 +52,10 @@ import org.apache.pulsar.functions.api.Record;
  *       and make it the record value. If parameter <code>unwrapKey</code> is present and set to
  *       <code>true</code>, extract the KeyValue's key instead.
  *   <li><code>flatten</code>: flattens a nested structure selected in the <code>part</code> by
- *       concatenating nested field names with a '_' and populating them as top level fields. <code>
- *       part</code> could be any of <code>key</code> or <code>value</code>. If not specify, flatten
- *       will apply key and value. <code>true</code>, extract the KeyValue's key instead.
+ *       concatenating nested field names with a <code>delimiter</code> and populating them as top
+ *       level fields. <code>
+ *       delimiter</code> defaults to '_'. <code>part</code> could be any of <code>key</code> or
+ *       <code>value</code>. If not specified, flatten will apply to key and value.
  * </ul>
  *
  * <p>The <code>TransformFunction</code> reads its configuration as Json from the {@link Context}
@@ -76,7 +77,7 @@ import org.apache.pulsar.functions.api.Record;
  *       "type": "cast", "schema-type": "STRING"
  *     },
  *     {
- *       "type": "flatten", "part" : "value"
+ *       "type": "flatten", "delimiter" : "_" "part" : "value"
  *     }
  *   ]
  * }
@@ -190,7 +191,7 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
   }
 
   public static FlattenStep newFlattenFunction(Map<String, Object> step) {
-    return new FlattenStep(getStringConfig(step, "part"));
+    return new FlattenStep(getStringConfig(step, "delimiter"), getStringConfig(step, "part"));
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(Map<String, Object> step) {

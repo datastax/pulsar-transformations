@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.io.BinaryEncoder;
@@ -131,9 +132,31 @@ public class Utils {
     return new TestRecord<>(keyValueSchema, genericObject, null);
   }
 
+  public static Record<GenericObject> createNestedAvroRecord(int levels, String key) {
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    GenericObject genericObject =
+        new GenericObject() {
+          @Override
+          public SchemaType getSchemaType() {
+            return SchemaType.AVRO;
+          }
+
+          @Override
+          public Object getNativeObject() {
+            return valueRecord;
+          }
+        };
+
+    Schema pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+
+    return new Utils.TestRecord(pulsarValueSchema, genericObject, key);
+  }
+
   public static Record<GenericObject> createNestedAvroKeyValueRecord(int levels) {
-    GenericAvroRecord keyRecord = createNestedAvroRecord(levels, "Key");
-    GenericAvroRecord valueRecord = createNestedAvroRecord(levels, "Value");
+    GenericAvroRecord keyRecord = createNestedAvroRecord(levels);
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
     GenericObject genericObject =
         new GenericObject() {
@@ -170,22 +193,45 @@ public class Utils {
    * "level2KeyField2": { "level3KeyField1": "level3_Key1", "level3KeyField2": { "level4KeyField1":
    * "level4_Key1", "level4KeyField2": "level4_Key2" } } } }
    */
-  public static GenericAvroRecord createNestedAvroRecord(int levels, String type) {
+  public static GenericAvroRecord createNestedAvroRecord(int levels) {
     // Create the last, unnested level
     List<org.apache.avro.Schema.Field> fields = new ArrayList<>();
+    org.apache.avro.Schema nullAndString =
+        SchemaBuilder.unionOf().stringType().and().nullType().endUnion();
     fields.add(
         new org.apache.avro.Schema.Field(
-            "level" + levels + type + "Field1",
-            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING)));
+            "level" + levels + "String",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING),
+            "stringDoc",
+            "stringDefault"));
     fields.add(
         new org.apache.avro.Schema.Field(
-            "level" + levels + type + "Field2",
-            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING)));
+            "level" + levels + "Integer",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT),
+            "integerDoc",
+            3));
+    fields.add(
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "Double",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.DOUBLE),
+            "doubleDoc",
+            5.5D));
+    org.apache.avro.Schema.Field stringWithProps =
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "StringWithProps",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING));
+    stringWithProps.addProp("p1", "v1");
+    stringWithProps.addProp("p2", "v2");
+    fields.add(stringWithProps);
+    fields.add(new org.apache.avro.Schema.Field("level" + levels + "Union", nullAndString));
     org.apache.avro.Schema lastLevelSchema =
         org.apache.avro.Schema.createRecord("nested" + levels, "doc ", "ns", false, fields);
     org.apache.avro.generic.GenericRecord lastLevelRecord = new GenericData.Record(lastLevelSchema);
-    lastLevelRecord.put("level" + levels + type + "Field1", "level" + levels + "_" + type + "1");
-    lastLevelRecord.put("level" + levels + type + "Field2", "level" + levels + "_" + type + "2");
+    lastLevelRecord.put("level" + levels + "String", "level" + levels + "_" + "1");
+    lastLevelRecord.put("level" + levels + "Integer", 9);
+    lastLevelRecord.put("level" + levels + "Double", 8.8D);
+    lastLevelRecord.put("level" + levels + "StringWithProps", "level" + levels + "_" + "WithProps");
+    lastLevelRecord.put("level" + levels + "Union", "level" + levels + "_" + "2");
 
     org.apache.avro.Schema nextLevelSchema = lastLevelSchema;
     org.apache.avro.generic.GenericRecord nextLevelRecord = lastLevelRecord;
@@ -195,17 +241,16 @@ public class Utils {
       fields = new ArrayList<>();
       fields.add(
           new org.apache.avro.Schema.Field(
-              "level" + level + type + "Field1",
+              "level" + level + "String",
               org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING)));
-      fields.add(
-          new org.apache.avro.Schema.Field("level" + level + type + "Field2", nextLevelSchema));
+      fields.add(new org.apache.avro.Schema.Field("level" + level + "Record", nextLevelSchema));
       org.apache.avro.Schema currentLevelSchema =
           org.apache.avro.Schema.createRecord("nested" + level, "doc ", "ns", false, fields);
 
       org.apache.avro.generic.GenericRecord currentLevelRecord =
           new GenericData.Record(currentLevelSchema);
-      currentLevelRecord.put("level" + level + type + "Field1", "level" + level + "_" + type + "1");
-      currentLevelRecord.put("level" + level + type + "Field2", nextLevelRecord);
+      currentLevelRecord.put("level" + level + "String", "level" + level + "_" + "1");
+      currentLevelRecord.put("level" + level + "Record", nextLevelRecord);
 
       nextLevelSchema = currentLevelSchema;
       nextLevelRecord = currentLevelRecord;

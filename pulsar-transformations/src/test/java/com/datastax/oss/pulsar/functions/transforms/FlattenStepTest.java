@@ -16,15 +16,13 @@
 package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertSame;
 import static org.testng.Assert.assertThrows;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Optional;
 import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
-import org.apache.avro.util.internal.JacksonUtils;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
@@ -42,7 +40,7 @@ public class FlattenStepTest {
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(record, new FlattenStep(Optional.empty()));
+        Utils.process(record, new FlattenStep(Optional.empty(), Optional.empty()));
 
     // then (key & value remain unchanged)
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -67,13 +65,13 @@ public class FlattenStepTest {
   }
 
   @Test
-  void testNestedKeyValueRegularKeyValueFlattened() throws Exception {
+  void testNestedKeyValueFlattened() throws Exception {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.empty()));
+        Utils.process(nestedKVRecord, new FlattenStep(Optional.empty(), Optional.empty()));
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -84,42 +82,96 @@ public class FlattenStepTest {
     GenericData.Record valueRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
 
-    assertEquals(keyRecord.getSchema().getFields().size(), 5);
-    assertEquals(keyRecord.get("level1KeyField1"), new Utf8("level1_Key1"));
-    assertEquals(keyRecord.get("level1KeyField2_level2KeyField1"), new Utf8("level2_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField1"), new Utf8("level3_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField2_level4KeyField1"),
-        new Utf8("level4_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField2_level4KeyField2"),
-        new Utf8("level4_Key2"));
+    // Assert value flattened
+    GenericData.Record key =
+        (GenericData.Record)
+            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+                .getAvroRecord();
+    assertSchemasFlattened(keyRecord, key);
+    assertValuesFlattened(keyRecord, key);
 
-    assertEquals(valueRecord.getSchema().getFields().size(), 5);
-    assertEquals(valueRecord.get("level1ValueField1"), new Utf8("level1_Value1"));
-    assertEquals(valueRecord.get("level1ValueField2_level2ValueField1"), new Utf8("level2_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField1"),
-        new Utf8("level3_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField2_level4ValueField1"),
-        new Utf8("level4_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField2_level4ValueField2"),
-        new Utf8("level4_Value2"));
+    // Assert value flattened
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                .getAvroRecord();
+    assertSchemasFlattened(valueRecord, value);
+    assertValuesFlattened(valueRecord, value);
 
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
   }
 
   @Test
-  void testNestedKeyValueRegularKeyOnlyFlattened() throws Exception {
+  void testNestedValueFlattened() throws Exception {
+    // given
+    Record<GenericObject> record = Utils.createNestedAvroRecord(4, "myKey");
+
+    // when
+    Utils.TestTypedMessageBuilder<?> message =
+        Utils.process(record, new FlattenStep(Optional.empty(), Optional.of("value")));
+
+    // then
+    assertEquals(message.getKey(), "myKey");
+
+    GenericData.Record valueRecord =
+        Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
+
+    // Assert value flattened
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord) (record.getValue().getNativeObject())).getAvroRecord();
+    assertSchemasFlattened(valueRecord, value);
+    assertValuesFlattened(valueRecord, value);
+  }
+
+  @Test
+  void testNestedKeyValueFlattenedWithCustomerDelimiter() throws Exception {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.of("key")));
+        Utils.process(
+            nestedKVRecord, new FlattenStep(Optional.of("_CUSTOM_DELIMITER_"), Optional.empty()));
+
+    // then
+    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
+    KeyValue messageValue = (KeyValue) message.getValue();
+
+    GenericData.Record keyRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    GenericData.Record valueRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+
+    // Assert value flattened
+    GenericData.Record key =
+        (GenericData.Record)
+            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+                .getAvroRecord();
+    assertSchemasFlattened(keyRecord, key, "_CUSTOM_DELIMITER_");
+    assertValuesFlattened(keyRecord, key, "_CUSTOM_DELIMITER_");
+
+    // Assert value flattened
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                .getAvroRecord();
+    assertSchemasFlattened(valueRecord, value, "_CUSTOM_DELIMITER_");
+    assertValuesFlattened(valueRecord, value, "_CUSTOM_DELIMITER_");
+
+    assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+  }
+
+  @Test
+  void testNestedKeyValueKeyOnlyFlattened() throws Exception {
+    // given
+    Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
+
+    // when
+    Utils.TestTypedMessageBuilder<?> message =
+        Utils.process(nestedKVRecord, new FlattenStep(Optional.of("_"), Optional.of("key")));
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -130,38 +182,33 @@ public class FlattenStepTest {
     GenericData.Record valueRecord =
         (GenericData.Record) ((GenericAvroRecord) messageValue.getValue()).getNativeObject();
 
-    assertEquals(keyRecord.getSchema().getFields().size(), 5);
-    assertEquals(keyRecord.get("level1KeyField1"), new Utf8("level1_Key1"));
-    assertEquals(keyRecord.get("level1KeyField2_level2KeyField1"), new Utf8("level2_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField1"), new Utf8("level3_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField2_level4KeyField1"),
-        new Utf8("level4_Key1"));
-    assertEquals(
-        keyRecord.get("level1KeyField2_level2KeyField2_level3KeyField2_level4KeyField2"),
-        new Utf8("level4_Key2"));
+    // Assert key flattened
+    GenericData.Record key =
+        (GenericData.Record)
+            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+                .getAvroRecord();
+    assertSchemasFlattened(keyRecord, key);
+    assertValuesFlattened(keyRecord, key);
 
-    assertEquals(valueRecord.getSchema().getFields().size(), 2);
-    assertEquals(valueRecord.get("level1ValueField1"), "level1_Value1");
-    GenericData.Record level1Record = (GenericData.Record) valueRecord.get("level1ValueField2");
-    assertEquals(level1Record.get("level2ValueField1"), "level2_Value1");
-    GenericData.Record level2Record = (GenericData.Record) level1Record.get("level2ValueField2");
-    assertEquals(level2Record.get("level3ValueField1"), "level3_Value1");
-    GenericData.Record level3Record = (GenericData.Record) level2Record.get("level3ValueField2");
-    assertEquals(level3Record.get("level4ValueField1"), "level4_Value1");
-    assertEquals(level3Record.get("level4ValueField2"), "level4_Value2");
+    // Assert value unchanged
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                .getAvroRecord();
+    assertSame(valueRecord, value);
+
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
   }
 
   @Test
-  void testNestedKeyValueRegularValueOnlyFlattened() throws Exception {
+  void testNestedKeyValueValueOnlyFlattened() throws Exception {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.of("value")));
+        Utils.process(nestedKVRecord, new FlattenStep(Optional.empty(), Optional.of("value")));
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -172,39 +219,145 @@ public class FlattenStepTest {
     GenericData.Record valueRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
 
-    assertEquals(keyRecord.getSchema().getFields().size(), 2);
-    assertEquals(keyRecord.get("level1KeyField1"), "level1_Key1");
-    GenericData.Record level1Record = (GenericData.Record) keyRecord.get("level1KeyField2");
-    assertEquals(level1Record.get("level2KeyField1"), "level2_Key1");
-    GenericData.Record level2Record = (GenericData.Record) level1Record.get("level2KeyField2");
-    assertEquals(level2Record.get("level3KeyField1"), "level3_Key1");
-    GenericData.Record level3Record = (GenericData.Record) level2Record.get("level3KeyField2");
-    assertEquals(level3Record.get("level4KeyField1"), "level4_Key1");
-    assertEquals(level3Record.get("level4KeyField2"), "level4_Key2");
-    assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+    // Assert key unchanged
+    GenericData.Record key =
+        (GenericData.Record)
+            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+                .getAvroRecord();
+    assertSame(keyRecord, key);
 
-    assertEquals(valueRecord.getSchema().getFields().size(), 5);
-    assertEquals(valueRecord.get("level1ValueField1"), new Utf8("level1_Value1"));
-    assertEquals(valueRecord.get("level1ValueField2_level2ValueField1"), new Utf8("level2_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField1"),
-        new Utf8("level3_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField2_level4ValueField1"),
-        new Utf8("level4_Value1"));
-    assertEquals(
-        valueRecord.get("level1ValueField2_level2ValueField2_level3ValueField2_level4ValueField2"),
-        new Utf8("level4_Value2"));
+    // Assert value flattened
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                .getAvroRecord();
+    assertSchemasFlattened(valueRecord, value);
+    assertValuesFlattened(valueRecord, value);
   }
 
   @Test
-  void testNestedKeyValueRegularInvalidType() {
+  void testNestedKeyValueInvalidType() {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // then
     assertThrows(
         IllegalArgumentException.class,
-        () -> Utils.process(nestedKVRecord, new FlattenStep(Optional.of("invalid"))));
+        () ->
+            Utils.process(
+                nestedKVRecord, new FlattenStep(Optional.empty(), Optional.of("invalid"))));
+  }
+
+  private void assertSchemasFlattened(
+      GenericData.Record actual, GenericData.Record expected, String delimiter) {
+    assertEquals(actual.getSchema().getFields().size(), 8);
+
+    assertField(
+        actual.getSchema().getField("level1String"), expected.getSchema().getField("level1String"));
+    Schema.Field expectedL1 = expected.getSchema().getField("level1Record");
+    assertField(
+        actual.getSchema().getField(String.format("level1Record%1$slevel2String", delimiter)),
+        expectedL1.schema().getField("level2String"));
+    Schema.Field expectedL2 = expectedL1.schema().getField("level2Record");
+    assertField(
+        actual
+            .getSchema()
+            .getField(String.format("level1Record%1$slevel2Record%1$slevel3String", delimiter)),
+        expectedL2.schema().getField("level3String"));
+    Schema.Field expectedL3 = expectedL2.schema().getField("level3Record");
+    assertField(
+        actual
+            .getSchema()
+            .getField(
+                String.format(
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4String", delimiter)),
+        expectedL3.schema().getField("level4String"));
+    assertField(
+        actual
+            .getSchema()
+            .getField(
+                String.format(
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Integer", delimiter)),
+        expectedL3.schema().getField("level4Integer"));
+    assertField(
+        actual
+            .getSchema()
+            .getField(
+                String.format(
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Double", delimiter)),
+        expectedL3.schema().getField("level4Double"));
+    assertField(
+        actual
+            .getSchema()
+            .getField(
+                String.format(
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithProps",
+                    delimiter)),
+        expectedL3.schema().getField("level4StringWithProps"));
+    assertField(
+        actual
+            .getSchema()
+            .getField(
+                String.format(
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Union", delimiter)),
+        expectedL3.schema().getField("level4Union"));
+  }
+
+  private void assertSchemasFlattened(GenericData.Record actual, GenericData.Record expected) {
+    assertSchemasFlattened(actual, expected, "_");
+  }
+
+  private void assertValuesFlattened(
+      GenericData.Record actual, GenericData.Record expected, String delimiter) {
+    assertEquals(actual.getSchema().getFields().size(), 8);
+
+    assertEquals(actual.get("level1String"), new Utf8((String) expected.get("level1String")));
+    GenericData.Record expectedL1 = (GenericData.Record) expected.get("level1Record");
+    assertEquals(
+        actual.get(String.format("level1Record%1$slevel2String", delimiter)),
+        new Utf8((String) expectedL1.get("level2String")));
+    GenericData.Record expectedL2 = (GenericData.Record) expectedL1.get("level2Record");
+    assertEquals(
+        actual.get(String.format("level1Record%1$slevel2Record%1$slevel3String", delimiter)),
+        new Utf8((String) expectedL2.get("level3String")));
+    GenericData.Record expectedL3 = (GenericData.Record) expectedL2.get("level3Record");
+    assertEquals(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4String", delimiter)),
+        new Utf8((String) expectedL3.get("level4String")));
+    assertEquals(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Integer", delimiter)),
+        expectedL3.get("level4Integer"));
+    assertEquals(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Double", delimiter)),
+        expectedL3.get("level4Double"));
+    assertEquals(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithProps",
+                delimiter)),
+        new Utf8((String) expectedL3.get("level4StringWithProps")));
+    assertEquals(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Union", delimiter)),
+        new Utf8((String) expectedL3.get("level4Union")));
+  }
+
+  private void assertValuesFlattened(GenericData.Record actual, GenericData.Record expected) {
+    assertValuesFlattened(actual, expected, "_");
+  }
+
+  private void assertField(Schema.Field actual, Schema.Field expected) {
+    assertEquals(actual.schema(), expected.schema());
+    assertEquals(actual.doc(), expected.doc());
+    assertEquals(actual.defaultVal(), expected.defaultVal());
+    assertEquals(actual.getObjectProps(), expected.getObjectProps());
   }
 }
