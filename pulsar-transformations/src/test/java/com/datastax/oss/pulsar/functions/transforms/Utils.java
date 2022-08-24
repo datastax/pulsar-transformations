@@ -15,8 +15,11 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -24,22 +27,32 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
+import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
+import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
+import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
+import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
+import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
@@ -117,6 +130,135 @@ public class Utils {
         };
 
     return new TestRecord<>(keyValueSchema, genericObject, null);
+  }
+
+  public static Record<GenericObject> createNestedAvroRecord(int levels, String key) {
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    GenericObject genericObject =
+        new GenericObject() {
+          @Override
+          public SchemaType getSchemaType() {
+            return SchemaType.AVRO;
+          }
+
+          @Override
+          public Object getNativeObject() {
+            return valueRecord;
+          }
+        };
+
+    Schema pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+
+    return new Utils.TestRecord(pulsarValueSchema, genericObject, key);
+  }
+
+  public static Record<GenericObject> createNestedAvroKeyValueRecord(int levels) {
+    GenericAvroRecord keyRecord = createNestedAvroRecord(levels);
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    GenericObject genericObject =
+        new GenericObject() {
+          @Override
+          public SchemaType getSchemaType() {
+            return SchemaType.KEY_VALUE;
+          }
+
+          @Override
+          public Object getNativeObject() {
+            return new KeyValue<>(keyRecord, valueRecord);
+          }
+        };
+
+    Schema pulsarKeySchema =
+        new Utils.NativeSchemaWrapper(keyRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+    Schema pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+
+    Schema<
+            KeyValue<
+                org.apache.pulsar.client.api.schema.GenericRecord,
+                org.apache.pulsar.client.api.schema.GenericRecord>>
+        keyValueSchema =
+            org.apache.pulsar.client.api.Schema.KeyValue(
+                pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
+
+    return new Utils.TestRecord(keyValueSchema, genericObject, null);
+  }
+
+  /**
+   * Returns a nested Avro record with a certain number of levels. Example for levels = 4: {
+   * "level1KeyField1": "level1_Key1", "level1KeyField2": { "level2KeyField1": "level2_Key1",
+   * "level2KeyField2": { "level3KeyField1": "level3_Key1", "level3KeyField2": { "level4KeyField1":
+   * "level4_Key1", "level4KeyField2": "level4_Key2" } } } }
+   */
+  public static GenericAvroRecord createNestedAvroRecord(int levels) {
+    // Create the last, unnested level
+    List<org.apache.avro.Schema.Field> fields = new ArrayList<>();
+    org.apache.avro.Schema nullAndString =
+        SchemaBuilder.unionOf().stringType().and().nullType().endUnion();
+    fields.add(
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "String",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING),
+            "stringDoc",
+            "stringDefault"));
+    fields.add(
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "Integer",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT),
+            "integerDoc",
+            3));
+    fields.add(
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "Double",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.DOUBLE),
+            "doubleDoc",
+            5.5D));
+    org.apache.avro.Schema.Field stringWithProps =
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "StringWithProps",
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING));
+    stringWithProps.addProp("p1", "v1");
+    stringWithProps.addProp("p2", "v2");
+    fields.add(stringWithProps);
+    fields.add(new org.apache.avro.Schema.Field("level" + levels + "Union", nullAndString));
+    org.apache.avro.Schema lastLevelSchema =
+        org.apache.avro.Schema.createRecord("nested" + levels, "doc ", "ns", false, fields);
+    org.apache.avro.generic.GenericRecord lastLevelRecord = new GenericData.Record(lastLevelSchema);
+    lastLevelRecord.put("level" + levels + "String", "level" + levels + "_" + "1");
+    lastLevelRecord.put("level" + levels + "Integer", 9);
+    lastLevelRecord.put("level" + levels + "Double", 8.8D);
+    lastLevelRecord.put("level" + levels + "StringWithProps", "level" + levels + "_" + "WithProps");
+    lastLevelRecord.put("level" + levels + "Union", "level" + levels + "_" + "2");
+
+    org.apache.avro.Schema nextLevelSchema = lastLevelSchema;
+    org.apache.avro.generic.GenericRecord nextLevelRecord = lastLevelRecord;
+    // Create the nested levels one by one, working backwards from the last level up to the top
+    // level
+    for (int level = levels - 1; level > 0; level--) {
+      fields = new ArrayList<>();
+      fields.add(
+          new org.apache.avro.Schema.Field(
+              "level" + level + "String",
+              org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING)));
+      fields.add(new org.apache.avro.Schema.Field("level" + level + "Record", nextLevelSchema));
+      org.apache.avro.Schema currentLevelSchema =
+          org.apache.avro.Schema.createRecord("nested" + level, "doc ", "ns", false, fields);
+
+      org.apache.avro.generic.GenericRecord currentLevelRecord =
+          new GenericData.Record(currentLevelSchema);
+      currentLevelRecord.put("level" + level + "String", "level" + level + "_" + "1");
+      currentLevelRecord.put("level" + level + "Record", nextLevelRecord);
+
+      nextLevelSchema = currentLevelSchema;
+      nextLevelRecord = currentLevelRecord;
+    }
+
+    List<Field> pulsarFields =
+        fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
+    return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
   }
 
   public static class TestRecord<T> implements Record<T> {
@@ -433,6 +575,91 @@ public class Utils {
 
     public Schema<T> getSchema() {
       return schema;
+    }
+  }
+
+  public static class NativeSchemaWrapper
+      implements org.apache.pulsar.client.api.Schema<org.apache.avro.generic.GenericRecord> {
+
+    private final SchemaInfo pulsarSchemaInfo;
+    private final org.apache.avro.Schema nativeSchema;
+
+    private final SchemaType pulsarSchemaType;
+
+    private final SpecificDatumWriter datumWriter;
+
+    public NativeSchemaWrapper(org.apache.avro.Schema nativeSchema, SchemaType pulsarSchemaType) {
+      this.nativeSchema = nativeSchema;
+      this.pulsarSchemaType = pulsarSchemaType;
+      this.pulsarSchemaInfo =
+          SchemaInfoImpl.builder()
+              .schema(nativeSchema.toString(false).getBytes(StandardCharsets.UTF_8))
+              .properties(new HashMap<>())
+              .type(pulsarSchemaType)
+              .name(nativeSchema.getName())
+              .build();
+      this.datumWriter = new SpecificDatumWriter<>(this.nativeSchema);
+    }
+
+    @Override
+    public byte[] encode(org.apache.avro.generic.GenericRecord genericRecord) {
+      try {
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        BinaryEncoder binaryEncoder =
+            new EncoderFactory().binaryEncoder(byteArrayOutputStream, null);
+        datumWriter.write(genericRecord, binaryEncoder);
+        binaryEncoder.flush();
+        return byteArrayOutputStream.toByteArray();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public SchemaInfo getSchemaInfo() {
+      return pulsarSchemaInfo;
+    }
+
+    @Override
+    public NativeSchemaWrapper clone() {
+      return new NativeSchemaWrapper(nativeSchema, pulsarSchemaType);
+    }
+
+    @Override
+    public void validate(byte[] message) {
+      // nothing to do
+    }
+
+    @Override
+    public boolean supportSchemaVersioning() {
+      return true;
+    }
+
+    @Override
+    public void setSchemaInfoProvider(SchemaInfoProvider schemaInfoProvider) {}
+
+    @Override
+    public org.apache.avro.generic.GenericRecord decode(byte[] bytes) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public org.apache.avro.generic.GenericRecord decode(byte[] bytes, byte[] schemaVersion) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean requireFetchingSchemaInfo() {
+      return true;
+    }
+
+    @Override
+    public void configureSchemaInfo(String topic, String componentName, SchemaInfo schemaInfo) {}
+
+    @Override
+    public Optional<Object> getNativeSchema() {
+      return Optional.of(nativeSchema);
     }
   }
 }
