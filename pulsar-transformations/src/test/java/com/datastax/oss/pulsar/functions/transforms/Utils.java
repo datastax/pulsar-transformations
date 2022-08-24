@@ -135,23 +135,19 @@ public class Utils {
   public static Record<GenericObject> createNestedAvroRecord(int levels, String key) {
     GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
-    GenericObject genericObject =
-        new GenericObject() {
-          @Override
-          public SchemaType getSchemaType() {
-            return SchemaType.AVRO;
-          }
-
-          @Override
-          public Object getNativeObject() {
-            return valueRecord;
-          }
-        };
-
     Schema pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
 
-    return new Utils.TestRecord(pulsarValueSchema, genericObject, key);
+    return new Utils.TestRecord(pulsarValueSchema, valueRecord, key);
+  }
+
+  public static Record<GenericObject> createNestedJSONRecord(int levels, String key) {
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    Schema pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.JSON);
+
+    return new Utils.TestRecord(pulsarValueSchema, valueRecord, key);
   }
 
   public static Record<GenericObject> createNestedAvroKeyValueRecord(int levels) {

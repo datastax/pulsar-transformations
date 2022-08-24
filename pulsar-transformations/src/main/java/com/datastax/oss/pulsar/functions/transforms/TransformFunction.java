@@ -191,7 +191,10 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
   }
 
   public static FlattenStep newFlattenFunction(Map<String, Object> step) {
-    return new FlattenStep(getStringConfig(step, "delimiter"), getStringConfig(step, "part"));
+    FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
+    getStringConfig(step, "part").map(part -> builder.part(part));
+    getStringConfig(step, "delimiter").map(delimiter -> builder.delimiter(delimiter));
+    return builder.build();
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(Map<String, Object> step) {

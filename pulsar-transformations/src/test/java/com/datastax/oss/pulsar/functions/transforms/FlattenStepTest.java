@@ -17,17 +17,17 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertSame;
-import static org.testng.Assert.assertThrows;
 
-import java.util.Optional;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
+import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
+import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
@@ -39,8 +39,7 @@ public class FlattenStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     // when
-    Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(record, new FlattenStep(Optional.empty(), Optional.empty()));
+    Utils.TestTypedMessageBuilder<?> message = Utils.process(record, FlattenStep.builder().build());
 
     // then (key & value remain unchanged)
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -71,7 +70,7 @@ public class FlattenStepTest {
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.empty(), Optional.empty()));
+        Utils.process(nestedKVRecord, FlattenStep.builder().build());
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -109,7 +108,7 @@ public class FlattenStepTest {
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(record, new FlattenStep(Optional.empty(), Optional.of("value")));
+        Utils.process(record, FlattenStep.builder().part("value").build());
 
     // then
     assertEquals(message.getKey(), "myKey");
@@ -118,9 +117,7 @@ public class FlattenStepTest {
         Utils.getRecord(message.getSchema(), (byte[]) message.getValue());
 
     // Assert value flattened
-    GenericData.Record value =
-        (GenericData.Record)
-            ((GenericAvroRecord) (record.getValue().getNativeObject())).getAvroRecord();
+    GenericData.Record value = (GenericData.Record) record.getValue().getNativeObject();
     assertSchemasFlattened(valueRecord, value);
     assertValuesFlattened(valueRecord, value);
   }
@@ -133,7 +130,7 @@ public class FlattenStepTest {
     // when
     Utils.TestTypedMessageBuilder<?> message =
         Utils.process(
-            nestedKVRecord, new FlattenStep(Optional.of("_CUSTOM_DELIMITER_"), Optional.empty()));
+            nestedKVRecord, FlattenStep.builder().delimiter("_CUSTOM_DELIMITER_").build());
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -171,7 +168,7 @@ public class FlattenStepTest {
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.of("_"), Optional.of("key")));
+        Utils.process(nestedKVRecord, FlattenStep.builder().part("key").build());
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -208,7 +205,7 @@ public class FlattenStepTest {
 
     // when
     Utils.TestTypedMessageBuilder<?> message =
-        Utils.process(nestedKVRecord, new FlattenStep(Optional.empty(), Optional.of("value")));
+        Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
 
     // then
     KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
@@ -236,17 +233,44 @@ public class FlattenStepTest {
     assertValuesFlattened(valueRecord, value);
   }
 
-  @Test
-  void testNestedKeyValueInvalidType() {
+  @Test(
+    expectedExceptions = IllegalArgumentException.class,
+    expectedExceptionsMessageRegExp = "Unsupported part for Flatten: invalid"
+  )
+  void testNestedKeyValueInvalidType() throws Exception {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // then
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            Utils.process(
-                nestedKVRecord, new FlattenStep(Optional.empty(), Optional.of("invalid"))));
+    Utils.process(nestedKVRecord, FlattenStep.builder().part("invalid").build());
+  }
+
+  @Test(
+    expectedExceptions = IllegalStateException.class,
+    expectedExceptionsMessageRegExp = "Unsupported schema type for Flatten: JSON"
+  )
+  void testNestedKeyValueNonAvroSchema() throws Exception {
+    // given
+    Record<GenericObject> nestedKVRecord = Utils.createNestedJSONRecord(4, "myKey");
+
+    // then
+    Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
+  }
+
+  @Test(
+    expectedExceptions = IllegalStateException.class,
+    expectedExceptionsMessageRegExp = "Flatten requires non-null schemas!"
+  )
+  void testNestedSchemalessValue() throws Exception {
+    // given
+    Record<GenericObject> nestedKVRecord =
+        new Utils.TestRecord<>(
+            null,
+            AutoConsumeSchema.wrapPrimitiveObject("value", SchemaType.STRING, new byte[] {}),
+            "myKey");
+
+    // then
+    Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
   }
 
   private void assertSchemasFlattened(
