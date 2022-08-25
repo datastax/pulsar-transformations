@@ -17,16 +17,15 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import lombok.Builder;
 import lombok.Value;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
-@RequiredArgsConstructor
+@Builder
 public class FlattenStep implements TransformStep {
   // TODO: Cache schema to flattened schema
   // TODO: Microbenchmark the flatten algorithm for performance optimization
@@ -35,12 +34,12 @@ public class FlattenStep implements TransformStep {
 
   private static final String DEFAULT_DELIMITER = "_"; // '.' in not valid in AVRO field names
 
-  private final Optional<String> delimiter;
-  private final Optional<String> part;
+  @Builder.Default private final String delimiter = DEFAULT_DELIMITER;
+  private final String part;
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    if (!part.isPresent()) {
+    if (part == null) {
       validateAvro(transformContext.getKeySchema());
       validateAvro(transformContext.getValueSchema());
       GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
@@ -49,25 +48,18 @@ public class FlattenStep implements TransformStep {
       transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
       transformContext.setKeyModified(true);
       transformContext.setValueModified(true);
-    } else if (part.isPresent() && "key".equals(part.get())) {
+    } else if ("key".equals(part)) {
       validateAvro(transformContext.getKeySchema());
       GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
       transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
       transformContext.setKeyModified(true);
-    } else if (part.isPresent() && "value".equals(part.get())) {
+    } else if ("value".equals(part)) {
       validateAvro(transformContext.getValueSchema());
-      GenericRecord avroValueRecord =
-          (transformContext.getValueObject()
-                  instanceof org.apache.pulsar.client.api.schema.GenericRecord)
-              ? (GenericRecord)
-                  ((org.apache.pulsar.client.api.schema.GenericRecord)
-                          transformContext.getValueObject())
-                      .getNativeObject()
-              : (GenericRecord) transformContext.getValueObject();
+      GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
       transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
       transformContext.setValueModified(true);
     } else {
-      throw new IllegalArgumentException("Unsupported part for Flatten: " + part.get());
+      throw new IllegalArgumentException("Unsupported part for Flatten: " + part);
     }
   }
 
@@ -127,9 +119,7 @@ public class FlattenStep implements TransformStep {
       for (org.apache.avro.Schema.Field nestedField : genericRecord.getSchema().getFields()) {
         flattenedFields.addAll(
             flattenField(
-                genericRecord,
-                nestedField,
-                flattenedFieldName + field.name() + delimiter.orElse(DEFAULT_DELIMITER)));
+                genericRecord, nestedField, flattenedFieldName + field.name() + delimiter));
       }
 
       return flattenedFields;
