@@ -34,8 +34,8 @@ public class FlattenStep implements TransformStep {
 
   private static final String DEFAULT_DELIMITER = "_"; // '.' in not valid in AVRO field names
 
-  @Builder.Default private String delimiter = DEFAULT_DELIMITER;
-  private String part;
+  @Builder.Default private final String delimiter = DEFAULT_DELIMITER;
+  private final String part;
 
   @Override
   public void process(TransformContext transformContext) throws Exception {

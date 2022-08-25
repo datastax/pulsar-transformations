@@ -192,8 +192,8 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
 
   public static FlattenStep newFlattenFunction(Map<String, Object> step) {
     FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    getStringConfig(step, "part").map(part -> builder.part(part));
-    getStringConfig(step, "delimiter").map(delimiter -> builder.delimiter(delimiter));
+    getStringConfig(step, "part").ifPresent(builder::part);
+    getStringConfig(step, "delimiter").ifPresent(builder::delimiter);
     return builder.build();
   }
 
