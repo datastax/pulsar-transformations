@@ -39,6 +39,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
+import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
@@ -48,8 +49,10 @@ import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
+import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
+import org.apache.pulsar.common.api.proto.MessageMetadata;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
@@ -281,6 +284,22 @@ public class Utils {
     @Override
     public T getValue() {
       return value;
+    }
+
+    @Override
+    public Optional<Message<T>> getMessage() {
+      MessageMetadata metadata = new MessageMetadata();
+      List<org.apache.pulsar.common.api.proto.KeyValue> properties = new ArrayList<>();
+      properties.add(
+          new org.apache.pulsar.common.api.proto.KeyValue().setKey("p1").setValue("value1"));
+      properties.add(
+          new org.apache.pulsar.common.api.proto.KeyValue().setKey("p2").setValue("value2"));
+      properties.add(
+          new org.apache.pulsar.common.api.proto.KeyValue().setKey("p3").setValue("value3"));
+      metadata.addAllProperties(properties);
+      Message message = MessageImpl.create(metadata, ByteBuffer.wrap(new byte[0]), null, "topic");
+
+      return Optional.of(message);
     }
   }
 

@@ -40,12 +40,19 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'value'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'filter': 'key.k1=key1'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': false}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true}]}"},
+      {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true, 'filter': 'value.v1=val1'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'value'}]}"},
+      {"{'steps': [{'type': 'flatten'}]}"},
+      {"{'steps': [{'type': 'flatten', 'part': 'key'}]}"},
+      {"{'steps': [{'type': 'flatten', 'part': 'value'}]}"},
+      {"{'steps': [{'type': 'flatten', 'delimiter': '_'}]}"},
+      {"{'steps': [{'type': 'flatten', 'filter': 'prop1=val1'}]}"},
     };
   }
 
@@ -70,11 +77,19 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields', 'fields': ''}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'filter': 'invalid-filter'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': 'invalid'}]}"},
+      {"{'steps': [{'type': 'unwrap-key-value', 'filter': 'invalid-filter'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 42}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'INVALID'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}]}"},
+      {
+        "{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}], 'filter': 'invalid-filter'}"
+      },
+      {"{'steps': [{'type': 'flatten', 'part': 'invalid-part'}]}"},
+      {"{'steps': [{'type': 'flatten', 'filter': 'invalid-filter'}]}"},
     };
   }
 
@@ -125,6 +140,90 @@ public class TransformFunctionTest {
     assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
     assertNull(valueAvroRecord.getSchema().getField("valueField1"));
     assertNull(valueAvroRecord.getSchema().getField("valueField3"));
+  }
+
+  @Test
+  void testMatchingPredicate() throws Exception {
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"filter\": \"key.keyField1='key1'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"filter\": \"key.keyField2='key2'\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    transformFunction.process(record.getValue(), context);
+
+    Utils.TestTypedMessageBuilder<?> message = context.getOutputMessage();
+    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
+    KeyValue messageValue = (KeyValue) message.getValue();
+
+    GenericData.Record keyAvroRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
+    assertNull(keyAvroRecord.getSchema().getField("keyField1"));
+    assertNull(keyAvroRecord.getSchema().getField("keyField2"));
+  }
+
+  @Test
+  void testNonMatchingPredicate() throws Exception {
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"filter\": \"key.keyField1='key100'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"filter\": \"key.keyField2='key100'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField3\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    transformFunction.process(record.getValue(), context);
+
+    Utils.TestTypedMessageBuilder<?> message = context.getOutputMessage();
+    KeyValueSchema messageSchema = (KeyValueSchema) message.getSchema();
+    KeyValue messageValue = (KeyValue) message.getValue();
+
+    GenericData.Record keyAvroRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(keyAvroRecord.get("keyField1"), new Utf8("key1"));
+    assertEquals(keyAvroRecord.get("keyField2"), new Utf8("key2"));
+    assertNull(keyAvroRecord.getSchema().getField("keyField3"));
+  }
+
+  @Test
+  void testMixedPredicate() throws Exception {
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"filter\": \"key.keyField1='key1'\"},"
+            + "    {\"type\": \"merge-key-value\", \"filter\": \"key.keyField2='key100'\"},"
+            + "    {\"type\": \"unwrap-key-value\", \"filter\": \"key.keyField3='key100'\"},"
+            + "    {\"type\": \"cast\", \"schema-type\": \"STRING\", \"filter\": \"value.valueField1='value1'\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    transformFunction.process(record.getValue(), context);
+
+    Utils.TestTypedMessageBuilder<?> message = context.getOutputMessage();
+    KeyValue<String, String> kv = (KeyValue<String, String>) message.getValue();
+    assertEquals(kv.getKey(), "{\"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
+    assertEquals(
+        kv.getValue(),
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
   }
 
   // TODO: just for demo. To be removed

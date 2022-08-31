@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -77,7 +78,7 @@ import org.apache.pulsar.functions.api.Record;
  *       "type": "cast", "schema-type": "STRING"
  *     },
  *     {
- *       "type": "flatten", "delimiter" : "_" "part" : "value"
+ *       "type": "flatten", "delimiter" : "_" "part" : "value", "filter": "aym = 'yes'"
  *     }
  *   ]
  * }
@@ -89,7 +90,7 @@ import org.apache.pulsar.functions.api.Record;
 @Slf4j
 public class TransformFunction implements Function<GenericObject, Void>, TransformStep {
 
-  private final List<TransformStep> steps = new ArrayList<>();
+  private final List<StepPredicatePair> steps = new ArrayList<>();
   private final Gson gson = new Gson();
 
   @Override
@@ -106,27 +107,36 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
     } catch (Exception e) {
       throw new IllegalArgumentException("could not parse configuration", e);
     }
+
     for (Map<String, Object> step : stepsConfig) {
       String type = getRequiredStringConfig(step, "type");
+      Optional<String> filter = getStringConfig(step, "filter");
+      Predicate<TransformContext> predicate = null;
+      if (filter.isPresent()) {
+        predicate = new JmsPredicate(filter.get());
+      }
+      TransformStep transformStep;
       switch (type) {
         case "drop-fields":
-          steps.add(newRemoveFieldFunction(step));
+          transformStep = newRemoveFieldFunction(step);
           break;
         case "cast":
-          steps.add(newCastFunction(step));
+          transformStep = newCastFunction(step);
           break;
         case "merge-key-value":
-          steps.add(new MergeKeyValueStep());
+          transformStep = new MergeKeyValueStep();
           break;
         case "unwrap-key-value":
-          steps.add(newUnwrapKeyValueFunction(step));
+          transformStep = newUnwrapKeyValueFunction(step);
           break;
         case "flatten":
-          steps.add(newFlattenFunction(step));
+          transformStep = newFlattenFunction(step);
           break;
         default:
           throw new IllegalArgumentException("invalid step type: " + type);
       }
+
+      steps.add(new StepPredicatePair(transformStep, predicate));
     }
   }
 
@@ -151,7 +161,12 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    for (TransformStep step : steps) {
+    for (StepPredicatePair pair : steps) {
+      TransformStep step = pair.getTransformStep();
+      Predicate<TransformContext> predicate = pair.getPredicate();
+      if (predicate != null && !pair.getPredicate().test(transformContext)) {
+        continue;
+      }
       step.process(transformContext);
     }
   }
@@ -192,7 +207,14 @@ public class TransformFunction implements Function<GenericObject, Void>, Transfo
 
   public static FlattenStep newFlattenFunction(Map<String, Object> step) {
     FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    getStringConfig(step, "part").ifPresent(builder::part);
+    getStringConfig(step, "part")
+        .ifPresent(
+            part -> {
+              if (!("key".equals(part) || "value".equals(part))) {
+                throw new IllegalArgumentException("invalid 'part' parameter: " + part);
+              }
+              builder.part(part);
+            });
     getStringConfig(step, "delimiter").ifPresent(builder::delimiter);
     return builder.build();
   }
