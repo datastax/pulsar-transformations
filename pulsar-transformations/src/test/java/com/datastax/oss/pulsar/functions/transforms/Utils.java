@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -39,7 +38,6 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
-import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
@@ -285,17 +283,12 @@ public class Utils {
   }
 
   public static class TestContext implements Context {
-    private Record<?> currentRecord;
+    private final Record<?> currentRecord;
     private final Map<String, Object> userConfig;
-    private TestTypedMessageBuilder<?> outputMessage;
 
     public TestContext(Record<?> currentRecord, Map<String, Object> userConfig) {
       this.currentRecord = currentRecord;
       this.userConfig = userConfig;
-    }
-
-    public void setCurrentRecord(Record<?> currentRecord) {
-      this.currentRecord = currentRecord;
     }
 
     @Override
@@ -366,12 +359,7 @@ public class Utils {
 
     @Override
     public <X> TypedMessageBuilder<X> newOutputMessage(String topicName, Schema<X> schema) {
-      this.outputMessage = new TestTypedMessageBuilder<>(topicName, schema);
-      return (TypedMessageBuilder<X>) outputMessage;
-    }
-
-    public TestTypedMessageBuilder<?> getOutputMessage() {
-      return outputMessage;
+      return null;
     }
 
     @Override
@@ -623,118 +611,6 @@ public class Utils {
 
     @Override
     public void recordMetric(String metricName, double value) {}
-  }
-
-  public static class TestTypedMessageBuilder<T> implements TypedMessageBuilder<T> {
-    private final String topic;
-    private final Schema<T> schema;
-    private T value;
-    private String key;
-    private Map<String, String> properties = new HashMap<>();
-
-    private TestTypedMessageBuilder(String topic, Schema<T> schema) {
-      this.topic = topic;
-      this.schema = schema;
-    }
-
-    @Override
-    public MessageId send() {
-      return null;
-    }
-
-    @Override
-    public CompletableFuture<MessageId> sendAsync() {
-      return null;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> key(String key) {
-      this.key = key;
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> keyBytes(byte[] key) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> orderingKey(byte[] orderingKey) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> value(T value) {
-      this.value = value;
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> property(String name, String value) {
-      this.properties.put(name, value);
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> properties(Map<String, String> properties) {
-      this.properties = properties;
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> eventTime(long timestamp) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> sequenceId(long sequenceId) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> replicationClusters(List<String> clusters) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> disableReplication() {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> deliverAt(long timestamp) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> deliverAfter(long delay, TimeUnit unit) {
-      return this;
-    }
-
-    @Override
-    public TestTypedMessageBuilder<T> loadConf(Map<String, Object> config) {
-      return this;
-    }
-
-    public T getValue() {
-      return value;
-    }
-
-    public String getKey() {
-      return key;
-    }
-
-    public Map<String, String> getProperties() {
-      return properties;
-    }
-
-    public String getTopic() {
-      return topic;
-    }
-
-    public Schema<T> getSchema() {
-      return schema;
-    }
   }
 
   public static class NativeSchemaWrapper
