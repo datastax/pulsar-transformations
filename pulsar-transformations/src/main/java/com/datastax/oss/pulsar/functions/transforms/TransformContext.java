@@ -119,9 +119,8 @@ public class TransformContext {
 
     FunctionRecord.FunctionRecordBuilder<GenericObject> recordBuilder =
         context
-            .newOutputRecordBuilder()
+            .newOutputRecordBuilder(outputSchema)
             .destinationTopic(outputTopic)
-            .schema(outputSchema)
             .value(outputObject)
             .properties(
                 this.properties == null

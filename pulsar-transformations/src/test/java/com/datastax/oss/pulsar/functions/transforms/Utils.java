@@ -380,7 +380,7 @@ public class Utils {
     }
 
     @Override
-    public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder() {
+    public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder(Schema<X> schema) {
       return FunctionRecord.from(
           new Context() {
             @Override
@@ -462,7 +462,8 @@ public class Utils {
             }
 
             @Override
-            public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder() {
+            public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder(
+                Schema<X> schema) {
               return null;
             }
 
@@ -542,7 +543,8 @@ public class Utils {
 
             @Override
             public void recordMetric(String metricName, double value) {}
-          });
+          },
+          schema);
     }
 
     @Override
