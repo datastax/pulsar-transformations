@@ -27,6 +27,7 @@
 package com.datastax.oss.pulsar.functions.transforms.tests;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.fail;
 
 import com.google.gson.Gson;
@@ -52,7 +53,7 @@ import org.testng.annotations.Test;
 
 public class DockerTest {
 
-  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_1.3";
+  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_1.5";
   private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.0";
 
   @DataProvider(name = "images")
@@ -142,6 +143,7 @@ public class DockerTest {
 
       Message<GenericRecord> message = consumer.receive(5, TimeUnit.SECONDS);
       GenericRecord value = message.getValue();
+      assertNotNull(value);
       assertEquals(value.getSchemaType(), SchemaType.STRING);
       assertEquals(value.getNativeObject(), "{\"b\": \"b\", \"c\": \"c\", \"d\": \"d\"}");
     }
