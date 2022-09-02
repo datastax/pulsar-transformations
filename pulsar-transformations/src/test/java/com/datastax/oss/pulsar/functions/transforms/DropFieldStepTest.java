@@ -20,7 +20,6 @@ import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.avro.generic.GenericData;
@@ -63,7 +62,7 @@ public class DropFieldStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     DropFieldStep step =
-        new DropFieldStep(new ArrayList<>(), Arrays.asList("firstName", "lastName"));
+        DropFieldStep.builder().valueFields(Arrays.asList("firstName", "lastName")).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -77,8 +76,10 @@ public class DropFieldStepTest {
   @Test
   void testKeyValueAvro() throws Exception {
     DropFieldStep step =
-        new DropFieldStep(
-            Arrays.asList("keyField1", "keyField2"), Arrays.asList("valueField1", "valueField2"));
+        DropFieldStep.builder()
+            .keyFields(Arrays.asList("keyField1", "keyField2"))
+            .valueFields(Arrays.asList("valueField1", "valueField2"))
+            .build();
     Record<GenericObject> outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
     KeyValue messageValue = (KeyValue) outputRecord.getValue();
@@ -118,7 +119,8 @@ public class DropFieldStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    DropFieldStep step = new DropFieldStep(new ArrayList<>(), Collections.singletonList("other"));
+    DropFieldStep step =
+        DropFieldStep.builder().valueFields(Collections.singletonList("other")).build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
     assertSame(outputRecord.getSchema(), record.getSchema());
     assertSame(outputRecord.getValue(), record.getValue());
@@ -129,8 +131,10 @@ public class DropFieldStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     DropFieldStep step =
-        new DropFieldStep(
-            Collections.singletonList("otherKey"), Collections.singletonList("otherValue"));
+        DropFieldStep.builder()
+            .keyFields(Collections.singletonList("otherKey"))
+            .valueFields(Collections.singletonList("otherValue"))
+            .build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
     KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
     KeyValue messageValue = (KeyValue) outputRecord.getValue();
@@ -148,8 +152,10 @@ public class DropFieldStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     DropFieldStep step =
-        new DropFieldStep(
-            Arrays.asList("keyField1", "keyField2"), Arrays.asList("valueField1", "valueField2"));
+        DropFieldStep.builder()
+            .keyFields(Arrays.asList("keyField1", "keyField2"))
+            .valueFields(Arrays.asList("valueField1", "valueField2"))
+            .build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
     KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
 
@@ -183,7 +189,10 @@ public class DropFieldStepTest {
             "test-key");
 
     DropFieldStep step =
-        new DropFieldStep(Collections.singletonList("key"), Collections.singletonList("value"));
+        DropFieldStep.builder()
+            .keyFields(Collections.singletonList("key"))
+            .valueFields(Collections.singletonList("value"))
+            .build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
 
     assertSame(outputRecord.getSchema(), record.getSchema());
@@ -204,7 +213,10 @@ public class DropFieldStepTest {
             null);
 
     DropFieldStep step =
-        new DropFieldStep(Collections.singletonList("key"), Collections.singletonList("value"));
+        DropFieldStep.builder()
+            .keyFields(Collections.singletonList("key"))
+            .valueFields(Collections.singletonList("value"))
+            .build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
     KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
     KeyValue messageValue = (KeyValue) outputRecord.getValue();
