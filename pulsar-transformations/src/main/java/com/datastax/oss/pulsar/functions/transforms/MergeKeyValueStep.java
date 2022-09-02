@@ -19,13 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
-@Slf4j
 public class MergeKeyValueStep implements TransformStep {
 
   private final Map<org.apache.avro.Schema, Map<org.apache.avro.Schema, org.apache.avro.Schema>>

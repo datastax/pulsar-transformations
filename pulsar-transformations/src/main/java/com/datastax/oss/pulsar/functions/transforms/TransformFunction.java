@@ -159,35 +159,39 @@ public class TransformFunction
   public static DropFieldStep newRemoveFieldFunction(Map<String, Object> step) {
     String fields = getRequiredStringConfig(step, "fields");
     List<String> fieldList = Arrays.asList(fields.split(","));
+    DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
     return getStringConfig(step, "part")
         .map(
             part -> {
               if (part.equals("key")) {
-                return new DropFieldStep(fieldList, new ArrayList<>());
+                return builder.keyFields(fieldList);
               } else if (part.equals("value")) {
-                return new DropFieldStep(new ArrayList<>(), fieldList);
+                return builder.valueFields(fieldList);
               } else {
                 throw new IllegalArgumentException("invalid 'part' parameter: " + part);
               }
             })
-        .orElseGet(() -> new DropFieldStep(fieldList, fieldList));
+        .orElseGet(() -> builder.keyFields(fieldList).valueFields(fieldList))
+        .build();
   }
 
   public static CastStep newCastFunction(Map<String, Object> step) {
     String schemaTypeParam = getRequiredStringConfig(step, "schema-type");
     SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
+    CastStep.CastStepBuilder builder = CastStep.builder();
     return getStringConfig(step, "part")
         .map(
             part -> {
               if (part.equals("key")) {
-                return new CastStep(schemaType, null);
+                return builder.keySchemaType(schemaType);
               } else if (part.equals("value")) {
-                return new CastStep(null, schemaType);
+                return builder.valueSchemaType(schemaType);
               } else {
                 throw new IllegalArgumentException("invalid 'part' parameter: " + part);
               }
             })
-        .orElseGet(() -> new CastStep(schemaType, schemaType));
+        .orElseGet(() -> builder.keySchemaType(schemaType).valueSchemaType(schemaType))
+        .build();
   }
 
   public static FlattenStep newFlattenFunction(Map<String, Object> step) {

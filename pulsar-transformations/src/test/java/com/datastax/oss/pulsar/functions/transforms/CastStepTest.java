@@ -31,7 +31,11 @@ public class CastStepTest {
   @Test
   void testKeyValueAvroToString() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    CastStep step = new CastStep(SchemaType.STRING, SchemaType.STRING);
+    CastStep step =
+        CastStep.builder()
+            .keySchemaType(SchemaType.STRING)
+            .valueSchemaType(SchemaType.STRING)
+            .build();
     Record<GenericObject> outputRecord = Utils.process(record, step);
 
     KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();

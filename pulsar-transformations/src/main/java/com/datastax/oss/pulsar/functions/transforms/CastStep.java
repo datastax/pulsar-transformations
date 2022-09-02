@@ -15,27 +15,15 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.Builder;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
-@Slf4j
+@Builder
 public class CastStep implements TransformStep {
 
   private final SchemaType keySchemaType;
   private final SchemaType valueSchemaType;
-
-  public CastStep(SchemaType keySchemaType, SchemaType valueSchemaType) {
-    if (keySchemaType != null && keySchemaType != SchemaType.STRING) {
-      throw new IllegalArgumentException("Unsupported key schema-type for Cast: " + keySchemaType);
-    }
-    if (valueSchemaType != null && valueSchemaType != SchemaType.STRING) {
-      throw new IllegalArgumentException(
-          "Unsupported value schema-type for Cast: " + valueSchemaType);
-    }
-    this.keySchemaType = keySchemaType;
-    this.valueSchemaType = valueSchemaType;
-  }
 
   @Override
   public void process(TransformContext transformContext) {
@@ -52,6 +40,29 @@ public class CastStep implements TransformStep {
     if (valueSchemaType == SchemaType.STRING) {
       transformContext.setValueSchema(Schema.STRING);
       transformContext.setValueObject(transformContext.getValueObject().toString());
+    }
+  }
+
+  public static class CastStepBuilder {
+    private SchemaType keySchemaType;
+    private SchemaType valueSchemaType;
+
+    public CastStepBuilder keySchemaType(SchemaType keySchemaType) {
+      if (keySchemaType != null && keySchemaType != SchemaType.STRING) {
+        throw new IllegalArgumentException(
+            "Unsupported key schema-type for Cast: " + keySchemaType);
+      }
+      this.keySchemaType = keySchemaType;
+      return this;
+    }
+
+    public CastStepBuilder valueSchemaType(SchemaType valueSchemaType) {
+      if (valueSchemaType != null && valueSchemaType != SchemaType.STRING) {
+        throw new IllegalArgumentException(
+            "Unsupported value schema-type for Cast: " + valueSchemaType);
+      }
+      this.valueSchemaType = valueSchemaType;
+      return this;
     }
   }
 }

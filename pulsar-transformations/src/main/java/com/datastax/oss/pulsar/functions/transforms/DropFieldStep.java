@@ -15,30 +15,27 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
+import lombok.Builder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
 
 /** This function removes a "field" from a message. */
-@Slf4j
+@Builder
 public class DropFieldStep implements TransformStep {
 
-  private final List<String> keyFields;
-  private final List<String> valueFields;
+  @Builder.Default private final List<String> keyFields = new ArrayList<>();
+  @Builder.Default private final List<String> valueFields = new ArrayList<>();
+
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
       new ConcurrentHashMap<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =
       new ConcurrentHashMap<>();
-
-  public DropFieldStep(List<String> keyFields, List<String> valueFields) {
-    this.keyFields = keyFields;
-    this.valueFields = valueFields;
-  }
 
   @Override
   public void process(TransformContext transformContext) {
