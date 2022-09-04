@@ -38,6 +38,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
+import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
@@ -47,8 +48,10 @@ import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
+import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
+import org.apache.pulsar.common.api.proto.MessageMetadata;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
@@ -177,8 +180,14 @@ public class Utils {
         keyValueSchema =
             org.apache.pulsar.client.api.Schema.KeyValue(
                 pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
-
-    return new Utils.TestRecord(keyValueSchema, genericObject, null);
+    MessageMetadata md = new MessageMetadata();
+    md.addProperty().setKey("p1").setValue("v1");
+    md.addProperty().setKey("p2").setValue("v2");
+    md.setPartitionKey("key-1");
+    md.setProducerName("producer-1");
+    Message<KeyValue<GenericRecord, GenericRecord>> message =
+        MessageImpl.create(md, ByteBuffer.wrap(new byte[0]), keyValueSchema, "topic-1");
+    return new Utils.TestRecord(keyValueSchema, genericObject, "key-1", message);
   }
 
   /**
@@ -260,10 +269,17 @@ public class Utils {
     private final T value;
     private final String key;
 
+    private Message<T> message;
+
     public TestRecord(Schema schema, T value, String key) {
       this.schema = schema;
       this.value = value;
       this.key = key;
+    }
+
+    public TestRecord(Schema schema, T value, String key, Message<T> message) {
+      this(schema, value, key);
+      this.message = message;
     }
 
     @Override
@@ -279,6 +295,11 @@ public class Utils {
     @Override
     public T getValue() {
       return value;
+    }
+
+    @Override
+    public Optional<Message<T>> getMessage() {
+      return Optional.of(message);
     }
   }
 
