@@ -17,24 +17,20 @@ package com.datastax.oss.pulsar.functions.transforms.predicate.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
-import de.odysseus.el.tree.Bindings;
 import de.odysseus.el.tree.TreeBuilderException;
-import de.odysseus.el.tree.impl.Builder;
 import de.odysseus.el.util.SimpleContext;
-import java.util.HashMap;
-import java.util.Map;
-import javax.el.ELContext;
-import javax.el.ExpressionFactory;
-import javax.el.ValueExpression;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
 
+import javax.el.ELContext;
+import javax.el.ExpressionFactory;
+import javax.el.ValueExpression;
+import java.util.HashMap;
+import java.util.Map;
+
 /** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */
 public class JstlPredicate implements TransformPredicate {
-  private static final Builder BUILDER = new Builder(Builder.Feature.METHOD_INVOCATIONS);
-
-  private static final Bindings BINDINGS = new Bindings(null, null, null);
   private static final ExpressionFactory FACTORY = new de.odysseus.el.ExpressionFactoryImpl();
   private final ValueExpression valueExpression;
   private final ELContext expressionContext;
