@@ -35,11 +35,8 @@ public class JstlPredicate implements TransformPredicate {
   private final ValueExpression valueExpression;
   private final ELContext expressionContext;
 
-  String when;
-
   public JstlPredicate(String when) {
     this.expressionContext = new SimpleContext();
-    this.when = when;
     try {
       this.valueExpression = FACTORY.createValueExpression(expressionContext, when, boolean.class);
     } catch (TreeBuilderException ex) {
