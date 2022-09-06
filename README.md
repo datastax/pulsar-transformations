@@ -79,6 +79,14 @@ Parameters:
 | schema-type | the target schema type. Only `STRING` is available. |
 | part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
+#### Example:
+
+UserConfig: `{"steps": [{"type": "cast", "schema-type": "STRING"}]}`
+
+Input: `{field1: value1, field2: value2} (AVRO)`
+
+Output: `{"field1": "value1", "field2": "value2"} (STRING)`
+
 ### Drop fields
 
 Drops fields of structured data (Currently only AVRO is supported).
@@ -92,6 +100,14 @@ Parameters:
 | fields | the list of fields to drop separated by commas `,` |
 | part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
+#### Example
+
+UserConfig: `{"steps": [{"type": "drop-fields", "fields": "password,other"}]}`
+
+Input: `{name: value1, password: value2} (AVRO)`
+
+Output: `{name: value1} (AVRO)`
+
 ### Merge KeyValue
 
 Merges the fields of KeyValue records where both the key and value are structured types of the same schema type. (Currently only AVRO is supported).
@@ -99,6 +115,14 @@ Merges the fields of KeyValue records where both the key and value are structure
 Step name: `merge-key-value`
 
 Parameters: N/A
+
+##### Example
+
+UserConfig: `{"steps": [{"type": "merge-key-value"}]}`
+
+Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>)`
+
+Output: `{key={keyField: key}, value={keyField: key, valueField: value}} (KeyValue<AVRO, AVRO>)`
 
 ### Unwrap KeyValue
 
@@ -112,6 +136,14 @@ Parameters:
 | ----------- | ----------- |
 | unwrapKey | by default, the value is unwrapped. Set this parameter to `true` to unwrap the key instead |
 
+##### Example
+
+UserConfig: `{"steps": [{"type": "unwrap-key-value"}]}`
+
+Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>)`
+
+Output: `{valueField: value} (AVRO)`
+
 ### Flatten
 
 Converts structured nested data into a new single-hierarchy-level structured data. 
@@ -123,6 +155,15 @@ Step name: `flatten`
 | ----------- | ----------- |
 | delimiter | the delimiter to use when concatenating the field names (default: `_`) |
 | part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
+
+
+##### Example
+
+UserConfig: `{"steps": [{"type": "flatten"}]}`
+
+Input: `{field1: {field11: value11, field12: value12}} (AVRO)`
+
+Output: `{field1_field11: value11, field1_field12: value12} (AVRO)`
 
 ## Deployment
 
