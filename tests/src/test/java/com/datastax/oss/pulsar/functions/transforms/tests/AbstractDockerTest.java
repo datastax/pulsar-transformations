@@ -44,6 +44,7 @@ import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
+import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
@@ -103,57 +104,57 @@ public abstract class AbstractDockerTest {
   }
 
   @Test
-  public void testOutputPrimitive() throws Exception {
+  public void testPrimitive() throws Exception {
     String userConfig =
-        (""
-                + "{'steps': ["
-                + "    {'type': 'unwrap-key-value'},"
-                + "    {'type': 'cast', 'schema-type': 'STRING'}"
-                + "]}")
-            .replace("'", "\"");
+        ("{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}").replace("'", "\"");
 
-    GenericRecord value = testTransformFunction(userConfig);
+    GenericRecord value = testTransformFunction(userConfig, Schema.STRING, "a");
     assertEquals(value.getSchemaType(), SchemaType.STRING);
-    assertEquals(value.getNativeObject(), "{\"c\": \"c\", \"d\": \"d\"}");
+    assertEquals(value.getNativeObject(), "a");
   }
 
   @Test
-  public void testOutputKVPrimitive() throws Exception {
+  public void testKVPrimitive() throws Exception {
     String userConfig =
-        ("" + "{'steps': [" + "    {'type': 'cast', 'schema-type': 'STRING'}" + "]}")
-            .replace("'", "\"");
+        ("{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}").replace("'", "\"");
 
-    GenericRecord value = testTransformFunction(userConfig);
+    GenericRecord value =
+        testTransformFunction(
+            userConfig, Schema.KeyValue(Schema.STRING, Schema.STRING), new KeyValue<>("a", "b"));
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
     KeyValue<String, String> keyValue = (KeyValue<String, String>) value.getNativeObject();
-    assertEquals(keyValue.getKey(), "{\"a\": \"a\", \"b\": \"b\"}");
-    assertEquals(keyValue.getValue(), "{\"c\": \"c\", \"d\": \"d\"}");
+    assertEquals(keyValue.getKey(), "a");
+    assertEquals(keyValue.getValue(), "b");
   }
 
   @Test
-  public void testOutputAvro() throws Exception {
+  public void testAvro() throws Exception {
     String userConfig =
         (""
                 + "{'steps': ["
                 + "    {'type': 'unwrap-key-value'},"
-                + "    {'type': 'drop-fields', 'fields': 'c'}"
+                + "    {'type': 'drop-fields', 'fields': 'a'}"
                 + "]}")
             .replace("'", "\"");
 
-    GenericRecord value = testTransformFunction(userConfig);
+    GenericRecord value =
+        testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("a", "b"));
     assertEquals(value.getSchemaType(), SchemaType.AVRO);
     org.apache.avro.generic.GenericRecord genericRecord =
         (org.apache.avro.generic.GenericRecord) value.getNativeObject();
-    assertEquals(genericRecord.toString(), "{\"d\": \"d\"}");
+    assertEquals(genericRecord.toString(), "{\"b\": \"b\"}");
   }
 
   @Test
-  public void testOutputKVAvro() throws Exception {
+  public void testKVAvro() throws Exception {
     String userConfig =
-        ("" + "{'steps': [" + "    {'type': 'drop-fields', 'fields': 'a,c'}" + "]}")
-            .replace("'", "\"");
+        ("{'steps': [{'type': 'drop-fields', 'fields': 'a,c'}]}").replace("'", "\"");
 
-    GenericRecord value = testTransformFunction(userConfig);
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.AVRO(Pojo1.class), Schema.AVRO(Pojo2.class)),
+            new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d")));
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
     KeyValue<GenericObject, GenericObject> keyValue =
         (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
@@ -165,7 +166,38 @@ public abstract class AbstractDockerTest {
   }
 
   @Test
-  public void testOutputKVAvroWhen() throws Exception {
+  public void testAvroNotModified() throws Exception {
+    String userConfig = ("{'steps': []}").replace("'", "\"");
+
+    GenericRecord value =
+        testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("a", "b"));
+    assertEquals(value.getSchemaType(), SchemaType.AVRO);
+    org.apache.avro.generic.GenericRecord genericRecord =
+        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
+    assertEquals(genericRecord.toString(), "{\"a\": \"a\", \"b\": \"b\"}");
+  }
+
+  @Test
+  public void testKVAvroNotModified() throws Exception {
+    String userConfig = ("{'steps': []}").replace("'", "\"");
+
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.AVRO(Pojo1.class), Schema.AVRO(Pojo2.class)),
+            new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d")));
+    assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
+    KeyValue<GenericObject, GenericObject> keyValue =
+        (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
+
+    assertEquals(keyValue.getKey().getSchemaType(), SchemaType.AVRO);
+    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"a\": \"a\", \"b\": \"b\"}");
+    assertEquals(keyValue.getValue().getSchemaType(), SchemaType.AVRO);
+    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"c\": \"c\", \"d\": \"d\"}");
+  }
+
+  @Test
+  public void testKVAvroWhenPredicate() throws Exception {
     String userConfig =
         (""
             + "{\"steps\": ["
@@ -174,7 +206,12 @@ public abstract class AbstractDockerTest {
             + "    {\"type\": \"drop-fields\", \"fields\": \"c\", \"when\": \"value.c=='c'\"},"
             + "    {\"type\": \"drop-fields\", \"fields\": \"d\", \"when\": \"value.d!='d'\"}"
             + "]}");
-    GenericRecord value = testTransformFunction(userConfig);
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.AVRO(Pojo1.class), Schema.AVRO(Pojo2.class)),
+            new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d")));
+
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
     KeyValue<GenericObject, GenericObject> keyValue =
         (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
@@ -185,9 +222,13 @@ public abstract class AbstractDockerTest {
     assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\"}");
   }
 
-  private GenericRecord testTransformFunction(String userConfig)
-      throws PulsarAdminException, InterruptedException,
-          org.apache.pulsar.client.api.PulsarClientException {
+  private GenericRecord testTransformFunctionString(String userConfig)
+      throws PulsarClientException, PulsarAdminException, InterruptedException {
+    return testTransformFunction(userConfig, Schema.STRING, "");
+  }
+
+  private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
+      throws PulsarAdminException, InterruptedException, PulsarClientException {
     String functionId = UUID.randomUUID().toString();
     String inputTopic = "input-" + functionId;
     String outputTopic = "output-" + functionId;
@@ -233,18 +274,15 @@ public abstract class AbstractDockerTest {
             .subscriptionName(UUID.randomUUID().toString())
             .subscribe();
 
-    Schema<KeyValue<Pojo1, Pojo2>> keyValueSchema =
-        Schema.KeyValue(Schema.AVRO(Pojo1.class), Schema.AVRO(Pojo2.class));
-    Producer<KeyValue<Pojo1, Pojo2>> producer =
-        client.newProducer(keyValueSchema).topic(inputTopic).create();
+    Producer producer = client.newProducer(schema).topic(inputTopic).create();
 
-    KeyValue<Pojo1, Pojo2> kv = new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d"));
-    producer.newMessage().value(kv).send();
+    producer.newMessage().value(value).send();
 
     Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
-    GenericRecord value = message.getValue();
-    assertNotNull(value);
-    return value;
+    assertNotNull(message);
+    GenericRecord messageValue = message.getValue();
+    assertNotNull(messageValue);
+    return messageValue;
   }
 
   @Value
