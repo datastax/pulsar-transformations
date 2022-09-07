@@ -16,6 +16,7 @@
 package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.predicate.StepPredicatePair;
+import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
 import com.datastax.oss.pulsar.functions.transforms.predicate.jstl.JstlPredicate;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -80,7 +81,7 @@ import org.apache.pulsar.functions.api.Record;
  *       "type": "cast", "schema-type": "STRING"
  *     },
  *     {
- *       "type": "flatten", "delimiter" : "_" "part" : "value", "when": "$(value.field == 'value')"
+ *       "type": "flatten", "delimiter" : "_" "part" : "value", "when": "value.field == 'value'"
  *     }
  *   ]
  * }
@@ -113,7 +114,7 @@ public class TransformFunction
     for (Map<String, Object> step : stepsConfig) {
       String type = getRequiredStringConfig(step, "type");
       Optional<String> when = getStringConfig(step, "when");
-      Predicate<TransformContext> predicate = when.map(JstlPredicate::new).orElse(null);
+      TransformPredicate predicate = when.map(JstlPredicate::new).orElse(null);
       TransformStep transformStep;
       switch (type) {
         case "drop-fields":
@@ -161,10 +162,9 @@ public class TransformFunction
     for (StepPredicatePair pair : steps) {
       TransformStep step = pair.getTransformStep();
       Predicate<TransformContext> predicate = pair.getPredicate();
-      if (predicate != null && !predicate.test(transformContext)) {
-        continue;
+      if (predicate == null || predicate.test(transformContext)) {
+        step.process(transformContext);
       }
-      step.process(transformContext);
     }
   }
 

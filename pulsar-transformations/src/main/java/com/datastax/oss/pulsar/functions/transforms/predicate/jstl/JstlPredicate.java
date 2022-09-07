@@ -17,17 +17,15 @@ package com.datastax.oss.pulsar.functions.transforms.predicate.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
-import de.odysseus.el.tree.TreeBuilderException;
 import de.odysseus.el.util.SimpleContext;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.collections4.Transformer;
-import org.apache.commons.collections4.map.LazyMap;
-
+import java.util.HashMap;
+import java.util.Map;
 import javax.el.ELContext;
 import javax.el.ExpressionFactory;
 import javax.el.ValueExpression;
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.collections4.Transformer;
+import org.apache.commons.collections4.map.LazyMap;
 
 /** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */
 public class JstlPredicate implements TransformPredicate {
@@ -38,8 +36,10 @@ public class JstlPredicate implements TransformPredicate {
   public JstlPredicate(String when) {
     this.expressionContext = new SimpleContext();
     try {
-      this.valueExpression = FACTORY.createValueExpression(expressionContext, when, boolean.class);
-    } catch (TreeBuilderException ex) {
+      final String expression = String.format("${%s}", when);
+      this.valueExpression =
+          FACTORY.createValueExpression(expressionContext, expression, boolean.class);
+    } catch (RuntimeException ex) {
       throw new IllegalArgumentException("invalid when: " + when, ex);
     }
   }

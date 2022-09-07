@@ -28,7 +28,7 @@ import org.testng.annotations.Test;
 public class JstlPredicateTest {
 
   @Test(dataProvider = "jstlPredicates")
-  void testKeyScope(String when, boolean match) {
+  void testJstlPredicates(String when, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
 
     Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(2);
@@ -44,50 +44,58 @@ public class JstlPredicateTest {
   public static Object[][] jstlPredicates() {
     return new Object[][] {
       // match
-      {"${key.level1String == 'level1_1'}", true},
-      {"${key.level1Record.level2String == 'level2_1'}", true},
-      {"${key.level1Record.level2Integer == 9}", true},
-      {"${key.level1Record.level2Double == 8.8}", true},
-      {"${value.level1String.contains('level1')}", true},
-      {"${value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'}", true},
-      {"${value.level1Record.level2Integer > 8}", true},
-      {"${value.level1Record.level2Double < 8.9}", true},
-      {"${header.key == 'key-1'}", true},
-      {"${header.producerName == 'producer-1'}", true},
-      {"${header.topicName == 'topic-1'}", true},
-      {"${header.properties.p1 == 'v1'}", true},
-      {"${header.properties.p2 == 'v2'}", true},
+      {"key.level1String == 'level1_1'", true},
+      {"key.level1Record.level2String == 'level2_1'", true},
+      {"key.level1Record.level2Integer == 9", true},
+      {"key.level1Record.level2Double == 8.8", true},
+      {"value.level1String.contains('level1')", true},
+      {"value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'", true},
+      {"value.level1Record.level2Integer > 8", true},
+      {"value.level1Record.level2Double < 8.9", true},
+      {"header.key == 'key1'", true},
+      {"header.destinationTopic == 'dest-topic-1'", true},
+      {"header.topicName == 'topic-1'", true},
+      {"header.properties.p1 == 'v1'", true},
+      {"header.properties.p2 == 'v2'", true},
       // no match
-      {"${key.level1String == 'leVel1_1'}", false},
-      {"${key.level1Record.random == 'level2_1'}", false},
-      {"${key.level1Record.level2Integer != 9}", false},
-      {"${key.level1Record.level2Double < 8.8}", false},
-      {"${value.level1String.contains('level2')}", false},
-      {"${value.level1Record.level2String.toUpperCase() == 'LeVEL2_1'}", false},
-      {"${value.level1Record.level2Integer > 10}", false},
-      {"${value.level1Record.level2Double < 0}", false},
-      {"${header.key == 'key1'}", false},
-      {"${header.producerNames == 'producer-1'}", false},
-      {"${header.topicName != 'topic-1'}", false},
-      {"${header.properties.p1.substring(0,1) == 'v1'}", false},
-      {"${header.properties.p2 == 'v3'}", false},
+      {"key.level1String == 'leVel1_1'", false},
+      {"key.level1Record.random == 'level2_1'", false},
+      {"key.level1Record.level2Integer != 9", false},
+      {"key.level1Record.level2Double < 8.8", false},
+      {"key.randomKey == 'k1'", false},
+      {"value.level1String.contains('level2')", false},
+      {"value.level1Record.level2String.toUpperCase() == 'LeVEL2_1'", false},
+      {"value.level1Record.level2Integer > 10", false},
+      {"value.level1Record.level2Double < 0", false},
+      {"value.randomValue < 0", false},
+      {"header.key == 'key2'", false},
+      {"header.outputTopicName == 'output-topic-1'", false},
+      {"header.topicName != 'topic-1'", false},
+      {"header.properties.p1.substring(0,1) == 'v1'", false},
+      {"header.properties.p2 == 'v3'", false},
+      {"header.randomHeader == 'h1'", false},
       // complex
       {
-        "${key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
-            + " key.level1Record.level2Integer == 9 && key.level1Record.level2Double == 8.8 && "
-            + "value.level1String.contains('level1')}",
+        "header.properties.p1.toUpperCase() == 'V1' && header.key == 'key1' && header.topicName == 'topic-1' && "
+            + "header.destinationTopic == 'dest-topic-1'",
         true
       },
       {
-        "${key.level1String == 'level1_1' || key.level1Record.level2String == 'random' || "
+        "key.level1String == 'level1_1' || key.level1Record.level2String == 'random' || "
             + " key.level1Record.level2Integer == 5 || key.level1Record.level2Double != 8.8 || "
-            + "value.level1String.contains('level1')}",
+            + "value.level1String.contains('level1')",
         true
       },
       {
-        "${key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
-            + " key.level1Record.level2Integer == 9} && key.level1Record.level2Double != 8.8} && "
-            + "value.level1String.contains('level1')}",
+        "key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
+            + " key.level1Record.level2Integer == 9 && key.level1Record.level2Double != 8.8} && "
+            + "value.level1String.contains('level1')",
+        false
+      },
+      {
+        "key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
+            + " key.level1Record.level2Integer == 9 && key.level1Record.level2Double != 8.8} && "
+            + "value.level1String.contains('level1')",
         false
       },
     };

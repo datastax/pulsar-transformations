@@ -27,6 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -38,7 +41,6 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
-import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
@@ -48,10 +50,8 @@ import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
-import org.apache.pulsar.client.impl.MessageImpl;
 import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
-import org.apache.pulsar.common.api.proto.MessageMetadata;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
@@ -180,14 +180,19 @@ public class Utils {
         keyValueSchema =
             org.apache.pulsar.client.api.Schema.KeyValue(
                 pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
-    MessageMetadata md = new MessageMetadata();
-    md.addProperty().setKey("p1").setValue("v1");
-    md.addProperty().setKey("p2").setValue("v2");
-    md.setPartitionKey("key-1");
-    md.setProducerName("producer-1");
-    Message<KeyValue<GenericRecord, GenericRecord>> message =
-        MessageImpl.create(md, ByteBuffer.wrap(new byte[0]), keyValueSchema, "topic-1");
-    return new Utils.TestRecord(keyValueSchema, genericObject, "key-1", message);
+    Map<String, String> props = new HashMap<>();
+    props.put("p1", "v1");
+    props.put("p2", "v2");
+
+    return TestRecord.<GenericObject>builder()
+        .schema(keyValueSchema)
+        .value(genericObject)
+        .key("key1")
+        .topicName("topic-1")
+        .destinationTopic("dest-topic-1")
+        .eventTime(1662493532L)
+        .properties(props)
+        .build();
   }
 
   /**
@@ -264,23 +269,17 @@ public class Utils {
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
   }
 
+  @Builder
+  @RequiredArgsConstructor
+  @AllArgsConstructor
   public static class TestRecord<T> implements Record<T> {
     private final Schema schema;
     private final T value;
     private final String key;
-
-    private Message<T> message;
-
-    public TestRecord(Schema schema, T value, String key) {
-      this.schema = schema;
-      this.value = value;
-      this.key = key;
-    }
-
-    public TestRecord(Schema schema, T value, String key, Message<T> message) {
-      this(schema, value, key);
-      this.message = message;
-    }
+    private String topicName;
+    private String destinationTopic;
+    private Long eventTime;
+    Map<String, String> properties;
 
     @Override
     public Optional<String> getKey() {
@@ -298,8 +297,23 @@ public class Utils {
     }
 
     @Override
-    public Optional<Message<T>> getMessage() {
-      return Optional.of(message);
+    public Optional<String> getTopicName() {
+      return Optional.ofNullable(topicName);
+    }
+
+    @Override
+    public Optional<String> getDestinationTopic() {
+      return Optional.ofNullable(destinationTopic);
+    }
+
+    @Override
+    public Optional<Long> getEventTime() {
+      return Optional.ofNullable(eventTime);
+    }
+
+    @Override
+    public Map<String, String> getProperties() {
+      return properties;
     }
   }
 

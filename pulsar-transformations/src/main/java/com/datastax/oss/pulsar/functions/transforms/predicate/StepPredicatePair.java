@@ -15,13 +15,17 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.predicate;
 
-import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.TransformStep;
-import java.util.function.Predicate;
 import lombok.Data;
 
+/**
+ * A convenience class to group a step and its predicate together. A convenience class to group a
+ * step and its predicate together.
+ */
 @Data
 public class StepPredicatePair {
+  /** The candidate transform step to be invoked. */
   private final TransformStep transformStep;
-  private final Predicate<TransformContext> predicate;
+  /** A predicate that decides whether the transform step should be invoked or not. */
+  private final TransformPredicate predicate;
 }

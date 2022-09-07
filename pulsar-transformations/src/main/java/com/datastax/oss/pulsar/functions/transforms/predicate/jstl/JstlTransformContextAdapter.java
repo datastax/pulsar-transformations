@@ -68,25 +68,21 @@ public class JstlTransformContextAdapter {
   private Transformer<String, Object> headerTransformer =
       (fieldName) -> {
         Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
-        return currentRecord
-            .getMessage()
-            .map(
-                message -> {
-                  // Allow list message headers in the expression
-                  switch (fieldName) {
-                    case "key":
-                      return message.getKey();
-                    case "topicName":
-                      return message.getTopicName();
-                    case "properties":
-                      return message.getProperties();
-                    case "producerName":
-                      return message.getProducerName();
-                    default:
-                      return null;
-                  }
-                })
-            .orElse(null);
+        // Allow list message headers in the expression
+        switch (fieldName) {
+          case "key":
+            return currentRecord.getKey().orElse(null);
+          case "topicName":
+            return currentRecord.getTopicName().orElse(null);
+          case "destinationTopic":
+            return currentRecord.getDestinationTopic().orElse(null);
+          case "eventTime":
+            return currentRecord.getEventTime().orElse(null);
+          case "properties":
+            return currentRecord.getProperties();
+          default:
+            return null;
+        }
       };
 
   private final Map<String, Object> lazyHeader =

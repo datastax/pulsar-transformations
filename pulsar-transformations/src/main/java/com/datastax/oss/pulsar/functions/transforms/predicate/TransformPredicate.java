@@ -18,6 +18,10 @@ package com.datastax.oss.pulsar.functions.transforms.predicate;
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import java.util.function.Predicate;
 
-/** A predicate functional interface that applies to {@link TransformContext}. */
+/**
+ * A predicate functional interface that applies to {@link TransformContext}. Implementations of
+ * this interface should respect the current record encapsulated in the {@link TransformContext}
+ * when evaluating the predicate.
+ */
 @FunctionalInterface
 public interface TransformPredicate extends Predicate<TransformContext> {}

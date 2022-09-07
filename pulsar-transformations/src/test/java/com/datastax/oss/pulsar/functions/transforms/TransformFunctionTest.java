@@ -40,11 +40,11 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'value'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': 'key.k1=key1'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': 'key.k1==key1'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': false}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true}]}"},
-      {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true, 'when': 'value.v1=val1'}]}"},
+      {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true, 'when': 'value.v1==val1'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'value'}]}"},
@@ -52,7 +52,7 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'flatten', 'part': 'value'}]}"},
       {"{'steps': [{'type': 'flatten', 'delimiter': '_'}]}"},
-      {"{'steps': [{'type': 'flatten', 'when': 'prop1=val1'}]}"},
+      {"{'steps': [{'type': 'flatten', 'when': 'prop1==val1'}]}"},
     };
   }
 
@@ -78,16 +78,16 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': '${'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': ''}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': 'invalid'}]}"},
-      {"{'steps': [{'type': 'unwrap-key-value', 'when': '${'}]}"},
+      {"{'steps': [{'type': 'unwrap-key-value', 'when': ''}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 42}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'INVALID'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}]}"},
-      {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}], 'when': '${'}"},
+      {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}], 'when': ''}"},
       {"{'steps': [{'type': 'flatten', 'part': 'invalid-part'}]}"},
-      {"{'steps': [{'type': 'flatten', 'when': '${'}]}"},
+      {"{'steps': [{'type': 'flatten', 'when': ''}]}"},
     };
   }
 
@@ -144,8 +144,8 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"${key.keyField1 == 'key1'}\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"${key.keyField2 == 'key2'}\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key1'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"key.keyField2 == 'key2'\"}"
             + "]}");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
@@ -171,8 +171,8 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"${key.keyField1 == 'key100'}\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"${key.keyField2 == 'key100'}\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key100'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"key.keyField2 == 'key100'\"},"
             + "    {\"type\": \"drop-fields\", \"fields\": \"keyField3\"}"
             + "]}");
     Map<String, Object> config =
@@ -201,10 +201,10 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"${key.keyField1 == 'key1'}\"},"
-            + "    {\"type\": \"merge-key-value\", \"when\": \"${key.keyField2 == 'key100'}\"},"
-            + "    {\"type\": \"unwrap-key-value\", \"when\": \"${key.keyField3 == 'key100'}\"},"
-            + "    {\"type\": \"cast\", \"schema-type\": \"STRING\", \"when\": \"${value.valueField1 == 'value1'}\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key1'\"},"
+            + "    {\"type\": \"merge-key-value\", \"when\": \"key.keyField2 == 'key100'\"},"
+            + "    {\"type\": \"unwrap-key-value\", \"when\": \"key.keyField3 == 'key100'\"},"
+            + "    {\"type\": \"cast\", \"schema-type\": \"STRING\", \"when\": \"value.valueField1 == 'value1'\"}"
             + "]}");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
