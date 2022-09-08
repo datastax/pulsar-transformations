@@ -36,10 +36,10 @@ public class CastStepTest {
             .keySchemaType(SchemaType.STRING)
             .valueSchemaType(SchemaType.STRING)
             .build();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
+    Record<?> outputRecord = Utils.process(record, step);
 
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     assertSame(messageSchema.getKeySchema(), Schema.STRING);
     assertEquals(

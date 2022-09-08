@@ -33,10 +33,10 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <java.version>1.8</java.version>
-    <java.release.version>8</java.release.version>
-    <maven.compiler.source>8</maven.compiler.source>
-    <maven.compiler.target>8</maven.compiler.target>
+    <java.version>1.11</java.version>
+    <java.release.version>11</java.release.version>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
     <pulsar.groupId>com.datastax.oss</pulsar.groupId>
     <pulsar.version>2.10.1.5</pulsar.version>
     <surefire.version>3.0.0-M5</surefire.version>
@@ -153,26 +153,6 @@ limitations under the License.]]></inlineHeader>
               <goals>
                 <goal>format</goal>
               </goals>
-            </execution>
-          </executions>
-        </plugin>
-        <plugin>
-          <groupId>org.codehaus.mojo</groupId>
-          <artifactId>animal-sniffer-maven-plugin</artifactId>
-          <version>1.16</version>
-          <executions>
-            <execution>
-              <id>check-jdk8</id>
-              <goals>
-                <goal>check</goal>
-              </goals>
-              <configuration>
-                <signature>
-                  <groupId>org.codehaus.mojo.signature</groupId>
-                  <artifactId>java18</artifactId>
-                  <version>1.0</version>
-                </signature>
-              </configuration>
             </execution>
           </executions>
         </plugin>

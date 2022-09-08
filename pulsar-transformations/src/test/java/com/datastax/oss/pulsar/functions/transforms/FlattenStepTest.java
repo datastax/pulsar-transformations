@@ -40,11 +40,11 @@ public class FlattenStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     // when
-    Record<GenericObject> outputRecord = Utils.process(record, FlattenStep.builder().build());
+    Record<?> outputRecord = Utils.process(record, FlattenStep.builder().build());
 
     // then (key & value remain unchanged)
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -70,12 +70,11 @@ public class FlattenStepTest {
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
     // when
-    Record<GenericObject> outputRecord =
-        Utils.process(nestedKVRecord, FlattenStep.builder().build());
+    Record<?> outputRecord = Utils.process(nestedKVRecord, FlattenStep.builder().build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -85,7 +84,8 @@ public class FlattenStepTest {
     // Assert value flattened
     GenericData.Record key =
         (GenericData.Record)
-            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+            ((GenericAvroRecord)
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getKey())
                 .getAvroRecord();
     assertSchemasFlattened(keyRecord, key);
     assertValuesFlattened(keyRecord, key);
@@ -94,7 +94,7 @@ public class FlattenStepTest {
     GenericData.Record value =
         (GenericData.Record)
             ((GenericAvroRecord)
-                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getValue())
                 .getAvroRecord();
     assertSchemasFlattened(valueRecord, value);
     assertValuesFlattened(valueRecord, value);
@@ -133,8 +133,8 @@ public class FlattenStepTest {
             nestedKVRecord, FlattenStep.builder().delimiter("_CUSTOM_DELIMITER_").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -144,7 +144,8 @@ public class FlattenStepTest {
     // Assert value flattened
     GenericData.Record key =
         (GenericData.Record)
-            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+            ((GenericAvroRecord)
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getKey())
                 .getAvroRecord();
     assertSchemasFlattened(keyRecord, key, "_CUSTOM_DELIMITER_");
     assertValuesFlattened(keyRecord, key, "_CUSTOM_DELIMITER_");
@@ -153,7 +154,7 @@ public class FlattenStepTest {
     GenericData.Record value =
         (GenericData.Record)
             ((GenericAvroRecord)
-                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getValue())
                 .getAvroRecord();
     assertSchemasFlattened(valueRecord, value, "_CUSTOM_DELIMITER_");
     assertValuesFlattened(valueRecord, value, "_CUSTOM_DELIMITER_");
@@ -171,8 +172,8 @@ public class FlattenStepTest {
         Utils.process(nestedKVRecord, FlattenStep.builder().part("key").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -182,7 +183,8 @@ public class FlattenStepTest {
     // Assert key flattened
     GenericData.Record key =
         (GenericData.Record)
-            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+            ((GenericAvroRecord)
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getKey())
                 .getAvroRecord();
     assertSchemasFlattened(keyRecord, key);
     assertValuesFlattened(keyRecord, key);
@@ -191,7 +193,7 @@ public class FlattenStepTest {
     GenericData.Record value =
         (GenericData.Record)
             ((GenericAvroRecord)
-                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getValue())
                 .getAvroRecord();
     assertSame(valueRecord, value);
 
@@ -208,8 +210,8 @@ public class FlattenStepTest {
         Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
 
     // then
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyRecord =
         (GenericData.Record) ((GenericAvroRecord) messageValue.getKey()).getNativeObject();
@@ -219,7 +221,8 @@ public class FlattenStepTest {
     // Assert key unchanged
     GenericData.Record key =
         (GenericData.Record)
-            ((GenericAvroRecord) ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getKey())
+            ((GenericAvroRecord)
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getKey())
                 .getAvroRecord();
     assertSame(keyRecord, key);
 
@@ -227,7 +230,7 @@ public class FlattenStepTest {
     GenericData.Record value =
         (GenericData.Record)
             ((GenericAvroRecord)
-                    ((KeyValue) nestedKVRecord.getValue().getNativeObject()).getValue())
+                    ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getValue())
                 .getAvroRecord();
     assertSchemasFlattened(valueRecord, value);
     assertValuesFlattened(valueRecord, value);
