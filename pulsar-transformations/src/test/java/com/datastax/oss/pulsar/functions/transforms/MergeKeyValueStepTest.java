@@ -35,9 +35,9 @@ public class MergeKeyValueStepTest {
   @Test
   void testKeyValueAvro() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Record<GenericObject> outputRecord = Utils.process(record, new MergeKeyValueStep());
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record read =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
@@ -46,8 +46,8 @@ public class MergeKeyValueStepTest {
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\", "
             + "\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
 
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue recordValue = (KeyValue) record.getValue().getNativeObject();
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
     assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
     assertSame(messageValue.getKey(), recordValue.getKey());
   }
@@ -79,12 +79,12 @@ public class MergeKeyValueStepTest {
             AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
             null);
 
-    Record<GenericObject> outputRecord = Utils.process(record, new MergeKeyValueStep());
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue recordValue = ((KeyValue) record.getValue().getNativeObject());
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = ((KeyValue<?, ?>) record.getValue().getNativeObject());
     assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
     assertSame(messageSchema.getValueSchema(), recordSchema.getValueSchema());
     assertSame(messageValue.getKey(), recordValue.getKey());
@@ -96,21 +96,21 @@ public class MergeKeyValueStepTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 
     MergeKeyValueStep step = new MergeKeyValueStep();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
 
     outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
-    KeyValueSchema newMessageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValueSchema<?, ?> newMessageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
 
     // Schema was modified by process operation
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
     assertNotSame(
-        messageSchema.getValueSchema().getNativeSchema().get(),
-        recordSchema.getValueSchema().getNativeSchema().get());
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        recordSchema.getValueSchema().getNativeSchema().orElseThrow());
 
     // Multiple process output the same cached schema
     assertSame(
-        messageSchema.getValueSchema().getNativeSchema().get(),
-        newMessageSchema.getValueSchema().getNativeSchema().get());
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        newMessageSchema.getValueSchema().getNativeSchema().orElseThrow());
   }
 }

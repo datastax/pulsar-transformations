@@ -108,10 +108,10 @@ public class TransformFunctionTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
-    Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
 
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());

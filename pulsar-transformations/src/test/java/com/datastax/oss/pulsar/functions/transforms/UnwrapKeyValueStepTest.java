@@ -31,7 +31,7 @@ public class UnwrapKeyValueStepTest {
   @Test
   void testKeyValueUnwrapValue() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Record outputRecord = Utils.process(record, new UnwrapKeyValueStep(false));
+    Record<?> outputRecord = Utils.process(record, new UnwrapKeyValueStep(false));
 
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
@@ -44,7 +44,7 @@ public class UnwrapKeyValueStepTest {
   @Test
   void testKeyValueUnwrapKey() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Record outputRecord = Utils.process(record, new UnwrapKeyValueStep(true));
+    Record<?> outputRecord = Utils.process(record, new UnwrapKeyValueStep(true));
 
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
