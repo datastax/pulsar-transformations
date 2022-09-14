@@ -26,6 +26,8 @@ import java.util.Map;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
+import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
@@ -49,15 +51,46 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertEquals(adapter.getKey().get("keyField1"), "key1");
-    assertEquals(adapter.getKey().get("keyField2"), "key2");
-    assertEquals(adapter.getKey().get("keyField3"), "key3");
-    assertNull(adapter.getKey().get("keyField4"));
+    assertTrue(adapter.getKey() instanceof Map);
+    Map keyMap = (Map<String, Object>) adapter.getKey();
+    assertEquals(keyMap.get("keyField1"), "key1");
+    assertEquals(keyMap.get("keyField2"), "key2");
+    assertEquals(keyMap.get("keyField3"), "key3");
+    assertNull(keyMap.get("keyField4"));
 
-    assertEquals(adapter.getValue().get("valueField1"), "value1");
-    assertEquals(adapter.getValue().get("valueField2"), "value2");
-    assertEquals(adapter.getValue().get("valueField3"), "value3");
-    assertNull(adapter.getKey().get("valueField4"));
+    assertTrue(adapter.getValue() instanceof Map);
+    Map valueMap = (Map<String, Object>) adapter.getValue();
+    assertEquals(valueMap.get("valueField1"), "value1");
+    assertEquals(valueMap.get("valueField2"), "value2");
+    assertEquals(valueMap.get("valueField3"), "value3");
+
+    assertTrue(adapter.getKey() instanceof Map);
+    assertNull(keyMap.get("valueField4"));
+  }
+
+  @Test
+  void testAdapterForPrimitiveKeyValueRecord() {
+    // given
+    Schema<KeyValue<String, Integer>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.INT32, KeyValueEncodingType.SEPARATED);
+    KeyValue<String, Integer> keyValue = new KeyValue<>("key", 42);
+    Record<GenericObject> primitiveKVRecord =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            "header-key");
+
+    TransformContext transformContext =
+        new TransformContext(
+            new Utils.TestContext(primitiveKVRecord, new HashMap<>()),
+            primitiveKVRecord.getValue().getNativeObject());
+
+    // when
+    JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
+
+    assertEquals(adapter.getKey(), "key");
+    assertEquals(adapter.getValue(), 42);
+    assertEquals(adapter.getHeader().get("key"), "header-key");
   }
 
   @Test
@@ -67,7 +100,7 @@ public class JstlTransformContextAdapterTest {
         new Utils.TestRecord<>(
             Schema.STRING,
             AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "test-key");
+            "header-key");
     /** Actual key: "test-key" Actual value: "test-message" */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
@@ -77,13 +110,11 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertEquals(adapter.getHeader().get("key"), "test-key");
-    assertNull(adapter.getKey().get("key"));
-    assertNull(adapter.getKey().get("level1String"));
-    assertNull(adapter.getKey().get("level1Record"));
-    assertNull(adapter.getValue().get("value"));
-    assertNull(adapter.getValue().get("level1String"));
-    assertNull(adapter.getValue().get("level1Record"));
+    assertEquals(adapter.getHeader().get("key"), "header-key");
+    assertNull(adapter.getKey());
+
+    assertEquals(adapter.getValue(), "test-message");
+    assertEquals(adapter.getValue(), "test-message");
   }
 
   @Test
@@ -107,10 +138,10 @@ public class JstlTransformContextAdapterTest {
 
     // then
     assertEquals(adapter.getHeader().get("key"), "header-key");
-    assertNull(adapter.getKey().get("key"));
-    assertNull(adapter.getKey().get("level1String"));
-    assertNull(adapter.getKey().get("level1Record"));
-    assertNestedRecord(adapter.getValue());
+    assertNull(adapter.getKey());
+    assertTrue(adapter.getValue() instanceof Map);
+    Map valueMap = (Map<String, Object>) adapter.getValue();
+    assertNestedRecord(valueMap);
   }
 
   @Test
@@ -136,8 +167,11 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertNestedRecord(adapter.getKey());
-    assertNestedRecord(adapter.getValue());
+    assertTrue(adapter.getKey() instanceof Map);
+    assertNestedRecord((Map<String, Object>) adapter.getKey());
+
+    assertTrue(adapter.getValue() instanceof Map);
+    assertNestedRecord((Map<String, Object>) adapter.getValue());
   }
 
   @Test

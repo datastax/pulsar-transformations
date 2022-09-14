@@ -26,6 +26,7 @@ import javax.el.ValueExpression;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
+import org.apache.pulsar.common.schema.KeyValue;
 
 /** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */
 public class JstlPredicate implements TransformPredicate {
@@ -48,10 +49,10 @@ public class JstlPredicate implements TransformPredicate {
   public boolean test(TransformContext transformContext) {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
     FACTORY
-        .createValueExpression(expressionContext, "${key}", Map.class)
+        .createValueExpression(expressionContext, "${key}", Object.class)
         .setValue(expressionContext, adapter.getKey());
     FACTORY
-        .createValueExpression(expressionContext, "${value}", Map.class)
+        .createValueExpression(expressionContext, "${value}", Object.class)
         .setValue(expressionContext, adapter.getValue());
     FACTORY
         .createValueExpression(expressionContext, "${header}", Map.class)
@@ -75,6 +76,53 @@ public class JstlPredicate implements TransformPredicate {
         if (value instanceof GenericRecord) {
           value =
               LazyMap.lazyMap(new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
+        }
+      }
+
+      return value;
+    }
+  }
+
+  static class KeyValueTransformer implements Transformer<String, Object> {
+    KeyValue keyValue;
+
+    public KeyValueTransformer(KeyValue keyValue) {
+      this.keyValue = keyValue;
+    }
+
+    @Override
+    public Object transform(String key) {
+      Object value = null;
+      if ("key".equals(key)) {
+        if (keyValue.getKey() instanceof org.apache.pulsar.client.api.schema.GenericRecord
+            && ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getKey()))
+                    .getNativeObject()
+                instanceof GenericRecord) {
+          value =
+              LazyMap.lazyMap(
+                  new HashMap<>(),
+                  new GenericRecordTransformer(
+                      (GenericRecord)
+                          ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getKey()))
+                              .getNativeObject()));
+        } else {
+          value = keyValue.getKey();
+        }
+      } else if ("value".equals(key)) {
+        if (keyValue.getValue() instanceof org.apache.pulsar.client.api.schema.GenericRecord
+            && ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getValue()))
+                    .getNativeObject()
+                instanceof GenericRecord) {
+          value =
+              LazyMap.lazyMap(
+                  new HashMap<>(),
+                  new GenericRecordTransformer(
+                      (GenericRecord)
+                          ((org.apache.pulsar.client.api.schema.GenericRecord)
+                                  (keyValue.getValue()))
+                              .getNativeObject()));
+        } else {
+          value = keyValue.getValue();
         }
       }
 

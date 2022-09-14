@@ -21,6 +21,7 @@ import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
+import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.functions.api.Record;
 
 /**
@@ -41,6 +42,10 @@ public class JstlTransformContextAdapter {
           JstlPredicate.GenericRecordTransformer transformer =
               new JstlPredicate.GenericRecordTransformer(genericRecord);
           return transformer.transform(fieldName);
+        } else if (this.transformContext.getKeyObject() instanceof KeyValue) {
+          KeyValue kv = (KeyValue) this.transformContext.getKeyObject();
+          JstlPredicate.KeyValueTransformer transformer = new JstlPredicate.KeyValueTransformer(kv);
+          return transformer.transform(fieldName);
         }
         return null;
       };
@@ -57,6 +62,10 @@ public class JstlTransformContextAdapter {
           GenericRecord genericRecord = (GenericRecord) this.transformContext.getValueObject();
           JstlPredicate.GenericRecordTransformer transformer =
               new JstlPredicate.GenericRecordTransformer(genericRecord);
+          return transformer.transform(fieldName);
+        } else if (this.transformContext.getValueObject() instanceof KeyValue) {
+          KeyValue kv = (KeyValue) this.transformContext.getValueObject();
+          JstlPredicate.KeyValueTransformer transformer = new JstlPredicate.KeyValueTransformer(kv);
           return transformer.transform(fieldName);
         }
         return null;
@@ -92,12 +101,30 @@ public class JstlTransformContextAdapter {
     this.transformContext = transformContext;
   }
 
-  public Map<String, Object> getKey() {
-    return lazyKey;
+  /**
+   * @return either a lazily evaluated map to access top-level and nested fields on a generic object
+   *     or key value object, or the primitive type itself.
+   */
+  public Object getKey() {
+    if (this.transformContext.getKeyObject() instanceof GenericRecord
+        || this.transformContext.getKeyObject() instanceof KeyValue) {
+      return lazyKey;
+    } else {
+      return this.transformContext.getKeyObject();
+    }
   }
 
-  public Map<String, Object> getValue() {
-    return lazyValue;
+  /**
+   * @return either a lazily evaluated map to access top-level and nested fields on a generic object
+   *     or key value object , or the primitive type itself.
+   */
+  public Object getValue() {
+    if (this.transformContext.getValueObject() instanceof GenericRecord
+        || this.transformContext.getValueObject() instanceof KeyValue) {
+      return lazyValue;
+    } else {
+      return this.transformContext.getValueObject();
+    }
   }
 
   public Map<String, Object> getHeader() {
