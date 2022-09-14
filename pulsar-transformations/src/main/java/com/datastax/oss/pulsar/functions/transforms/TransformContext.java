@@ -55,8 +55,8 @@ public class TransformContext {
     this.outputTopic = context.getOutputTopic();
     Schema<?> schema = currentRecord.getSchema();
     if (schema instanceof KeyValueSchema && value instanceof KeyValue) {
-      KeyValueSchema kvSchema = (KeyValueSchema) schema;
-      KeyValue kv = (KeyValue) value;
+      KeyValueSchema<?, ?> kvSchema = (KeyValueSchema<?, ?>) schema;
+      KeyValue<?, ?> kv = (KeyValue<?, ?>) value;
       this.keySchema = kvSchema.getKeySchema();
       this.keyObject =
           this.keySchema.getSchemaInfo().getType() == SchemaType.AVRO
@@ -98,13 +98,13 @@ public class TransformContext {
       outputSchema = Schema.KeyValue(keySchema, valueSchema, keyValueEncodingType);
       Object outputKeyObject =
           !keyModified && keySchema.getSchemaInfo().getType().isStruct()
-              ? ((KeyValue) recordValue.getNativeObject()).getKey()
+              ? ((KeyValue<?, ?>) recordValue.getNativeObject()).getKey()
               : keyObject;
       Object outputValueObject =
           !valueModified && valueSchema.getSchemaInfo().getType().isStruct()
-              ? ((KeyValue) recordValue.getNativeObject()).getValue()
+              ? ((KeyValue<?, ?>) recordValue.getNativeObject()).getValue()
               : valueObject;
-      outputObject = new KeyValue(outputKeyObject, outputValueObject);
+      outputObject = new KeyValue<>(outputKeyObject, outputValueObject);
     } else {
       outputSchema = valueSchema;
       outputObject =
@@ -135,7 +135,7 @@ public class TransformContext {
   }
 
   public static byte[] serializeGenericRecord(GenericRecord record) throws IOException {
-    GenericDatumWriter writer = new GenericDatumWriter(record.getSchema());
+    GenericDatumWriter<GenericRecord> writer = new GenericDatumWriter<>(record.getSchema());
     ByteArrayOutputStream oo = new ByteArrayOutputStream();
     BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(oo, null);
     writer.write(record, encoder);

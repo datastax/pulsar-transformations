@@ -33,6 +33,7 @@ import static org.testng.Assert.fail;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -46,11 +47,13 @@ import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.common.functions.FunctionConfig;
 import org.apache.pulsar.common.policies.data.FunctionStatus;
 import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.testcontainers.containers.Network;
 import org.testng.annotations.AfterClass;
@@ -108,19 +111,38 @@ public abstract class AbstractDockerTest {
     String userConfig =
         ("{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}").replace("'", "\"");
 
-    GenericRecord value = testTransformFunction(userConfig, Schema.STRING, "a");
+    GenericRecord value = testTransformFunction(userConfig, Schema.INT32, 42, "test-key");
     assertEquals(value.getSchemaType(), SchemaType.STRING);
-    assertEquals(value.getNativeObject(), "a");
+    assertEquals(value.getNativeObject(), "42");
   }
 
   @Test
-  public void testKVPrimitive() throws Exception {
+  public void testKVPrimitiveInline() throws Exception {
     String userConfig =
         ("{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}").replace("'", "\"");
 
     GenericRecord value =
         testTransformFunction(
-            userConfig, Schema.KeyValue(Schema.STRING, Schema.STRING), new KeyValue<>("a", "b"));
+            userConfig,
+            Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.INLINE),
+            new KeyValue<>("a", "b"),
+            "test-key");
+    assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
+    KeyValue<String, String> keyValue = (KeyValue<String, String>) value.getNativeObject();
+    assertEquals(keyValue.getKey(), "a");
+    assertEquals(keyValue.getValue(), "b");
+  }
+
+  @Test
+  public void testKVPrimitiveSeparated() throws Exception {
+    String userConfig =
+        ("{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}").replace("'", "\"");
+
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED),
+            new KeyValue<>("a", "b"));
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
     KeyValue<String, String> keyValue = (KeyValue<String, String>) value.getNativeObject();
     assertEquals(keyValue.getKey(), "a");
@@ -222,12 +244,12 @@ public abstract class AbstractDockerTest {
     assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\"}");
   }
 
-  private GenericRecord testTransformFunctionString(String userConfig)
-      throws PulsarClientException, PulsarAdminException, InterruptedException {
-    return testTransformFunction(userConfig, Schema.STRING, "");
+  private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
+      throws PulsarAdminException, InterruptedException, PulsarClientException {
+    return testTransformFunction(userConfig, schema, value, null);
   }
 
-  private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
+  private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value, String key)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     String functionId = UUID.randomUUID().toString();
     String inputTopic = "input-" + functionId;
@@ -276,10 +298,21 @@ public abstract class AbstractDockerTest {
 
     Producer producer = client.newProducer(schema).topic(inputTopic).create();
 
-    producer.newMessage().value(value).send();
+    TypedMessageBuilder producerMessage = producer.newMessage()
+        .value(value)
+        .property("prop-key", "prop-value");
+    if (key != null) {
+      producerMessage.key(key);
+    }
+    producerMessage.send();
 
     Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
     assertNotNull(message);
+    if (key != null) {
+      assertEquals(message.getKey(), key);
+    }
+    assertEquals(message.getProperty("prop-key"), "prop-value");
+
     GenericRecord messageValue = message.getValue();
     assertNotNull(messageValue);
     return messageValue;

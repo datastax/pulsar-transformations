@@ -77,7 +77,7 @@ public class FlattenStep implements TransformStep {
   GenericRecord flattenGenericRecord(GenericRecord record) {
     List<FieldValuePair> fieldValuePairs = buildFlattenedFields(record);
     List<org.apache.avro.Schema.Field> fields =
-        fieldValuePairs.stream().map(pair -> pair.getField()).collect(Collectors.toList());
+        fieldValuePairs.stream().map(FieldValuePair::getField).collect(Collectors.toList());
     org.apache.avro.Schema modified = buildFlattenedSchema(record, fields);
     GenericRecord newRecord = new GenericData.Record(modified);
     fieldValuePairs.forEach(pair -> newRecord.put(pair.getField().name(), pair.getValue()));
@@ -98,15 +98,12 @@ public class FlattenStep implements TransformStep {
       GenericRecord record, List<org.apache.avro.Schema.Field> flattenedFields) {
     org.apache.avro.Schema originalSchema = record.getSchema();
 
-    org.apache.avro.Schema flattenedSchema =
-        org.apache.avro.Schema.createRecord(
-            originalSchema.getName(),
-            originalSchema.getDoc(),
-            originalSchema.getNamespace(),
-            false,
-            flattenedFields);
-
-    return flattenedSchema;
+    return org.apache.avro.Schema.createRecord(
+        originalSchema.getName(),
+        originalSchema.getDoc(),
+        originalSchema.getNamespace(),
+        false,
+        flattenedFields);
   }
 
   List<FieldValuePair> flattenField(
@@ -142,14 +139,14 @@ public class FlattenStep implements TransformStep {
         new org.apache.avro.Schema.Field(
             name, field.schema(), field.doc(), field.defaultVal(), field.order());
     newField.putAll(field);
-    field.aliases().forEach(alias -> field.addAlias(alias));
+    field.aliases().forEach(field::addAlias);
 
     return newField;
   }
 
   @Value
   private static class FieldValuePair {
-    private org.apache.avro.Schema.Field field;
-    private Object value;
+    org.apache.avro.Schema.Field field;
+    Object value;
   }
 }

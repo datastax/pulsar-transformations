@@ -80,9 +80,9 @@ public class DropFieldStepTest {
             .keyFields(Arrays.asList("keyField1", "keyField2"))
             .valueFields(Arrays.asList("valueField1", "valueField2"))
             .build();
-    Record<GenericObject> outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    Record<?> outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -135,12 +135,12 @@ public class DropFieldStepTest {
             .keyFields(Collections.singletonList("otherKey"))
             .valueFields(Collections.singletonList("otherValue"))
             .build();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue recordValue = (KeyValue) record.getValue().getNativeObject();
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
     assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
     assertSame(messageSchema.getValueSchema(), recordSchema.getValueSchema());
     assertSame(messageValue.getKey(), recordValue.getKey());
@@ -156,28 +156,28 @@ public class DropFieldStepTest {
             .keyFields(Arrays.asList("keyField1", "keyField2"))
             .valueFields(Arrays.asList("valueField1", "valueField2"))
             .build();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
 
     outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
-    KeyValueSchema newMessageSchema = (KeyValueSchema) outputRecord.getSchema();
+    KeyValueSchema<?, ?> newMessageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
 
     // Schema was modified by process operation
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
     assertNotSame(
-        messageSchema.getKeySchema().getNativeSchema().get(),
-        recordSchema.getKeySchema().getNativeSchema().get());
+        messageSchema.getKeySchema().getNativeSchema().orElseThrow(),
+        recordSchema.getKeySchema().getNativeSchema().orElseThrow());
     assertNotSame(
-        messageSchema.getValueSchema().getNativeSchema().get(),
-        recordSchema.getValueSchema().getNativeSchema().get());
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        recordSchema.getValueSchema().getNativeSchema().orElseThrow());
 
     // Multiple process output the same cached schema
     assertSame(
-        messageSchema.getKeySchema().getNativeSchema().get(),
-        newMessageSchema.getKeySchema().getNativeSchema().get());
+        messageSchema.getKeySchema().getNativeSchema().orElseThrow(),
+        newMessageSchema.getKeySchema().getNativeSchema().orElseThrow());
     assertSame(
-        messageSchema.getValueSchema().getNativeSchema().get(),
-        newMessageSchema.getValueSchema().getNativeSchema().get());
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        newMessageSchema.getValueSchema().getNativeSchema().orElseThrow());
   }
 
   @Test
@@ -217,12 +217,12 @@ public class DropFieldStepTest {
             .keyFields(Collections.singletonList("key"))
             .valueFields(Collections.singletonList("value"))
             .build();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
-    KeyValueSchema recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue recordValue = ((KeyValue) record.getValue().getNativeObject());
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = ((KeyValue<?, ?>) record.getValue().getNativeObject());
     assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
     assertSame(messageSchema.getValueSchema(), recordSchema.getValueSchema());
     assertSame(messageValue.getKey(), recordValue.getKey());

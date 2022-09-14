@@ -41,7 +41,6 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.api.ConsumerBuilder;
-import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.TypedMessageBuilder;
 import org.apache.pulsar.client.api.schema.Field;
@@ -74,7 +73,7 @@ public class Utils {
 
   public static GenericData.Record getRecord(Schema<?> schema, byte[] value) throws IOException {
     DatumReader<GenericData.Record> reader =
-        new GenericDatumReader<>((org.apache.avro.Schema) schema.getNativeSchema().get());
+        new GenericDatumReader<>((org.apache.avro.Schema) schema.getNativeSchema().orElseThrow());
     Decoder decoder = DecoderFactory.get().binaryDecoder(value, null);
     return reader.read(null, decoder);
   }
@@ -136,10 +135,10 @@ public class Utils {
   public static Record<GenericObject> createNestedAvroRecord(int levels, String key) {
     GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
-    Schema pulsarValueSchema =
+    Schema<?> pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
 
-    return new Utils.TestRecord(pulsarValueSchema, valueRecord, key);
+    return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
   }
 
   public static Record<GenericObject> createNestedJSONRecord(int levels, String key) {
@@ -148,7 +147,7 @@ public class Utils {
     Schema pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.JSON);
 
-    return new Utils.TestRecord(pulsarValueSchema, valueRecord, key);
+    return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
   }
 
   public static Record<GenericObject> createNestedAvroKeyValueRecord(int levels) {
@@ -273,7 +272,7 @@ public class Utils {
   @RequiredArgsConstructor
   @AllArgsConstructor
   public static class TestRecord<T> implements Record<T> {
-    private final Schema schema;
+    private final Schema<?> schema;
     private final T value;
     private final String key;
     private String topicName;
@@ -288,7 +287,7 @@ public class Utils {
 
     @Override
     public Schema<T> getSchema() {
-      return schema;
+      return (Schema<T>) schema;
     }
 
     @Override
@@ -473,20 +472,18 @@ public class Utils {
             }
 
             @Override
-            public <O> TypedMessageBuilder<O> newOutputMessage(String topicName, Schema<O> schema)
-                throws PulsarClientException {
+            public <O> TypedMessageBuilder<O> newOutputMessage(String topicName, Schema<O> schema) {
               return null;
             }
 
             @Override
-            public <O> ConsumerBuilder<O> newConsumerBuilder(Schema<O> schema)
-                throws PulsarClientException {
+            public <O> ConsumerBuilder<O> newConsumerBuilder(Schema<O> schema) {
               return null;
             }
 
             @Override
-            public <X> FunctionRecord.FunctionRecordBuilder<X> newOutputRecordBuilder(
-                Schema<X> schema) {
+            public <O> FunctionRecord.FunctionRecordBuilder<O> newOutputRecordBuilder(
+                Schema<O> schema) {
               return null;
             }
 
@@ -656,7 +653,7 @@ public class Utils {
 
     private final SchemaType pulsarSchemaType;
 
-    private final SpecificDatumWriter datumWriter;
+    private final SpecificDatumWriter<org.apache.avro.generic.GenericRecord> datumWriter;
 
     public NativeSchemaWrapper(org.apache.avro.Schema nativeSchema, SchemaType pulsarSchemaType) {
       this.nativeSchema = nativeSchema;

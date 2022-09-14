@@ -201,3 +201,23 @@ pulsar-admin functions create \
 --user-config '{"steps": [{"type": "drop-fields", "fields": "password"}, {"type": "merge-key-value"}, {"type": "unwrap-key-value"}, {"type": "cast", "schema-type": "STRING"}]}'
 ```
 
+### Deploy the Transformation Function coupled with a Pulsar Sink
+
+*This requires Datastax Luna Streaming 2.10.1.6+.*
+
+Thanks to [PIP-193](https://github.com/apache/pulsar/issues/16739) it's possible to execute a function inside a sink process, removing the need of temporary topics.
+
+* Create a Pulsar Sink instance with `transform-function` Transformation Function with the admin CLI.
+```shell
+pulsar-admin sinks create \
+--sink-type <sink_type> \
+--inputs my-input-topic \
+--tenant public \
+--namespace default \
+--name my-sink \
+--transform-function "builtin://transforms" \
+--transform-function-config '{"steps": [{"type": "drop-fields", "fields": "password"}, {"type": "merge-key-value"}, {"type": "unwrap-key-value"}, {"type": "cast", "schema-type": "STRING"}]}'
+```
+
+
+

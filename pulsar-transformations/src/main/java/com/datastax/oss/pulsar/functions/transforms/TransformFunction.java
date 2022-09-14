@@ -105,8 +105,7 @@ public class TransformFunction
             .orElseThrow(() -> new IllegalArgumentException("missing required 'steps' parameter"));
     LinkedList<Map<String, Object>> stepsConfig;
     try {
-      TypeToken<LinkedList<Map<String, Object>>> typeToken =
-          new TypeToken<LinkedList<Map<String, Object>>>() {};
+      TypeToken<LinkedList<Map<String, Object>>> typeToken = new TypeToken<>() {};
       stepsConfig = gson.fromJson((gson.toJson(config)), typeToken.getType());
     } catch (Exception e) {
       throw new IllegalArgumentException("could not parse configuration", e);
@@ -148,7 +147,7 @@ public class TransformFunction
       log.debug(
           "record with schema {} version {} {}",
           currentRecord.getSchema(),
-          currentRecord.getMessage().get().getSchemaVersion(),
+          currentRecord.getMessage().orElseThrow().getSchemaVersion(),
           currentRecord);
     }
 
