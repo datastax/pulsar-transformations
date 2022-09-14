@@ -22,13 +22,15 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.el.ELContext;
 import javax.el.ExpressionFactory;
+import javax.el.PropertyNotFoundException;
 import javax.el.ValueExpression;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
-import org.apache.pulsar.common.schema.KeyValue;
 
 /** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */
+@Slf4j
 public class JstlPredicate implements TransformPredicate {
   private static final ExpressionFactory FACTORY = new de.odysseus.el.ExpressionFactoryImpl();
   private final ValueExpression valueExpression;
@@ -54,10 +56,29 @@ public class JstlPredicate implements TransformPredicate {
     FACTORY
         .createValueExpression(expressionContext, "${value}", Object.class)
         .setValue(expressionContext, adapter.getValue());
+
+    // Register message headers as top level fields
     FACTORY
-        .createValueExpression(expressionContext, "${header}", Map.class)
-        .setValue(expressionContext, adapter.getHeader());
-    return (boolean) this.valueExpression.getValue(expressionContext);
+        .createValueExpression(expressionContext, "${messageKey}", String.class)
+        .setValue(expressionContext, adapter.getHeader().get("messageKey"));
+    FACTORY
+        .createValueExpression(expressionContext, "${topicName}", String.class)
+        .setValue(expressionContext, adapter.getHeader().get("topicName"));
+    FACTORY
+        .createValueExpression(expressionContext, "${destinationTopic}", String.class)
+        .setValue(expressionContext, adapter.getHeader().get("destinationTopic"));
+    FACTORY
+        .createValueExpression(expressionContext, "${eventTime}", Long.class)
+        .setValue(expressionContext, adapter.getHeader().get("eventTime"));
+    FACTORY
+        .createValueExpression(expressionContext, "${properties}", Map.class)
+        .setValue(expressionContext, adapter.getHeader().get("properties"));
+    try {
+      return (boolean) this.valueExpression.getValue(expressionContext);
+    } catch (PropertyNotFoundException ex) {
+      log.warn("a property in the when expression was not found in the message", ex);
+      return false;
+    }
   }
 
   static class GenericRecordTransformer implements Transformer<String, Object> {
@@ -76,53 +97,6 @@ public class JstlPredicate implements TransformPredicate {
         if (value instanceof GenericRecord) {
           value =
               LazyMap.lazyMap(new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
-        }
-      }
-
-      return value;
-    }
-  }
-
-  static class KeyValueTransformer implements Transformer<String, Object> {
-    KeyValue keyValue;
-
-    public KeyValueTransformer(KeyValue keyValue) {
-      this.keyValue = keyValue;
-    }
-
-    @Override
-    public Object transform(String key) {
-      Object value = null;
-      if ("key".equals(key)) {
-        if (keyValue.getKey() instanceof org.apache.pulsar.client.api.schema.GenericRecord
-            && ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getKey()))
-                    .getNativeObject()
-                instanceof GenericRecord) {
-          value =
-              LazyMap.lazyMap(
-                  new HashMap<>(),
-                  new GenericRecordTransformer(
-                      (GenericRecord)
-                          ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getKey()))
-                              .getNativeObject()));
-        } else {
-          value = keyValue.getKey();
-        }
-      } else if ("value".equals(key)) {
-        if (keyValue.getValue() instanceof org.apache.pulsar.client.api.schema.GenericRecord
-            && ((org.apache.pulsar.client.api.schema.GenericRecord) (keyValue.getValue()))
-                    .getNativeObject()
-                instanceof GenericRecord) {
-          value =
-              LazyMap.lazyMap(
-                  new HashMap<>(),
-                  new GenericRecordTransformer(
-                      (GenericRecord)
-                          ((org.apache.pulsar.client.api.schema.GenericRecord)
-                                  (keyValue.getValue()))
-                              .getNativeObject()));
-        } else {
-          value = keyValue.getValue();
         }
       }
 

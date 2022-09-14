@@ -22,7 +22,6 @@ import com.datastax.oss.pulsar.functions.transforms.Utils;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
-import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
@@ -53,12 +52,6 @@ public class JstlPredicateTest {
 
   @Test(dataProvider = "nestedKeyValuePredicates")
   void testNestedKeyValueAvro(String when, TransformContext context, boolean match) {
-    JstlPredicate predicate = new JstlPredicate(when);
-    assertTrue(predicate.test(context) == match);
-  }
-
-  @Test(dataProvider = "nestedGenericKeyValuePredicates")
-  void testNestedGenericKeyValueAvro(String when, TransformContext context, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
     assertTrue(predicate.test(context) == match);
   }
@@ -139,19 +132,19 @@ public class JstlPredicateTest {
       // match
       {"value=='test-message'", primitiveStringContext, true},
       {"value.contains('test')", primitiveStringContext, true},
-      {"header.key=='header-key'", primitiveStringContext, true},
+      {"messageKey=='header-key'", primitiveStringContext, true},
       {"value==33", primitiveIntContext, true},
       {"value>32", primitiveIntContext, true},
-      {"value<=33 && header.key=='header-key'", primitiveIntContext, true},
+      {"value<=33 && messageKey=='header-key'", primitiveIntContext, true},
       {"key=='key' && value==42", primitiveKVContext, true},
-      {"key=='key' && header.key=='header-key'", primitiveKVContext, true},
+      {"key=='key' && messageKey=='header-key'", primitiveKVContext, true},
       // no-match
       {"value=='test-message-'", primitiveStringContext, false},
       {"value.contains('random')", primitiveStringContext, false},
-      {"header.key!='header-key'", primitiveStringContext, false},
+      {"messageKey!='header-key'", primitiveStringContext, false},
       {"value==34", primitiveIntContext, false},
       {"value>33", primitiveIntContext, false},
-      {"value<=20 && header.key=='test-key'", primitiveIntContext, false},
+      {"value<=20 && messageKey=='test-key'", primitiveIntContext, false},
     };
   }
 
@@ -232,87 +225,6 @@ public class JstlPredicateTest {
     };
   }
 
-  /** @return {"expression", "transform context" "expected match boolean"} */
-  @DataProvider(name = "nestedGenericKeyValuePredicates")
-  public static Object[][] nestedGenericKeyValuePredicates() {
-    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    Schema<KeyValue<KeyValue<GenericObject, GenericObject>, Integer>> nestedKeySchema =
-        Schema.KeyValue(
-            (KeyValueSchema) record.getSchema(), Schema.INT32, KeyValueEncodingType.SEPARATED);
-
-    KeyValue<KeyValue<GenericObject, GenericObject>, Integer> nestedKeyKV =
-        new KeyValue<>(
-            (KeyValue<GenericObject, GenericObject>) record.getValue().getNativeObject(), 3);
-
-    GenericObject genericNestedKeyObject =
-        new GenericObject() {
-          @Override
-          public SchemaType getSchemaType() {
-            return SchemaType.KEY_VALUE;
-          }
-
-          @Override
-          public Object getNativeObject() {
-            return nestedKeyKV;
-          }
-        };
-
-    Record<GenericObject> nestedKeyRecord =
-        new Utils.TestRecord<>(nestedKeySchema, genericNestedKeyObject, null);
-
-    TransformContext nestedKeyContext =
-        new TransformContext(
-            new Utils.TestContext(nestedKeyRecord, new HashMap<>()),
-            nestedKeyRecord.getValue().getNativeObject());
-
-    Schema<KeyValue<Integer, KeyValue<GenericObject, GenericObject>>> nestedValueSchema =
-        Schema.KeyValue(
-            Schema.INT32, (KeyValueSchema) record.getSchema(), KeyValueEncodingType.SEPARATED);
-
-    KeyValue<Integer, KeyValue<GenericObject, GenericObject>> nestedValueKV =
-        new KeyValue<>(
-            3, (KeyValue<GenericObject, GenericObject>) record.getValue().getNativeObject());
-
-    GenericObject genericNestedValueObject =
-        new GenericObject() {
-          @Override
-          public SchemaType getSchemaType() {
-            return SchemaType.KEY_VALUE;
-          }
-
-          @Override
-          public Object getNativeObject() {
-            return nestedValueKV;
-          }
-        };
-
-    Record<GenericObject> nestedValueRecord =
-        new Utils.TestRecord<>(nestedValueSchema, genericNestedValueObject, null);
-
-    TransformContext nestedValueContext =
-        new TransformContext(
-            new Utils.TestContext(nestedValueRecord, new HashMap<>()),
-            nestedValueRecord.getValue().getNativeObject());
-
-    return new Object[][] {
-      // match
-      {"key.key.keyField1=='key1'", nestedKeyContext, true},
-      {"key.value.valueField1=='value1'", nestedKeyContext, true},
-      {"value==3", nestedKeyContext, true},
-      {"value.key.keyField1=='key1'", nestedValueContext, true},
-      {"value.value.valueField1=='value1'", nestedValueContext, true},
-      {"key==3", nestedValueContext, true},
-
-      // no match
-      {"key.key.keyField999=='key1'", nestedKeyContext, false},
-      {"key.value.valueField999=='value1'", nestedKeyContext, false},
-      {"value==4", nestedKeyContext, false},
-      {"value.key.keyField999=='key1'", nestedValueContext, false},
-      {"value.value.valueField999=='value1'", nestedValueContext, false},
-      {"key==4", nestedValueContext, false},
-    };
-  }
-
   /** @return {"expression", "expected match boolean"} */
   @DataProvider(name = "keyValuePredicates")
   public static Object[][] keyValuePredicates() {
@@ -326,11 +238,11 @@ public class JstlPredicateTest {
       {"value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'", true},
       {"value.level1Record.level2Integer > 8", true},
       {"value.level1Record.level2Double < 8.9", true},
-      {"header.key == 'key1'", true},
-      {"header.destinationTopic == 'dest-topic-1'", true},
-      {"header.topicName == 'topic-1'", true},
-      {"header.properties.p1 == 'v1'", true},
-      {"header.properties.p2 == 'v2'", true},
+      {"messageKey == 'key1'", true},
+      {"destinationTopic == 'dest-topic-1'", true},
+      {"topicName == 'topic-1'", true},
+      {"properties.p1 == 'v1'", true},
+      {"properties.p2 == 'v2'", true},
       // no match
       {"key.level1String == 'leVel1_1'", false},
       {"key.level1Record.random == 'level2_1'", false},
@@ -342,16 +254,15 @@ public class JstlPredicateTest {
       {"value.level1Record.level2Integer > 10", false},
       {"value.level1Record.level2Double < 0", false},
       {"value.randomValue < 0", false},
-      {"header.key == 'key2'", false},
-      {"header.outputTopicName == 'output-topic-1'", false},
-      {"header.topicName != 'topic-1'", false},
-      {"header.properties.p1.substring(0,1) == 'v1'", false},
-      {"header.properties.p2 == 'v3'", false},
-      {"header.randomHeader == 'h1'", false},
+      {"messageKey == 'key2'", false},
+      {"topicName != 'topic-1'", false},
+      {"properties.p1.substring(0,1) == 'v1'", false},
+      {"properties.p2 == 'v3'", false},
+      {"randomHeader == 'h1'", false},
       // complex
       {
-        "header.properties.p1.toUpperCase() == 'V1' && header.key == 'key1' && header.topicName == 'topic-1' && "
-            + "header.destinationTopic == 'dest-topic-1'",
+        "properties.p1.toUpperCase() == 'V1' && messageKey == 'key1' && topicName == 'topic-1' && "
+            + "destinationTopic == 'dest-topic-1'",
         true
       },
       {

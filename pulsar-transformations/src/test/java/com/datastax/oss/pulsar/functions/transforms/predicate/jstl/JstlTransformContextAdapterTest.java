@@ -90,7 +90,7 @@ public class JstlTransformContextAdapterTest {
 
     assertEquals(adapter.getKey(), "key");
     assertEquals(adapter.getValue(), 42);
-    assertEquals(adapter.getHeader().get("key"), "header-key");
+    assertEquals(adapter.getHeader().get("messageKey"), "header-key");
   }
 
   @Test
@@ -110,7 +110,7 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertEquals(adapter.getHeader().get("key"), "header-key");
+    assertEquals(adapter.getHeader().get("messageKey"), "header-key");
     assertNull(adapter.getKey());
 
     assertEquals(adapter.getValue(), "test-message");
@@ -137,7 +137,7 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertEquals(adapter.getHeader().get("key"), "header-key");
+    assertEquals(adapter.getHeader().get("messageKey"), "header-key");
     assertNull(adapter.getKey());
     assertTrue(adapter.getValue() instanceof Map);
     Map valueMap = (Map<String, Object>) adapter.getValue();
@@ -201,7 +201,7 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertEquals(adapter.getHeader().get("key"), "test-key");
+    assertEquals(adapter.getHeader().get("messageKey"), "test-key");
     assertEquals(adapter.getHeader().get("topicName"), "test-topic");
     assertEquals(adapter.getHeader().get("destinationTopic"), "test-dest-topic");
     assertEquals(adapter.getHeader().get("eventTime"), 1662493532L);
