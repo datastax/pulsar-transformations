@@ -49,6 +49,8 @@ public class TransformContext {
   private Map<String, String> properties;
   private String outputTopic;
 
+  private boolean dropCurrentRecord;
+
   public TransformContext(Context context, Object value) {
     Record<?> currentRecord = context.getCurrentRecord();
     this.context = context;
@@ -76,6 +78,9 @@ public class TransformContext {
   }
 
   public Record<GenericObject> send() throws IOException {
+    if (dropCurrentRecord) {
+      return null;
+    }
     if (keyModified
         && keySchema != null
         && keySchema.getSchemaInfo().getType() == SchemaType.AVRO) {
