@@ -37,10 +37,10 @@ public class TransformFunctionTest {
   @DataProvider(name = "validConfigs")
   public static Object[][] validConfigs() {
     return new Object[][] {
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'key'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'value'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': 'key.k1==key1'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field']}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'key'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'value'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'when': 'key.k1==key1'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': false}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true}]}"},
@@ -74,11 +74,11 @@ public class TransformFunctionTest {
       {"{'steps': [{}]}"},
       {"{'steps': [{'type': 'invalid'}]}"},
       {"{'steps': [{'type': 'drop-fields'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': ''}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 'invalid'}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'part': 42}]}"},
-      {"{'steps': [{'type': 'drop-fields', 'fields': 'some-field', 'when': ''}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['']}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'invalid'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 42}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 42}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'when': ''}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': 'invalid'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'when': ''}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 42}]}"},
@@ -106,12 +106,12 @@ public class TransformFunctionTest {
     String userConfig =
         (""
                 + "{'steps': ["
-                + "    {'type': 'drop-fields', 'fields': 'keyField1'},"
-                + "    {'type': 'drop-fields', 'fields': 'keyField2', 'part': 'key'},"
-                + "    {'type': 'drop-fields', 'fields': 'keyField3', 'part': 'value'},"
-                + "    {'type': 'drop-fields', 'fields': 'valueField1'},"
-                + "    {'type': 'drop-fields', 'fields': 'valueField2', 'part': 'key'},"
-                + "    {'type': 'drop-fields', 'fields': 'valueField3', 'part': 'value'}"
+                + "    {'type': 'drop-fields', 'fields': ['keyField1']},"
+                + "    {'type': 'drop-fields', 'fields': ['keyField2'], 'part': 'key'},"
+                + "    {'type': 'drop-fields', 'fields': ['keyField3'], 'part': 'value'},"
+                + "    {'type': 'drop-fields', 'fields': ['valueField1']},"
+                + "    {'type': 'drop-fields', 'fields': ['valueField2'], 'part': 'key'},"
+                + "    {'type': 'drop-fields', 'fields': ['valueField3'], 'part': 'value'}"
                 + "]}")
             .replace("'", "\"");
     Map<String, Object> config =
@@ -144,8 +144,8 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key1'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"key.keyField2 == 'key2'\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField1\"], \"when\": \"key.keyField1 == 'key1'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField2\"], \"when\": \"key.keyField2 == 'key2'\"}"
             + "]}");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
@@ -171,9 +171,9 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key100'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField2\", \"when\": \"key.keyField2 == 'key100'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField3\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField1\"], \"when\": \"key.keyField1 == 'key100'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField2\"], \"when\": \"key.keyField2 == 'key100'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField3\"]}"
             + "]}");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
@@ -201,7 +201,7 @@ public class TransformFunctionTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"keyField1\", \"when\": \"key.keyField1 == 'key1'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"keyField1\"], \"when\": \"key.keyField1 == 'key1'\"},"
             + "    {\"type\": \"merge-key-value\", \"when\": \"key.keyField2 == 'key100'\"},"
             + "    {\"type\": \"unwrap-key-value\", \"when\": \"key.keyField3 == 'key100'\"},"
             + "    {\"type\": \"cast\", \"schema-type\": \"STRING\", \"when\": \"value.valueField1 == 'value1'\"}"
@@ -229,7 +229,7 @@ public class TransformFunctionTest {
     String userConfig =
         (""
                 + "{'steps': ["
-                + "    {'type': 'drop-fields', 'fields': 'keyField1'},"
+                + "    {'type': 'drop-fields', 'fields': ['keyField1']},"
                 + "    {'type': 'merge-key-value'},"
                 + "    {'type': 'unwrap-key-value'},"
                 + "    {'type': 'cast', 'schema-type': 'STRING'}"
