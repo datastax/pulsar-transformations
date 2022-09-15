@@ -72,6 +72,23 @@
       <scope>provided</scope>
       <optional>true</optional>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/de.odysseus.juel/juel-api -->
+    <dependency>
+      <groupId>de.odysseus.juel</groupId>
+      <artifactId>juel-api</artifactId>
+      <version>2.2.7</version>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/de.odysseus.juel/juel-impl -->
+    <dependency>
+      <groupId>de.odysseus.juel</groupId>
+      <artifactId>juel-impl</artifactId>
+      <version>2.2.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+      <version>4.4</version>
+    </dependency>
   </dependencies>
   <build>
     <plugins>

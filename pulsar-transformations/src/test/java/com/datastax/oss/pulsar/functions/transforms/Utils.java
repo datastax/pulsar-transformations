@@ -27,6 +27,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -176,8 +179,19 @@ public class Utils {
         keyValueSchema =
             org.apache.pulsar.client.api.Schema.KeyValue(
                 pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
+    Map<String, String> props = new HashMap<>();
+    props.put("p1", "v1");
+    props.put("p2", "v2");
 
-    return new Utils.TestRecord<>(keyValueSchema, genericObject, null);
+    return TestRecord.<GenericObject>builder()
+        .schema(keyValueSchema)
+        .value(genericObject)
+        .key("key1")
+        .topicName("topic-1")
+        .destinationTopic("dest-topic-1")
+        .eventTime(1662493532L)
+        .properties(props)
+        .build();
   }
 
   /**
@@ -254,16 +268,17 @@ public class Utils {
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
   }
 
+  @Builder
+  @RequiredArgsConstructor
+  @AllArgsConstructor
   public static class TestRecord<T> implements Record<T> {
     private final Schema<?> schema;
     private final T value;
     private final String key;
-
-    public TestRecord(Schema<?> schema, T value, String key) {
-      this.schema = schema;
-      this.value = value;
-      this.key = key;
-    }
+    private String topicName;
+    private String destinationTopic;
+    private Long eventTime;
+    Map<String, String> properties;
 
     @Override
     public Optional<String> getKey() {
@@ -278,6 +293,26 @@ public class Utils {
     @Override
     public T getValue() {
       return value;
+    }
+
+    @Override
+    public Optional<String> getTopicName() {
+      return Optional.ofNullable(topicName);
+    }
+
+    @Override
+    public Optional<String> getDestinationTopic() {
+      return Optional.ofNullable(destinationTopic);
+    }
+
+    @Override
+    public Optional<Long> getEventTime() {
+      return Optional.ofNullable(eventTime);
+    }
+
+    @Override
+    public Map<String, String> getProperties() {
+      return properties;
     }
   }
 

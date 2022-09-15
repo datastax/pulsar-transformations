@@ -33,7 +33,6 @@ import static org.testng.Assert.fail;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -218,6 +217,32 @@ public abstract class AbstractDockerTest {
     assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"c\": \"c\", \"d\": \"d\"}");
   }
 
+  @Test
+  public void testKVAvroWhenPredicate() throws Exception {
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"a\", \"when\": \"key.a=='a'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"b\", \"when\": \"key.b!='b'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"c\", \"when\": \"value.c=='c'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"d\", \"when\": \"value.d!='d'\"}"
+            + "]}");
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.AVRO(Pojo1.class), Schema.AVRO(Pojo2.class)),
+            new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d")));
+
+    assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
+    KeyValue<GenericObject, GenericObject> keyValue =
+        (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
+
+    assertEquals(keyValue.getKey().getSchemaType(), SchemaType.AVRO);
+    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\"}");
+    assertEquals(keyValue.getValue().getSchemaType(), SchemaType.AVRO);
+    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\"}");
+  }
+
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     return testTransformFunction(userConfig, schema, value, null);
@@ -251,7 +276,7 @@ public abstract class AbstractDockerTest {
     admin.functions().createFunction(functionConfig, null);
 
     FunctionStatus functionStatus = null;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 300; i++) {
       functionStatus = admin.functions().getFunctionStatus("public", "default", functionName);
       if (functionStatus.getNumRunning() == 1) {
         break;
@@ -281,6 +306,7 @@ public abstract class AbstractDockerTest {
     producerMessage.send();
 
     Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
+    assertNotNull(message);
     if (key != null) {
       assertEquals(message.getKey(), key);
     }
