@@ -362,7 +362,7 @@ public class Utils {
 
     @Override
     public Map<String, Object> getUserConfigMap() {
-      return null;
+      return userConfig;
     }
 
     @Override

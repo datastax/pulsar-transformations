@@ -1,0 +1,158 @@
+---
+"$schema": http://json-schema.org/draft-04/schema#
+components:
+  schemas:
+    Part:
+      type: object
+      properties:
+        part:
+          type:
+            - string
+            - 'null'
+          description: |
+            When used with KeyValue data, defines if the transformation is done on the `key` or on the `value`.
+            If `null` or absent the transformation applies to both the key and the value.
+          enum:
+            - key
+            - value
+            - null
+    Step:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: The type of transformation step.
+        when:
+          type:
+            - string
+            - 'null'
+          description: The transformation only applies if the 'when' clause evaluates to true.
+          minLength: 1
+      message:
+        minLength: "'when' field must not be empty"
+      discriminator:
+        propertyName: type
+        mapping:
+          drop-fields: "#/components/schemas/DropFields"
+          cast: "#/components/schemas/Cast"
+          merge-key-value: "#/components/schemas/MergeKeyValue"
+          unwrap-key-value: "#/components/schemas/UnwrapKeyValue"
+          flatten: "#/components/schemas/Flatten"
+          drop: "#/components/schemas/Drop"
+    DropFields:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: Drops fields of structured data (Currently only AVRO is supported).
+          properties:
+            type:
+              type: string
+              enum:
+                - drop-fields
+            fields:
+              type: [array, 'null']
+              items:
+                type:
+                  - string
+                minLength: 1
+              description: The list of fields to drop separated by commas `,`
+              message:
+                minLength: "field name in 'fields' must not be empty"
+          required:
+            - type
+            - fields
+        - "$ref": "#/components/schemas/Part"
+    Cast:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - cast
+            schema-type:
+              type:
+                - string
+                - 'null'
+              description: The target schema type. Only `STRING` is available.
+              enum:
+                - STRING
+                - null
+          required:
+            - schema-type
+        - "$ref": "#/components/schemas/Part"
+    UnwrapKeyValue:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: |
+            If the record value is a KeyValue, extracts the KeyValue's key or value and make it the record value.
+          properties:
+            type:
+              type: string
+              enum:
+                - unwrap-key-value
+            unwrap-key:
+              type:
+                - boolean
+                - 'null'
+              description: By default, the value is unwrapped. Set this parameter to `true` to unwrap the key instead.
+    MergeKeyValue:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: |
+            Merges the fields of KeyValue records where both the key and value are structured types of the same
+            schema type. (Currently only AVRO is supported).
+          properties:
+            type:
+              type: string
+              enum:
+                - merge-key-value
+    Drop:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: Drops the record.
+          properties:
+            type:
+              type: string
+              enum:
+                - drop
+    Flatten:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: |
+            Converts structured nested data into a new single-hierarchy-level structured data.
+            The names of the new fields are built by concatenating the intermediate level field names.
+          properties:
+            type:
+              type: string
+              enum:
+                - flatten
+            delimiter:
+              type:
+                - string
+                - 'null'
+              description: The delimiter to use when concatenating the field names.
+              default: _
+        - "$ref": "#/components/schemas/Part"
+type: object
+properties:
+  steps:
+    type: array
+    description: The transformation steps executed in order.
+    items:
+      oneOf:
+        - "$ref": "#/components/schemas/DropFields"
+        - "$ref": "#/components/schemas/Cast"
+        - "$ref": "#/components/schemas/UnwrapKeyValue"
+        - "$ref": "#/components/schemas/MergeKeyValue"
+        - "$ref": "#/components/schemas/Drop"
+        - "$ref": "#/components/schemas/Flatten"
+required:
+  - steps
