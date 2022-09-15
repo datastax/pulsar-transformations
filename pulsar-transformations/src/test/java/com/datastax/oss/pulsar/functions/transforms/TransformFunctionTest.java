@@ -24,9 +24,16 @@ import com.google.gson.reflect.TypeToken;
 import java.util.Map;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
+import org.apache.pulsar.client.api.schema.GenericRecord;
+import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
+import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
+import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.SchemaInfo;
+import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.DataProvider;
@@ -221,6 +228,59 @@ public class TransformFunctionTest {
     assertEquals(
         kv.getValue(),
         "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+  }
+
+  @Test
+  void testDropOnPredicateMatch() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName == 'Jane'\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+    assertNull(outputRecord);
+  }
+
+  @Test
+  void testDropMessageOnPredicateMissMatch() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord =
+        genericSchema.newRecordBuilder().set("firstName", "Galina").build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName == 'Jane'\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+    assertEquals(outputRecord.getKey(), record.getKey());
+    assertEquals(outputRecord.getValue(), record.getValue());
+    assertEquals(outputRecord.getSchema(), record.getSchema());
   }
 
   // TODO: just for demo. To be removed

@@ -29,6 +29,7 @@ package com.datastax.oss.pulsar.functions.transforms.tests;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.fail;
+import static org.testng.AssertJUnit.assertNull;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -243,12 +244,41 @@ public abstract class AbstractDockerTest {
     assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\"}");
   }
 
+  @Test
+  void testDropMessageOnPredicateMatch() throws Exception {
+    String userConfig =
+        ("" + "{\"steps\": [" + "    {\"type\": \"drop\", \"when\": \"value.a=='a'\"}" + "]}");
+    GenericRecord value =
+        testTransformFunction(
+            userConfig, Schema.AVRO(Pojo1.class), new Pojo1("a", "b"), null, true);
+    assertNull(value);
+  }
+
+  @Test
+  void testDropMessageOnPredicateMissMatch() throws Exception {
+    String userConfig =
+        ("" + "{\"steps\": [" + "    {\"type\": \"drop\", \"when\": \"value.a=='a'\"}" + "]}");
+    GenericRecord value =
+        testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("c", "d"));
+    assertEquals(value.getSchemaType(), SchemaType.AVRO);
+    org.apache.avro.generic.GenericRecord genericRecord =
+        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
+    assertEquals(genericRecord.toString(), "{\"a\": \"c\", \"b\": \"d\"}");
+  }
+
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     return testTransformFunction(userConfig, schema, value, null);
   }
 
-  private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value, String key)
+  private <T> GenericRecord testTransformFunction(
+      String userConfig, Schema<T> schema, T value, String key)
+      throws PulsarAdminException, InterruptedException, PulsarClientException {
+    return testTransformFunction(userConfig, schema, value, key, false);
+  }
+
+  private <T> GenericRecord testTransformFunction(
+      String userConfig, Schema<T> schema, T value, String key, boolean allowNullMessage)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     String functionId = UUID.randomUUID().toString();
     String inputTopic = "input-" + functionId;
@@ -297,15 +327,17 @@ public abstract class AbstractDockerTest {
 
     Producer producer = client.newProducer(schema).topic(inputTopic).create();
 
-    TypedMessageBuilder producerMessage = producer.newMessage()
-        .value(value)
-        .property("prop-key", "prop-value");
+    TypedMessageBuilder producerMessage =
+        producer.newMessage().value(value).property("prop-key", "prop-value");
     if (key != null) {
       producerMessage.key(key);
     }
     producerMessage.send();
 
     Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
+    if (allowNullMessage && message == null) {
+      return null;
+    }
     assertNotNull(message);
     if (key != null) {
       assertEquals(message.getKey(), key);
