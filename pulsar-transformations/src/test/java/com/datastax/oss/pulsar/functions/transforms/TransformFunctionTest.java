@@ -36,6 +36,7 @@ import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -230,57 +231,75 @@ public class TransformFunctionTest {
         "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
   }
 
-  @Test
-  void testDropOnPredicateMatch() throws Exception {
+  @Test(dataProvider = "dropStepConfigs")
+  void testDropOnPredicateMatch(String stepConfig, boolean drop) throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
-
-    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
-    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
-
-    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
-
-    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
-    String userConfig =
-        (""
-            + "{\"steps\": ["
-            + "    {\"type\": \"drop\", \"when\": \"value.firstName == 'Jane'\"}"
-            + "]}");
-    Map<String, Object> config =
-        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
-    TransformFunction transformFunction = new TransformFunction();
-    Utils.TestContext context = new Utils.TestContext(record, config);
-    transformFunction.initialize(context);
-    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
-    assertNull(outputRecord);
-  }
-
-  @Test
-  void testDropMessageOnPredicateMissMatch() throws Exception {
-    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
-    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("age").type(SchemaType.INT32);
 
     SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
 
     GenericRecord genericRecord =
-        genericSchema.newRecordBuilder().set("firstName", "Galina").build();
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "Doe")
+            .set("age", 42)
+            .build();
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
-    String userConfig =
-        (""
-            + "{\"steps\": ["
-            + "    {\"type\": \"drop\", \"when\": \"value.firstName == 'Jane'\"}"
-            + "]}");
     Map<String, Object> config =
-        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+        new Gson().fromJson(stepConfig, new TypeToken<Map<String, Object>>() {}.getType());
     TransformFunction transformFunction = new TransformFunction();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
+
     Record<?> outputRecord = transformFunction.process(record.getValue(), context);
-    assertEquals(outputRecord.getKey(), record.getKey());
-    assertEquals(outputRecord.getValue(), record.getValue());
-    assertEquals(outputRecord.getSchema(), record.getSchema());
+
+    if (drop) {
+      assertNull(outputRecord);
+    } else {
+      GenericData.Record read =
+          Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+      assertEquals(read.get("age"), 42);
+      Assert.assertNull(read.getSchema().getField("firstName"));
+      Assert.assertNull(read.getSchema().getField("lastName"));
+    }
+  }
+
+  @DataProvider(name = "dropStepConfigs")
+  public static Object[][] dropStepConfigs() {
+    return new Object[][] {
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "]}"),
+        true
+      },
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "]}"),
+        true
+      },
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"},"
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"}"
+            + "]}"),
+        false
+      }
+    };
   }
 
   // TODO: just for demo. To be removed
