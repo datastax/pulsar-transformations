@@ -246,8 +246,7 @@ public abstract class AbstractDockerTest {
 
   @Test
   void testDropMessageOnPredicateMatch() throws Exception {
-    String userConfig =
-        ("" + "{\"steps\": [" + "    {\"type\": \"drop\", \"when\": \"value.a=='a'\"}" + "]}");
+    String userConfig = "{\"steps\": [{\"type\": \"drop\", \"when\": \"value.a=='a'\"}]}";
     GenericRecord value =
         testTransformFunction(
             userConfig, Schema.AVRO(Pojo1.class), new Pojo1("a", "b"), null, true);
@@ -256,8 +255,7 @@ public abstract class AbstractDockerTest {
 
   @Test
   void testDropMessageOnPredicateMissMatch() throws Exception {
-    String userConfig =
-        ("" + "{\"steps\": [" + "    {\"type\": \"drop\", \"when\": \"value.a=='a'\"}" + "]}");
+    String userConfig = "{\"steps\": [{\"type\": \"drop\", \"when\": \"value.a=='a'\"}]}";
     GenericRecord value =
         testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("c", "d"));
     assertEquals(value.getSchemaType(), SchemaType.AVRO);
