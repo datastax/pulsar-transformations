@@ -60,6 +60,8 @@ import org.apache.pulsar.functions.api.Record;
  *       level fields. <code>
  *       delimiter</code> defaults to '_'. <code>part</code> could be any of <code>key</code> or
  *       <code>value</code>. If not specified, flatten will apply to key and value.
+ *   <li><code>drop</code>: drops the message from further processing. Use in conjunction with
+ *       <code>when</code> to selectively drop messages.
  * </ul>
  *
  * <p>The <code>TransformFunction</code> reads its configuration as Json from the {@link Context}
@@ -82,6 +84,9 @@ import org.apache.pulsar.functions.api.Record;
  *     },
  *     {
  *       "type": "flatten", "delimiter" : "_" "part" : "value", "when": "value.field == 'value'"
+ *     },
+ *     {
+ *       "type": "drop", "when": "value.field == 'value'"
  *     }
  *   ]
  * }
@@ -130,6 +135,9 @@ public class TransformFunction
           break;
         case "flatten":
           transformStep = newFlattenFunction(step);
+          break;
+        case "drop":
+          transformStep = new DropStep();
           break;
         default:
           throw new IllegalArgumentException("invalid step type: " + type);

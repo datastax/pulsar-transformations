@@ -24,11 +24,19 @@ import com.google.gson.reflect.TypeToken;
 import java.util.Map;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
+import org.apache.pulsar.client.api.schema.GenericRecord;
+import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
+import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
+import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.SchemaInfo;
+import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -221,6 +229,77 @@ public class TransformFunctionTest {
     assertEquals(
         kv.getValue(),
         "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+  }
+
+  @Test(dataProvider = "dropStepConfigs")
+  void testDropOnPredicateMatch(String stepConfig, boolean drop) throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("age").type(SchemaType.INT32);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord =
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "Doe")
+            .set("age", 42)
+            .build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+    Map<String, Object> config =
+        new Gson().fromJson(stepConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    if (drop) {
+      assertNull(outputRecord);
+    } else {
+      GenericData.Record read =
+          Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+      assertEquals(read.get("age"), 42);
+      Assert.assertNull(read.getSchema().getField("firstName"));
+      Assert.assertNull(read.getSchema().getField("lastName"));
+    }
+  }
+
+  @DataProvider(name = "dropStepConfigs")
+  public static Object[][] dropStepConfigs() {
+    return new Object[][] {
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "]}"),
+        true
+      },
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "]}"),
+        true
+      },
+      {
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"},"
+            + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"}"
+            + "]}"),
+        false
+      }
+    };
   }
 
   // TODO: just for demo. To be removed
