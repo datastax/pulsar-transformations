@@ -108,6 +108,22 @@ Input: `{name: value1, password: value2} (AVRO)`
 
 Output: `{name: value1} (AVRO)`
 
+### Drop
+
+Drops the record. To be used with `when` expression.
+
+Step name: `drop`
+
+Parameters: N/A
+
+##### Example
+
+UserConfig: `{"steps": [{"type": "drop", "when": "key.keyField==key"}]}`
+
+Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>)`
+
+Output: None
+
 ### Merge KeyValue
 
 Merges the fields of KeyValue records where both the key and value are structured types of the same schema type. (Currently only AVRO is supported).
