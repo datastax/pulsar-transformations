@@ -155,7 +155,7 @@ public abstract class AbstractDockerTest {
         (""
                 + "{'steps': ["
                 + "    {'type': 'unwrap-key-value'},"
-                + "    {'type': 'drop-fields', 'fields': 'a'}"
+                + "    {'type': 'drop-fields', 'fields': ['a']}"
                 + "]}")
             .replace("'", "\"");
 
@@ -170,7 +170,7 @@ public abstract class AbstractDockerTest {
   @Test
   public void testKVAvro() throws Exception {
     String userConfig =
-        ("{'steps': [{'type': 'drop-fields', 'fields': 'a,c'}]}").replace("'", "\"");
+        ("{'steps': [{'type': 'drop-fields', 'fields': ['a','c']}]}").replace("'", "\"");
 
     GenericRecord value =
         testTransformFunction(
@@ -223,10 +223,10 @@ public abstract class AbstractDockerTest {
     String userConfig =
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"a\", \"when\": \"key.a=='a'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"b\", \"when\": \"key.b!='b'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"c\", \"when\": \"value.c=='c'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"d\", \"when\": \"value.d!='d'\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"a\"], \"when\": \"key.a=='a'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"b\"], \"when\": \"key.b!='b'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"c\"], \"when\": \"value.c=='c'\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"d\"], \"when\": \"value.d!='d'\"}"
             + "]}");
     GenericRecord value =
         testTransformFunction(

@@ -71,7 +71,7 @@ import org.apache.pulsar.functions.api.Record;
  * {
  *   "steps": [
  *     {
- *       "type": "drop-fields", "fields": "keyField1,keyField2", "part": "key"
+ *       "type": "drop-fields", "fields": ["keyField1", "keyField2"], "part": "key"
  *     },
  *     {
  *       "type": "merge-key-value"
@@ -176,8 +176,18 @@ public class TransformFunction
   }
 
   public static DropFieldStep newRemoveFieldFunction(Map<String, Object> step) {
-    String fields = getRequiredStringConfig(step, "fields");
-    List<String> fieldList = Arrays.asList(fields.split(","));
+    List<String> fieldList = new ArrayList<>();
+    Object fields = step.get("fields");
+    if (fields instanceof List) {
+      for (Object field : (List<?>) fields) {
+        if (field instanceof String && !((String) field).isEmpty()) {
+          fieldList.add((String) field);
+        }
+      }
+    }
+    if (fieldList.size() == 0) {
+      throw new IllegalArgumentException("Invalid 'fields' field in drop-fields step");
+    }
     DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
     return getStringConfig(step, "part")
         .map(
