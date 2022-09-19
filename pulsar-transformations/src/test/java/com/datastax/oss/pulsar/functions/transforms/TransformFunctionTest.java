@@ -276,25 +276,25 @@ public class TransformFunctionTest {
         (""
             + "{\"steps\": ["
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]}"
             + "]}"),
         true
       },
       {
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]}"
             + "]}"),
         true
       },
       {
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]},"
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"}"
             + "]}"),
         false
