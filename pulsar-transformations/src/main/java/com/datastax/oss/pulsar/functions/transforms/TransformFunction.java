@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
 import com.datastax.oss.pulsar.functions.transforms.predicate.jstl.JstlPredicate;
@@ -87,6 +88,9 @@ import org.apache.pulsar.functions.api.Record;
  *     },
  *     {
  *       "type": "drop", "when": "value.field == 'value'"
+ *     },
+ *     {
+ *       "type": "compute-fields", "fields": [{"name: "field1", "expression" : "5/3"}, {"name": "field2", "expression" : "value.name.toUpperCase()"}], "part": "key"
  *     }
  *   ]
  * }
@@ -138,6 +142,9 @@ public class TransformFunction
           break;
         case "drop":
           transformStep = new DropStep();
+          break;
+        case "compute-fields":
+          transformStep = newComputeFieldFunction(step);
           break;
         default:
           throw new IllegalArgumentException("invalid step type: " + type);
@@ -229,6 +236,37 @@ public class TransformFunction
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(Map<String, Object> step) {
     return new UnwrapKeyValueStep(getBooleanConfig(step, "unwrap-key").orElse(false));
+  }
+
+  private static TransformStep newComputeFieldFunction(Map<String, Object> step) {
+    List<Map> fieldList;
+    Object fields = step.get("fields");
+    if (!(fields instanceof List)) {
+      throw new IllegalArgumentException("invalid 'fields' parameter: " + fields);
+    }
+    fieldList = (List) fields;
+    List<ComputeField> computeFields = new ArrayList<>();
+    for (Map<String, Object> field : fieldList) {
+      String name = getRequiredStringConfig(field, "name");
+      String expression = getRequiredStringConfig(field, "expression");
+      String schemaTypeParam = getRequiredStringConfig(field, "schema-type");
+      SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
+      computeFields.add(new ComputeField(name, expression, schemaType));
+    }
+    ComputeFieldStep.ComputeFieldStepBuilder builder = ComputeFieldStep.builder();
+    return getStringConfig(step, "part")
+        .map(
+            part -> {
+              if (part.equals("key")) {
+                return builder.keyFields(computeFields);
+              } else if (part.equals("value")) {
+                return builder.valueFields(computeFields);
+              } else {
+                throw new IllegalArgumentException("invalid 'part' parameter: " + part);
+              }
+            })
+        .orElseGet(() -> builder.keyFields(computeFields).valueFields(computeFields))
+        .build();
   }
 
   private static Optional<String> getStringConfig(Map<String, Object> config, String fieldName) {

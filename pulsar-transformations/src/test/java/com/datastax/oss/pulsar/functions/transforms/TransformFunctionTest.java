@@ -302,6 +302,49 @@ public class TransformFunctionTest {
     };
   }
 
+  @Test
+  void testComputeFields() throws Exception {
+    String userConfig =
+        (""
+            + "{\"steps\": ["
+            + "    {\"type\": \"compute-fields\", \"fields\":["
+            + "        {\"name\": \"newField1\", \"expression\" : \"5*3\", \"schema-type\": \"INT32\"},"
+            + "        {\"name\": \"newField2\", \"expression\" : \"value.valueField1.toUpperCase()\", \"schema-type\": \"STRING\"}],"
+            + "     \"part\": \"key\"},"
+            + "    {\"type\": \"compute-fields\", \"fields\":["
+            + "        {\"name\": \"newField1\", \"expression\" : \"5+3\", \"schema-type\": \"INT32\"},"
+            + "        {\"name\": \"newField2\", \"expression\" : \"value.valueField1.substring(0,5)\", \"schema-type\": \"STRING\"}],"
+            + "     \"part\": \"value\"}"
+            + "]}");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record keyAvroRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(keyAvroRecord.get("keyField1"), new Utf8("key1"));
+    assertEquals(keyAvroRecord.get("keyField2"), new Utf8("key2"));
+    assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
+    assertEquals(keyAvroRecord.get("newField1"), 15);
+    assertEquals(keyAvroRecord.get("newField2"), new Utf8("VALUE1"));
+
+    GenericData.Record valueAvroRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+    assertEquals(valueAvroRecord.get("valueField1"), new Utf8("value1"));
+    assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
+    assertEquals(valueAvroRecord.get("valueField3"), new Utf8("value3"));
+    assertEquals(valueAvroRecord.get("newField1"), 8);
+    assertEquals(valueAvroRecord.get("newField2"), new Utf8("value"));
+  }
+
   // TODO: just for demo. To be removed
   @Test
   void testRemoveMergeAndToString() throws Exception {
