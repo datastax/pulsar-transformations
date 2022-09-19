@@ -68,7 +68,26 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'part': 'value'}]}"},
       {"{'steps': [{'type': 'flatten', 'delimiter': '_'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': 'prop1==val1'}]}"},
-      {"{'steps': [{'type': 'flatten', 'delimiter': null, 'part': null, 'when': null}]}"}
+      {"{'steps': [{'type': 'flatten', 'delimiter': null, 'part': null, 'when': null}]}"},
+      {"{'steps': [{'type': 'drop', 'when': null}]}"},
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'string', type: 'STRING', part: 'key'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'value'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int64', type: 'INT64'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'float', type: 'FLOAT'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', type: 'DOUBLE'}]}]}"
+      },
     };
   }
 
@@ -106,6 +125,22 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}], 'when': ''}"},
       {"{'steps': [{'type': 'flatten', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': ''}]}"},
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'record', type: 'AVRO'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'json', type: 'JSON', part: 'key'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'non-key-or-value'}]}]}"
+      },
+      {"{'steps': [{'type': 'compute-fields', 'fields': [{expression: 'int64', type: 'INT64'}]}]}"},
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', type: 'FLOAT'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
+      },
     };
   }
 
@@ -155,6 +190,48 @@ public class TransformFunctionTest {
     assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
     assertNull(valueAvroRecord.getSchema().getField("valueField1"));
     assertNull(valueAvroRecord.getSchema().getField("valueField3"));
+  }
+
+  @Test
+  void testComputeFields() throws Exception {
+    String userConfig =
+        (""
+                + "{'steps': ["
+                + "    {'type': 'compute-fields', 'fields':["
+                + "        {'name': 'newField1', 'expression' : '5*3', 'type': 'INT32', 'part' : 'key'},"
+                + "        {'name': 'newField2', 'expression' : 'value.valueField1.toUpperCase()', 'type': 'STRING', 'part' : 'key'},"
+                + "        {'name': 'newField1', 'expression' : '5+3', 'type': 'INT32', 'part' : 'value'},"
+                + "        {'name': 'newField2', 'expression' : 'value.valueField1.substring(0,5)', 'type': 'STRING'}]}"
+                + "]}")
+            .replace("'", "\"");
+
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record keyAvroRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(keyAvroRecord.get("keyField1"), new Utf8("key1"));
+    assertEquals(keyAvroRecord.get("keyField2"), new Utf8("key2"));
+    assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
+    assertEquals(keyAvroRecord.get("newField1"), 15);
+    assertEquals(keyAvroRecord.get("newField2"), new Utf8("VALUE1"));
+
+    GenericData.Record valueAvroRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+    assertEquals(valueAvroRecord.get("valueField1"), new Utf8("value1"));
+    assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
+    assertEquals(valueAvroRecord.get("valueField3"), new Utf8("value3"));
+    assertEquals(valueAvroRecord.get("newField1"), 8);
+    assertEquals(valueAvroRecord.get("newField2"), new Utf8("value"));
   }
 
   @Test

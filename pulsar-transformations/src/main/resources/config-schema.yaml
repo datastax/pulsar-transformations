@@ -41,6 +41,7 @@ components:
           unwrap-key-value: "#/components/schemas/UnwrapKeyValue"
           flatten: "#/components/schemas/Flatten"
           drop: "#/components/schemas/Drop"
+          compute-fields: "#/components/schemas/ComputeFields"
     DropFields:
       allOf:
         - "$ref": "#/components/schemas/Step"
@@ -141,6 +142,57 @@ components:
               description: The delimiter to use when concatenating the field names.
               default: _
         - "$ref": "#/components/schemas/Part"
+    ComputeFields:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: Adds or updates fields dynamically based on an expression (Currently only AVRO is supported).
+          properties:
+            type:
+              type: string
+              enum:
+                - compute-fields
+            fields:
+              type: [ array, 'null' ]
+              items:
+                type:
+                  - object
+                minLength: 1
+                properties:
+                  name:
+                    type: string
+                    description: The name of the field to compute. If the field name already exist, it will be overwritten.
+                  expression:
+                    type: string
+                    description: An EL-like expression to compute the field value. It can refer to other attributes in the record.
+                  type:
+                    type: string
+                    description: The data type of the computed fields. It should match with the output of the expression.
+                    enum:
+                      - STRING
+                      - INT32
+                      - INT64
+                      - FLOAT
+                      - DOUBLE
+                      - BOOLEAN
+                  part:
+                    type: string
+                    description: The part of the message to apply the computed fields to. If left empty, the fields will apply to the `value`.
+                    enum:
+                      - key
+                      - value
+                    default: value
+                description: The list of fields to compute
+                message:
+                  minLength: "field name in 'fields' must not be empty"
+                required:
+                  - name
+                  - expression
+                  - type
+          required:
+            - type
+            - fields
+        - "$ref": "#/components/schemas/Part"
 type: object
 properties:
   steps:
@@ -154,5 +206,6 @@ properties:
         - "$ref": "#/components/schemas/MergeKeyValue"
         - "$ref": "#/components/schemas/Drop"
         - "$ref": "#/components/schemas/Flatten"
+        - "$ref": "#/components/schemas/ComputeFields"
 required:
   - steps

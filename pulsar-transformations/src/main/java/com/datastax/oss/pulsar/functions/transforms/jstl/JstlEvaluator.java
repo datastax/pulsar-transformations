@@ -13,42 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.predicate.jstl;
+package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
-import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
+import de.odysseus.el.ExpressionFactoryImpl;
 import de.odysseus.el.util.SimpleContext;
-import java.util.HashMap;
 import java.util.Map;
 import javax.el.ELContext;
 import javax.el.ExpressionFactory;
-import javax.el.PropertyNotFoundException;
 import javax.el.ValueExpression;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.commons.collections4.Transformer;
-import org.apache.commons.collections4.map.LazyMap;
 
-/** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */
-@Slf4j
-public class JstlPredicate implements TransformPredicate {
-  private static final ExpressionFactory FACTORY = new de.odysseus.el.ExpressionFactoryImpl();
+public class JstlEvaluator<T> {
+
+  private static final ExpressionFactory FACTORY = new ExpressionFactoryImpl();
   private final ValueExpression valueExpression;
   private final ELContext expressionContext;
 
-  public JstlPredicate(String when) {
+  public JstlEvaluator(String expression, Class<?> type) {
     this.expressionContext = new SimpleContext();
-    try {
-      final String expression = String.format("${%s}", when);
-      this.valueExpression =
-          FACTORY.createValueExpression(expressionContext, expression, boolean.class);
-    } catch (RuntimeException ex) {
-      throw new IllegalArgumentException("invalid when: " + when, ex);
-    }
+    this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
   }
 
-  @Override
-  public boolean test(TransformContext transformContext) {
+  public T evaluate(TransformContext transformContext) {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
     FACTORY
         .createValueExpression(expressionContext, "${key}", Object.class)
@@ -73,34 +59,6 @@ public class JstlPredicate implements TransformPredicate {
     FACTORY
         .createValueExpression(expressionContext, "${properties}", Map.class)
         .setValue(expressionContext, adapter.getHeader().get("properties"));
-    try {
-      return (boolean) this.valueExpression.getValue(expressionContext);
-    } catch (PropertyNotFoundException ex) {
-      log.warn("a property in the when expression was not found in the message", ex);
-      return false;
-    }
-  }
-
-  static class GenericRecordTransformer implements Transformer<String, Object> {
-
-    GenericRecord genericRecord;
-
-    public GenericRecordTransformer(GenericRecord genericRecord) {
-      this.genericRecord = genericRecord;
-    }
-
-    @Override
-    public Object transform(String key) {
-      Object value = null;
-      if (genericRecord.hasField(key)) {
-        value = genericRecord.get(key);
-        if (value instanceof GenericRecord) {
-          value =
-              LazyMap.lazyMap(new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
-        }
-      }
-
-      return value;
-    }
+    return (T) this.valueExpression.getValue(expressionContext);
   }
 }
