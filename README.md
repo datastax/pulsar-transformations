@@ -167,7 +167,7 @@ Parameters:
 
 | Name | Description                                                                                         |
 |------|-----------------------------------------------------------------------------------------------------|
-| when | by default, the record is dropped. Set this parameter to selectively choose when to dtop a message. |
+| when | by default, the record is dropped. Set this parameter to selectively choose when to drop a message. |
 
 #### Example
 
