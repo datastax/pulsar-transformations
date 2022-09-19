@@ -15,9 +15,11 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import com.datastax.oss.pulsar.functions.transforms.predicate.StepPredicatePair;
-import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
-import com.datastax.oss.pulsar.functions.transforms.predicate.jstl.JstlPredicate;
+import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
+import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
+import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.TransformPredicate;
+import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
+import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -207,6 +209,9 @@ public class TransformFunction
         case "drop":
           transformStep = new DropStep();
           break;
+        case "compute-fields":
+          transformStep = newComputeFieldFunction(node);
+          break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + type);
       }
@@ -288,6 +293,22 @@ public class TransformFunction
       builder.delimiter(node.get("delimiter").asText());
     }
     return builder.build();
+  }
+
+  private static TransformStep newComputeFieldFunction(JsonNode node) {
+    List<ComputeField> fieldList = new ArrayList<>();
+    node.get("fields")
+        .iterator()
+        .forEachRemaining(
+            it ->
+                fieldList.add(
+                    ComputeField.builder()
+                        .name(it.get("name").asText())
+                        .expression(it.get("expression").asText())
+                        .type(ComputeFieldType.valueOf(it.get("type").asText()))
+                        .part(it.get("part") == null ? null : it.get("part").asText())
+                        .build()));
+    return ComputeFieldStep.builder().fields(fieldList).build();
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(JsonNode node) {

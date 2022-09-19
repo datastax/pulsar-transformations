@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.predicate.jstl;
+package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import java.util.HashMap;
@@ -38,8 +38,7 @@ public class JstlTransformContextAdapter {
       (fieldName) -> {
         if (this.transformContext.getKeyObject() instanceof GenericRecord) {
           GenericRecord genericRecord = (GenericRecord) this.transformContext.getKeyObject();
-          JstlPredicate.GenericRecordTransformer transformer =
-              new JstlPredicate.GenericRecordTransformer(genericRecord);
+          GenericRecordTransformer transformer = new GenericRecordTransformer(genericRecord);
           return transformer.transform(fieldName);
         }
         return null;
@@ -55,8 +54,7 @@ public class JstlTransformContextAdapter {
       (fieldName) -> {
         if (this.transformContext.getValueObject() instanceof GenericRecord) {
           GenericRecord genericRecord = (GenericRecord) this.transformContext.getValueObject();
-          JstlPredicate.GenericRecordTransformer transformer =
-              new JstlPredicate.GenericRecordTransformer(genericRecord);
+          GenericRecordTransformer transformer = new GenericRecordTransformer(genericRecord);
           return transformer.transform(fieldName);
         }
         return null;
@@ -114,5 +112,29 @@ public class JstlTransformContextAdapter {
 
   public Map<String, Object> getHeader() {
     return lazyHeader;
+  }
+
+  /** Enables {@link LazyMap} lookup on {@link GenericRecord}. */
+  static class GenericRecordTransformer implements Transformer<String, Object> {
+
+    GenericRecord genericRecord;
+
+    public GenericRecordTransformer(GenericRecord genericRecord) {
+      this.genericRecord = genericRecord;
+    }
+
+    @Override
+    public Object transform(String key) {
+      Object value = null;
+      if (genericRecord.hasField(key)) {
+        value = genericRecord.get(key);
+        if (value instanceof GenericRecord) {
+          value =
+              LazyMap.lazyMap(new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
+        }
+      }
+
+      return value;
+    }
   }
 }

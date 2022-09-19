@@ -151,26 +151,42 @@ public abstract class AbstractDockerTest {
 
   @Test
   public void testAvro() throws Exception {
+    String expression = "'c'";
     String userConfig =
-        (""
-                + "{'steps': ["
-                + "    {'type': 'unwrap-key-value'},"
-                + "    {'type': 'drop-fields', 'fields': ['a']}"
-                + "]}")
-            .replace("'", "\"");
+        String.format(
+            (""
+                    + "{'steps': ["
+                    + "    {'type': 'unwrap-key-value'},"
+                    + "    {'type': 'drop-fields', 'fields': ['a']},"
+                    + "    {'type': 'compute-fields', 'fields': [{'name': 'c', 'expression' :'%s', 'type' : 'STRING'}]}"
+                    + "]}")
+                .replace("'", "\""),
+            expression);
 
     GenericRecord value =
         testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("a", "b"));
     assertEquals(value.getSchemaType(), SchemaType.AVRO);
     org.apache.avro.generic.GenericRecord genericRecord =
         (org.apache.avro.generic.GenericRecord) value.getNativeObject();
-    assertEquals(genericRecord.toString(), "{\"b\": \"b\"}");
+    assertEquals(genericRecord.toString(), "{\"b\": \"b\", \"c\": \"c\"}");
   }
 
   @Test
   public void testKVAvro() throws Exception {
+    String keyExpression = "'k'";
+    String valueExpression = "'v'";
     String userConfig =
-        ("{'steps': [{'type': 'drop-fields', 'fields': ['a','c']}]}").replace("'", "\"");
+        String.format(
+            (""
+                    + "{'steps': ["
+                    + "    {'type': 'drop-fields', 'fields': ['a','c']},"
+                    + "    {'type': 'compute-fields', 'fields': ["
+                    + "        {'name': 'k', 'expression' :'%s', 'type' : 'STRING', 'part' : 'key'},"
+                    + "        {'name': 'v', 'expression' :'%s', 'type' : 'STRING', 'part' : 'value'}]}"
+                    + "]}")
+                .replace("'", "\""),
+            keyExpression,
+            valueExpression);
 
     GenericRecord value =
         testTransformFunction(
@@ -182,9 +198,9 @@ public abstract class AbstractDockerTest {
         (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
 
     assertEquals(keyValue.getKey().getSchemaType(), SchemaType.AVRO);
-    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\"}");
+    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\", \"k\": \"k\"}");
     assertEquals(keyValue.getValue().getSchemaType(), SchemaType.AVRO);
-    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\"}");
+    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\", \"v\": \"v\"}");
   }
 
   @Test
