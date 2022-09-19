@@ -159,7 +159,7 @@ Step name: `flatten`
 
 ### Drop
 
-Drops the message from further processing. Use in conjunction with `when` to selectively drop messages.
+Drops the record from further processing. Use in conjunction with `when` to selectively drop records.
 
 Step name: `drop`
 
