@@ -49,18 +49,26 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'key'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'value'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'when': 'key.k1==key1'}]}"},
+      {
+        "{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': null, 'when': null}]}"
+      },
+      {"{'steps': [{'type': 'merge-key-value'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': false}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': true, 'when': 'value.v1==val1'}]}"},
+      {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': null, 'when': null}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'value'}]}"},
+      {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'when': 'value.v1==val1'}]}"},
+      {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': null, 'when': null}]}"},
       {"{'steps': [{'type': 'flatten'}]}"},
       {"{'steps': [{'type': 'flatten', 'part': 'key'}]}"},
       {"{'steps': [{'type': 'flatten', 'part': 'value'}]}"},
       {"{'steps': [{'type': 'flatten', 'delimiter': '_'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': 'prop1==val1'}]}"},
+      {"{'steps': [{'type': 'flatten', 'delimiter': null, 'part': null, 'when': null}]}"}
     };
   }
 
@@ -84,9 +92,11 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'drop-fields'}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['']}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 'invalid'}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field', 42]}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 42}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'part': 42}]}"},
       {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field'], 'when': ''}]}"},
+      {"{'steps': [{'type': 'drop-fields', 'fields': ['some-field']}, {'type': 'cast'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'unwrap-key': 'invalid'}]}"},
       {"{'steps': [{'type': 'unwrap-key-value', 'when': ''}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 42}]}"},
@@ -94,7 +104,7 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}]}"},
       {"{'steps': [{'type': 'cast', 'schema-type': 'STRING', 'part': 42}], 'when': ''}"},
-      {"{'steps': [{'type': 'flatten', 'part': 'invalid-part'}]}"},
+      {"{'steps': [{'type': 'flatten', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': ''}]}"},
     };
   }
@@ -276,25 +286,25 @@ public class TransformFunctionTest {
         (""
             + "{\"steps\": ["
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]}"
             + "]}"),
         true
       },
       {
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"}"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]}"
             + "]}"),
         true
       },
       {
         (""
             + "{\"steps\": ["
-            + "    {\"type\": \"drop-fields\", \"fields\": \"firstName\"},"
-            + "    {\"type\": \"drop-fields\", \"fields\": \"lastName\"},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"firstName\"]},"
+            + "    {\"type\": \"drop-fields\", \"fields\": [\"lastName\"]},"
             + "    {\"type\": \"drop\", \"when\": \"value.firstName=='Jane' || value.lastName=='Doe'\"}"
             + "]}"),
         false

@@ -134,7 +134,7 @@ Parameters:
 
 | Name        | Description |
 | ----------- | ----------- |
-| unwrapKey | by default, the value is unwrapped. Set this parameter to `true` to unwrap the key instead |
+| unwrapKey | by default, the value is unwrapped. Set this parameter to `true` to unwrap the key instead. |
 
 ##### Example
 
