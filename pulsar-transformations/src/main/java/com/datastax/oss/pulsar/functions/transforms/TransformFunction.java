@@ -18,14 +18,22 @@ package com.datastax.oss.pulsar.functions.transforms;
 import com.datastax.oss.pulsar.functions.transforms.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.predicate.TransformPredicate;
 import com.datastax.oss.pulsar.functions.transforms.predicate.jstl.JstlPredicate;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SpecVersion;
+import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.urn.URNFactory;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -99,47 +107,108 @@ public class TransformFunction
     implements Function<GenericObject, Record<GenericObject>>, TransformStep {
 
   private final List<StepPredicatePair> steps = new ArrayList<>();
-  private final Gson gson = new Gson();
 
   @Override
   public void initialize(Context context) {
-    Object config =
-        context
-            .getUserConfigValue("steps")
-            .orElseThrow(() -> new IllegalArgumentException("missing required 'steps' parameter"));
-    LinkedList<Map<String, Object>> stepsConfig;
-    try {
-      TypeToken<LinkedList<Map<String, Object>>> typeToken = new TypeToken<>() {};
-      stepsConfig = gson.fromJson((gson.toJson(config)), typeToken.getType());
-    } catch (Exception e) {
-      throw new IllegalArgumentException("could not parse configuration", e);
+    Map<String, Object> userConfigMap = context.getUserConfigMap();
+    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    JsonNode jsonNode = mapper.convertValue(userConfigMap, JsonNode.class);
+
+    URNFactory urnFactory =
+        urn -> {
+          try {
+            URL absoluteURL = Thread.currentThread().getContextClassLoader().getResource(urn);
+            return absoluteURL.toURI();
+          } catch (Exception ex) {
+            return null;
+          }
+        };
+    JsonSchemaFactory factory =
+        JsonSchemaFactory.builder(JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V4))
+            .objectMapper(mapper)
+            .addUrnFactory(urnFactory)
+            .build();
+    InputStream is =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream("config-schema.yaml");
+
+    JsonSchema schema = factory.getSchema(is);
+    Set<ValidationMessage> errors = schema.validate(jsonNode);
+
+    if (errors.size() != 0) {
+      if (!jsonNode.hasNonNull("steps")) {
+        throw new IllegalArgumentException("Missing config 'steps' field");
+      }
+      JsonNode steps = jsonNode.get("steps");
+      if (!steps.isArray()) {
+        throw new IllegalArgumentException("Config 'steps' field must be an array");
+      }
+      String errorMessage = null;
+      try {
+        for (JsonNode step : steps) {
+          String type = step.get("type").asText();
+          JsonSchema stepSchema =
+              factory.getSchema(
+                  String.format(
+                      "{\"$ref\": \"config-schema.yaml#/components/schemas/%s\"}",
+                      kebabToPascal(type)));
+
+          errorMessage =
+              stepSchema
+                  .validate(step)
+                  .stream()
+                  .findFirst()
+                  .map(v -> String.format("Invalid '%s' step config: %s", type, v))
+                  .orElse(null);
+          if (errorMessage != null) {
+            break;
+          }
+        }
+      } catch (Exception e) {
+        log.debug("Exception during steps validation, ignoring", e);
+      }
+
+      if (errorMessage != null) {
+        throw new IllegalArgumentException(errorMessage);
+      }
+
+      errors
+          .stream()
+          .findFirst()
+          .ifPresent(
+              validationMessage -> {
+                throw new IllegalArgumentException(
+                    "Configuration validation failed: " + validationMessage);
+              });
     }
-    for (Map<String, Object> step : stepsConfig) {
-      String type = getRequiredStringConfig(step, "type");
-      Optional<String> when = getStringConfig(step, "when");
-      TransformPredicate predicate = when.map(JstlPredicate::new).orElse(null);
-      TransformStep transformStep;
+
+    TransformStep transformStep;
+    for (JsonNode node : jsonNode.get("steps")) {
+      TransformPredicate predicate = null;
+      if (node.hasNonNull("when")) {
+        predicate = new JstlPredicate(node.get("when").asText());
+      }
+      String type = node.get("type").asText();
       switch (type) {
         case "drop-fields":
-          transformStep = newRemoveFieldFunction(step);
+          transformStep = newRemoveFieldFunction(node);
           break;
         case "cast":
-          transformStep = newCastFunction(step);
+          transformStep = newCastFunction(node);
           break;
         case "merge-key-value":
           transformStep = new MergeKeyValueStep();
           break;
         case "unwrap-key-value":
-          transformStep = newUnwrapKeyValueFunction(step);
+          transformStep = newUnwrapKeyValueFunction(node);
           break;
         case "flatten":
-          transformStep = newFlattenFunction(step);
+          transformStep = newFlattenFunction(node);
           break;
         case "drop":
           transformStep = new DropStep();
           break;
         default:
-          throw new IllegalArgumentException("invalid step type: " + type);
+          throw new IllegalArgumentException("Invalid step type: " + type);
       }
       steps.add(new StepPredicatePair(transformStep, predicate));
     }
@@ -174,98 +243,55 @@ public class TransformFunction
     }
   }
 
-  public static DropFieldStep newRemoveFieldFunction(Map<String, Object> step) {
-    List<String> fieldList = new ArrayList<>();
-    Object fields = step.get("fields");
-    if (fields instanceof List) {
-      for (Object field : (List<?>) fields) {
-        if (field instanceof String && !((String) field).isEmpty()) {
-          fieldList.add((String) field);
-        }
-      }
-    }
-    if (fieldList.size() == 0) {
-      throw new IllegalArgumentException("Invalid 'fields' field in drop-fields step");
-    }
+  private static String kebabToPascal(String kebab) {
+    return Pattern.compile("(?:^|-)(.)").matcher(kebab).replaceAll(mr -> mr.group(1).toUpperCase());
+  }
+
+  public static DropFieldStep newRemoveFieldFunction(JsonNode node) {
     DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
-    return getStringConfig(step, "part")
-        .map(
-            part -> {
-              if (part.equals("key")) {
-                return builder.keyFields(fieldList);
-              } else if (part.equals("value")) {
-                return builder.valueFields(fieldList);
-              } else {
-                throw new IllegalArgumentException("invalid 'part' parameter: " + part);
-              }
-            })
-        .orElseGet(() -> builder.keyFields(fieldList).valueFields(fieldList))
-        .build();
-  }
-
-  public static CastStep newCastFunction(Map<String, Object> step) {
-    String schemaTypeParam = getRequiredStringConfig(step, "schema-type");
-    SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
-    CastStep.CastStepBuilder builder = CastStep.builder();
-    return getStringConfig(step, "part")
-        .map(
-            part -> {
-              if (part.equals("key")) {
-                return builder.keySchemaType(schemaType);
-              } else if (part.equals("value")) {
-                return builder.valueSchemaType(schemaType);
-              } else {
-                throw new IllegalArgumentException("invalid 'part' parameter: " + part);
-              }
-            })
-        .orElseGet(() -> builder.keySchemaType(schemaType).valueSchemaType(schemaType))
-        .build();
-  }
-
-  public static FlattenStep newFlattenFunction(Map<String, Object> step) {
-    FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    getStringConfig(step, "part")
-        .ifPresent(
-            part -> {
-              if (!("key".equals(part) || "value".equals(part))) {
-                throw new IllegalArgumentException("invalid 'part' parameter: " + part);
-              }
-              builder.part(part);
-            });
-    getStringConfig(step, "delimiter").ifPresent(builder::delimiter);
+    List<String> fieldList = new ArrayList<>();
+    node.get("fields").iterator().forEachRemaining(it -> fieldList.add(it.asText()));
+    if (node.hasNonNull("part")) {
+      if (node.get("part").asText().equals("key")) {
+        builder.keyFields(fieldList);
+      } else {
+        builder.valueFields(fieldList);
+      }
+    } else {
+      builder.keyFields(fieldList).valueFields(fieldList);
+    }
     return builder.build();
   }
 
-  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(Map<String, Object> step) {
-    return new UnwrapKeyValueStep(getBooleanConfig(step, "unwrap-key").orElse(false));
+  public static CastStep newCastFunction(JsonNode node) {
+    String schemaTypeParam = node.get("schema-type").asText();
+    SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
+    CastStep.CastStepBuilder builder = CastStep.builder();
+    if (node.hasNonNull("part")) {
+      if (node.get("part").asText().equals("key")) {
+        builder.keySchemaType(schemaType);
+      } else {
+        builder.valueSchemaType(schemaType);
+      }
+    } else {
+      builder.keySchemaType(schemaType).valueSchemaType(schemaType);
+    }
+    return builder.build();
   }
 
-  private static Optional<String> getStringConfig(Map<String, Object> config, String fieldName) {
-    Object fieldObject = config.get(fieldName);
-    if (fieldObject == null) {
-      return Optional.empty();
+  public static FlattenStep newFlattenFunction(JsonNode node) {
+    FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
+    if (node.hasNonNull("part")) {
+      builder.part(node.get("part").asText());
     }
-    if (fieldObject instanceof String) {
-      return Optional.of((String) fieldObject);
+    if (node.hasNonNull("delimiter")) {
+      builder.delimiter(node.get("delimiter").asText());
     }
-    throw new IllegalArgumentException("field '" + fieldName + "' must be a string");
+    return builder.build();
   }
 
-  private static String getRequiredStringConfig(Map<String, Object> config, String fieldName) {
-    return getStringConfig(config, fieldName)
-        .filter(s -> !s.isEmpty())
-        .orElseThrow(
-            () -> new IllegalArgumentException("missing required '" + fieldName + "' parameter"));
-  }
-
-  private static Optional<Boolean> getBooleanConfig(Map<String, Object> config, String fieldName) {
-    Object fieldObject = config.get(fieldName);
-    if (fieldObject == null) {
-      return Optional.empty();
-    }
-    if (fieldObject instanceof Boolean) {
-      return Optional.of((Boolean) fieldObject);
-    }
-    throw new IllegalArgumentException("field '" + fieldName + "' must be a boolean");
+  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(JsonNode node) {
+    return new UnwrapKeyValueStep(
+        node.hasNonNull("unwrap-key") && node.get("unwrap-key").asBoolean());
   }
 }
