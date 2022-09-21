@@ -14,6 +14,7 @@ Currently available transformations are:
 * [merge-key-value](#merge-key-value): merges the fields of KeyValue records where both the key and value are structured data with the same schema type.
 * [unwrap-key-value](#unwrap-key-value): if the record is a KeyValue, extract the KeyValue's key or value and make it the record value.
 * [flatten](#flatten): flattens structured data.
+* [drop](#drop): drops a record from further processing.
 
 ## Configuration
 
