@@ -39,7 +39,8 @@ The `TransformFunction` reads its configuration as `JSON` from the Function `use
 ```
 
 The transformations are done in the order in which they appear in the `steps` array.
-Each step is defined by its `type` and uses its own arguments.
+Each step is defined by its `type` and uses its own arguments. Additionally, each step can be dynamically toggled on or off 
+by supplying a `when` condition that evaluates to true or false. 
 
 
 This example config applied on a `KeyValue<AVRO, AVRO>` input record with value `{key={keyField1: key1, keyField2: key2, keyField3: key3}, value={valueField1: value1, valueField2: value2, valueField3: value3}}` will return after each step:
@@ -156,6 +157,25 @@ Step name: `flatten`
 | delimiter | the delimiter to use when concatenating the field names (default: `_`) |
 | part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
+### Drop
+
+Drops the record from further processing. Use in conjunction with `when` to selectively drop records.
+
+Step name: `drop`
+
+Parameters:
+
+| Name | Description                                                                                         |
+|------|-----------------------------------------------------------------------------------------------------|
+| when | by default, the record is dropped. Set this parameter to selectively choose when to drop a message. |
+
+#### Example
+
+UserConfig: `{"steps": [{"type": "drop", "when": "value.firstName == value1"}]}`
+
+Input: `{firstName: value1, lastName: value2} (AVRO)`
+
+Output: N/A. Record is dropped.
 
 ##### Example
 
@@ -164,6 +184,71 @@ UserConfig: `{"steps": [{"type": "flatten"}]}`
 Input: `{field1: {field11: value11, field12: value12}} (AVRO)`
 
 Output: `{field1_field11: value11, field1_field12: value12} (AVRO)`
+
+#### Conditional Steps
+
+Each step accept an optional `when` configuration that is evaluated at step execution time against current record (i.e. the as seen by
+the current step in the transformation pipeline). The syntax of the `when` condition is Expression Language ([EL](https://javaee.github.io/tutorial/jsf-el001.html#BNAHQ)) like. It provides access to the record attributes as follows:
+* `key`: the key portion of the record in a KeyValue schema. 
+* `value`: the value portion of the record in a KeyValue schema, or the message payload itself.
+* `messageKey`: the optional key messages are tagged with (aka. Partition Key).
+* `topicName`: the optional name of the topic which the record originated from (aka. Input Topic).
+* `destinationTopic`: the name of the topic on which the transformed record will be sent (aka. Output Topic).
+* `eventTime`: the optional timestamp attached to the record from its source. For example, the original timestamp attached to the pulsar message.
+* `properties`: the optional user-defined properties attached to record
+
+You can use the `.` operator to access top level or nested properties on a schema-full `key` or `value`. For example, `key.keyField1` or `value.valueFiled1.nestedValueField`. You can also use to access different keys of the user defined properties. For example, `properties.prop1`.
+
+##### Operators
+The `when` condition supports the following operators:
+* Arithmetic: +, - (binary), *, / and div, % and mod, - (unary)
+* Logical: and, &&, or, ||, not, !
+* Relational: ==, eq, !=, ne, <, lt, >, gt, <=, ge, >=, le.
+
+##### Functions
+The `when` condition supports the following string manipulation functions
+* toUpperCase(), toLowerCase(): Changes the capitalization of a string.
+* substring(startIndex, length): Gets a subset of a string. 
+
+#### Example 1: KeyValue (KeyValue<AVRO, AVRO>)
+
+```json
+{
+  "key": {
+    "compound": {
+      "uuid": "uuidValue",
+      "timestamp": 1663616014
+    },
+    "value" : {
+      "first" : "f1",
+      "last" : "l1",
+      "rank" : 1,
+      "address" : {
+        "zipcode" : "abc-def"
+      }
+    }
+  }}
+```
+
+| when                                                        | Evaluates to |
+|-------------------------------------------------------------|--------------|
+| `"key.compund.uuid == 'uudValue'"`                          | True         |
+| `"key.compund.timestamp <= 10"`                             | False        |
+| `"value.first == 'f1' && value.last.toUpperCase() == 'L1'`  | True         |
+| `"value.rank <= 1 && value.address.substring(0, 3) == 'abc'` | True         |
+
+#### Example 2: (Primitive string schema with metadata)
+
+* Partition Key: `key1`
+* Source topic: `topic1`
+* User defined k/v: `{"prop1": "p1", "prop2": "p2"}`
+* Payload (String): `Hello world!`
+
+| when                                               | Evaluates to |
+|----------------------------------------------------|--------------|
+| `"messageKey == 'key1' or topicName == 'topic1' "` | True         | 
+| `"value == 'Hello world!'"`                        | True         |
+| `"properties.prop1 == 'p2'"`                       | False        |
 
 ## Deployment
 
