@@ -153,18 +153,20 @@ components:
               enum:
                 - compute-fields
             fields:
-              type: [ array, 'null' ]
+              type: array
+              minItems: 1
               items:
                 type:
                   - object
-                minLength: 1
                 properties:
                   name:
                     type: string
                     description: The name of the field to compute. If the field name already exist, it will be overwritten.
+                    minLength: 1
                   expression:
                     type: string
                     description: An EL-like expression to compute the field value. It can refer to other attributes in the record.
+                    minLength: 1
                   type:
                     type: string
                     description: The data type of the computed fields. It should match with the output of the expression.
@@ -183,8 +185,6 @@ components:
                       - value
                     default: value
                 description: The list of fields to compute
-                message:
-                  minLength: "field name in 'fields' must not be empty"
                 required:
                   - name
                   - expression

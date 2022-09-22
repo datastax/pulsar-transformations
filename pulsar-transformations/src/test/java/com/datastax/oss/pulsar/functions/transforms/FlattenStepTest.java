@@ -278,7 +278,7 @@ public class FlattenStepTest {
 
   private void assertSchemasFlattened(
       GenericData.Record actual, GenericData.Record expected, String delimiter) {
-    assertEquals(actual.getSchema().getFields().size(), 8);
+    assertEquals(actual.getSchema().getFields().size(), 9);
 
     assertField(
         actual.getSchema().getField("level1String"), expected.getSchema().getField("level1String"));
@@ -337,7 +337,7 @@ public class FlattenStepTest {
 
   private void assertValuesFlattened(
       GenericData.Record actual, GenericData.Record expected, String delimiter) {
-    assertEquals(actual.getSchema().getFields().size(), 8);
+    assertEquals(actual.getSchema().getFields().size(), 9);
 
     assertEquals(actual.get("level1String"), new Utf8((String) expected.get("level1String")));
     GenericData.Record expectedL1 = (GenericData.Record) expected.get("level1Record");
