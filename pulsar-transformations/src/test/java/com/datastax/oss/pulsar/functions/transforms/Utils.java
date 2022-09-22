@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -223,6 +224,12 @@ public class Utils {
             org.apache.avro.Schema.create(org.apache.avro.Schema.Type.DOUBLE),
             "doubleDoc",
             5.5D));
+    org.apache.avro.Schema arraySchema =
+        org.apache.avro.Schema.createArray(
+            org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING));
+    fields.add(
+        new org.apache.avro.Schema.Field(
+            "level" + levels + "Array", arraySchema, "arrayDoc", Collections.emptyList()));
     org.apache.avro.Schema.Field stringWithProps =
         new org.apache.avro.Schema.Field(
             "level" + levels + "StringWithProps",
@@ -237,6 +244,9 @@ public class Utils {
     lastLevelRecord.put("level" + levels + "String", "level" + levels + "_" + "1");
     lastLevelRecord.put("level" + levels + "Integer", 9);
     lastLevelRecord.put("level" + levels + "Double", 8.8D);
+    lastLevelRecord.put(
+        "level" + levels + "Array",
+        List.of("level" + levels + "_" + "1", "level" + levels + "_" + "2"));
     lastLevelRecord.put("level" + levels + "StringWithProps", "level" + levels + "_" + "WithProps");
     lastLevelRecord.put("level" + levels + "Union", "level" + levels + "_" + "2");
 

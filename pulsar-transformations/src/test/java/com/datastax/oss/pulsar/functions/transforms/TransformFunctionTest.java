@@ -141,6 +141,14 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
       },
+      {"{'steps': [{'type': 'compute-fields', 'fields': null}]}"},
+      {"{'steps': [{'type': 'compute-fields', 'fields': []}]}"},
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': '', expression: 'double', type: 'DOUBLE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: '', type: 'DOUBLE'}]}]}"
+      },
     };
   }
 
