@@ -26,12 +26,16 @@ public class ComputeField {
   private final String part;
   private final JstlEvaluator evaluator;
 
+  private final boolean optional;
+
   @Builder
-  private ComputeField(String name, JstlEvaluator evaluator, ComputeFieldType type, String part) {
+  private ComputeField(
+      String name, JstlEvaluator evaluator, ComputeFieldType type, String part, boolean optional) {
     this.name = name;
     this.evaluator = evaluator;
     this.type = type;
     this.part = part;
+    this.optional = optional;
   }
 
   public static class ComputeFieldBuilder {
@@ -51,7 +55,7 @@ public class ComputeField {
       } catch (RuntimeException ex) {
         throw new IllegalArgumentException("invalid expression: " + "expression", ex);
       }
-      return new ComputeField(name, evaluator, type, part == null ? "value" : part);
+      return new ComputeField(name, evaluator, type, part == null ? "value" : part, optional);
     }
 
     private Class<?> getJavaType() {

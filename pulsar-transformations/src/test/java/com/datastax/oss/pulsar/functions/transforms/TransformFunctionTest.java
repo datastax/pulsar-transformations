@@ -86,7 +86,7 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'float', type: 'FLOAT'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
       },
     };
   }
@@ -148,6 +148,9 @@ public class TransformFunctionTest {
       },
       {
         "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: '', type: 'DOUBLE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
       },
     };
   }

@@ -307,6 +307,8 @@ public class TransformFunction
                         .expression(it.get("expression").asText())
                         .type(ComputeFieldType.valueOf(it.get("type").asText()))
                         .part(it.get("part") == null ? null : it.get("part").asText())
+                        .optional(
+                            it.get("optional") == null ? false : it.get("optional").asBoolean())
                         .build()));
     return ComputeFieldStep.builder().fields(fieldList).build();
   }
