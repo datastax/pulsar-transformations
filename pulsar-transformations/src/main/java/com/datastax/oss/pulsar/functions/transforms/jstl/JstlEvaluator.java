@@ -25,11 +25,15 @@ import javax.el.ValueExpression;
 
 public class JstlEvaluator<T> {
 
-  private static final ExpressionFactory FACTORY = new ExpressionFactoryImpl();
+  private static final ExpressionFactory FACTORY =
+      new ExpressionFactoryImpl(System.getProperties(), new NullableTypeConverter());
   private final ValueExpression valueExpression;
   private final ELContext expressionContext;
 
+  private final Class<?> type;
+
   public JstlEvaluator(String expression, Class<?> type) {
+    this.type = type;
     this.expressionContext = new SimpleContext();
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
   }

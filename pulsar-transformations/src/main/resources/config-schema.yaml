@@ -177,6 +177,10 @@ components:
                       - FLOAT
                       - DOUBLE
                       - BOOLEAN
+                  optional:
+                    type: boolean
+                    description: If true, the generated schema for the computed field will allow for null values.
+                    default: false
                   part:
                     type: string
                     description: The part of the message to apply the computed fields to. If left empty, the fields will apply to the `value`.

@@ -27,8 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 
 /** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
@@ -83,10 +84,7 @@ public class ComputeFieldStep implements TransformStep {
     org.apache.avro.Schema avroSchema = record.getSchema();
 
     List<Schema.Field> computedFields =
-        fields
-            .stream()
-            .map(f -> new org.apache.avro.Schema.Field(f.getName(), getAvroSchema(f.getType())))
-            .collect(Collectors.toList());
+        fields.stream().map(this::createAvroField).collect(Collectors.toList());
 
     Set<String> computedFieldNames =
         computedFields.stream().map(f -> f.name()).collect(Collectors.toSet());
@@ -114,40 +112,54 @@ public class ComputeFieldStep implements TransformStep {
                     avroSchema.isError(),
                     newFields));
 
-    GenericRecord newRecord = new GenericData.Record(newSchema);
+    GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
     // Add original fields
     for (org.apache.avro.Schema.Field field : avroSchema.getFields()) {
-      newRecord.put(field.name(), record.get(field.name()));
+      newRecordBuilder.set(field.name(), record.get(field.name()));
     }
     // Add computed fields
     for (ComputeField field : fields) {
-      newRecord.put(field.getName(), field.getEvaluator().evaluate(context));
+      newRecordBuilder.set(field.getName(), field.getEvaluator().evaluate(context));
+      ;
     }
-    return newRecord;
+    return newRecordBuilder.build();
+  }
+
+  private Schema.Field createAvroField(ComputeField field) {
+    Schema avroSchema = getAvroSchema(field.getType());
+    Object defaultValue = null;
+    if (field.isOptional()) {
+      avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
+      defaultValue = Schema.Field.NULL_DEFAULT_VALUE;
+    }
+    return new Schema.Field(field.getName(), avroSchema, null, defaultValue);
   }
 
   private Schema getAvroSchema(ComputeFieldType type) {
+    Schema.Type schemaType;
     switch (type) {
       case STRING:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.STRING));
+        schemaType = Schema.Type.STRING;
+        break;
       case INT32:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.INT));
+        schemaType = Schema.Type.INT;
+        break;
       case INT64:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.LONG));
+        schemaType = Schema.Type.LONG;
+        break;
       case FLOAT:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.FLOAT));
+        schemaType = Schema.Type.FLOAT;
+        break;
       case DOUBLE:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.DOUBLE));
+        schemaType = Schema.Type.DOUBLE;
+        break;
       case BOOLEAN:
-        return fieldTypeToAvroSchemaCache.computeIfAbsent(
-            type, (ignored) -> Schema.create(Schema.Type.BOOLEAN));
+        schemaType = Schema.Type.BOOLEAN;
+        break;
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
+
+    return fieldTypeToAvroSchemaCache.computeIfAbsent(type, (ignored) -> Schema.create(schemaType));
   }
 }
