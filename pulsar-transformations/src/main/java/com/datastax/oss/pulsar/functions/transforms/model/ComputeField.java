@@ -16,31 +16,53 @@
 package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+import java.util.Set;
+import javax.el.ELException;
+import lombok.AccessLevel;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 public class ComputeField {
-  private final String name;
-  private final ComputeFieldType type;
-  private final String part;
-  private final JstlEvaluator evaluator;
+  /**
+   * Full field name in the following format: "value.fieldName", "key.fieldName" or "headerName".
+   */
+  @Getter(AccessLevel.NONE)
+  private final String scopedName;
 
+  private final ComputeFieldType type;
+  /** The name of the field without the prefix. */
+  private String name;
+  /**
+   * The scope of the message where the computed field will be applied. Could be "key", "value" or
+   * "header"
+   */
+  private String scope;
+
+  private JstlEvaluator evaluator;
   private final boolean optional;
+  private static final Set<String> validComputeHeaders = Set.of("destinationTopic");
 
   @Builder
-  private ComputeField(
-      String name, JstlEvaluator evaluator, ComputeFieldType type, String part, boolean optional) {
-    this.name = name;
-    this.evaluator = evaluator;
+  private ComputeField(String scopedName, ComputeFieldType type, boolean optional) {
+    this.scopedName = scopedName;
     this.type = type;
-    this.part = part;
     this.optional = optional;
+  }
+
+  private ComputeField(
+      String name, JstlEvaluator evaluator, ComputeFieldType type, String scope, boolean optional) {
+    this(name, type, optional);
+    this.evaluator = evaluator;
+    this.scope = scope;
+    this.name = name;
   }
 
   public static class ComputeFieldBuilder {
     private String expression;
     private JstlEvaluator<Object> evaluator;
+    private String scope;
+    private String name;
 
     public ComputeFieldBuilder expression(String expression) {
       this.expression = expression;
@@ -50,12 +72,31 @@ public class ComputeField {
     public ComputeField build() {
       // Compile the jstl evaluator to validate the expression syntax early on.
       try {
+        this.validateAndParseScopedName();
         this.evaluator =
             new JstlEvaluator<>(String.format("${%s}", this.expression), getJavaType());
-      } catch (RuntimeException ex) {
+      } catch (ELException ex) {
         throw new IllegalArgumentException("invalid expression: " + "expression", ex);
       }
-      return new ComputeField(name, evaluator, type, part == null ? "value" : part, optional);
+      return new ComputeField(name, evaluator, type, scope, optional);
+    }
+
+    private void validateAndParseScopedName() {
+      // If the name is in the [key|value].fieldName format, split the name prefix from the part
+      if (this.scopedName.startsWith("key.") || this.scopedName.startsWith("value.")) {
+        String[] nameParts = this.scopedName.split("\\.", 2);
+        this.scope = nameParts[0];
+        this.name = nameParts[1];
+      } else if (validComputeHeaders.contains(this.scopedName)) {
+        this.scope = "header";
+        this.name = this.scopedName;
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid compute field name: %s. "
+                    + "It should be prefixed with 'key.' or 'value.' or be one of %s",
+                this.scopedName, validComputeHeaders));
+      }
     }
 
     private Class<?> getJavaType() {

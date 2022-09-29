@@ -303,12 +303,11 @@ public class TransformFunction
             it ->
                 fieldList.add(
                     ComputeField.builder()
-                        .name(it.get("name").asText())
+                        .scopedName(it.get("name").asText())
                         .expression(it.get("expression").asText())
                         .type(ComputeFieldType.valueOf(it.get("type").asText()))
-                        .part(it.get("part") == null ? null : it.get("part").asText())
                         .optional(
-                            it.get("optional") == null ? false : it.get("optional").asBoolean())
+                            it.get("optional") == null ? true : it.get("optional").asBoolean())
                         .build()));
     return ComputeFieldStep.builder().fields(fieldList).build();
   }

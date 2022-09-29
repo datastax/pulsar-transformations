@@ -19,23 +19,41 @@ import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import de.odysseus.el.ExpressionFactoryImpl;
 import de.odysseus.el.util.SimpleContext;
 import java.util.Map;
-import javax.el.ELContext;
 import javax.el.ExpressionFactory;
 import javax.el.ValueExpression;
+import lombok.SneakyThrows;
 
 public class JstlEvaluator<T> {
+
+  static {
+    // Disable method invocation: https://juel.sourceforge.net/guide/advanced/index.html
+    System.setProperty("javax.el.methodInvocations", "false");
+  }
 
   private static final ExpressionFactory FACTORY =
       new ExpressionFactoryImpl(System.getProperties(), new NullableTypeConverter());
   private final ValueExpression valueExpression;
-  private final ELContext expressionContext;
+  private final SimpleContext expressionContext;
 
   private final Class<?> type;
 
   public JstlEvaluator(String expression, Class<?> type) {
     this.type = type;
     this.expressionContext = new SimpleContext();
+    registerFunctions(this.expressionContext);
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
+  }
+
+  @SneakyThrows
+  private void registerFunctions(SimpleContext expressionContext) {
+    this.expressionContext.setFunction(
+        "fn", "uppercase", JstlFunctions.class.getMethod("uppercase", String.class));
+    this.expressionContext.setFunction(
+        "fn", "lowercase", JstlFunctions.class.getMethod("lowercase", String.class));
+    this.expressionContext.setFunction(
+        "fn", "contains", JstlFunctions.class.getMethod("contains", String.class, String.class));
+    this.expressionContext.setFunction(
+        "fn", "coalesce", JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
   }
 
   public T evaluate(TransformContext transformContext) {

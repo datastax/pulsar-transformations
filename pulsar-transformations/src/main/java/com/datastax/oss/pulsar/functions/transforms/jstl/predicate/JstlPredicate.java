@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms.jstl.predicate;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+import javax.el.ELException;
 import javax.el.PropertyNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +30,7 @@ public class JstlPredicate implements TransformPredicate {
     try {
       final String expression = String.format("${%s}", when);
       this.evaluator = new JstlEvaluator<>(expression, boolean.class);
-    } catch (RuntimeException ex) {
+    } catch (ELException ex) {
       throw new IllegalArgumentException("invalid when: " + when, ex);
     }
   }
