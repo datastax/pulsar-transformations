@@ -158,7 +158,7 @@ public abstract class AbstractDockerTest {
                     + "{'steps': ["
                     + "    {'type': 'unwrap-key-value'},"
                     + "    {'type': 'drop-fields', 'fields': ['a']},"
-                    + "    {'type': 'compute-fields', 'fields': [{'name': 'c', 'expression' :'%s', 'type' : 'STRING'}]}"
+                    + "    {'type': 'compute-fields', 'fields': [{'name': 'value.c', 'expression' :'%s', 'type' : 'STRING'}]}"
                     + "]}")
                 .replace("'", "\""),
             expression);
@@ -181,8 +181,8 @@ public abstract class AbstractDockerTest {
                     + "{'steps': ["
                     + "    {'type': 'drop-fields', 'fields': ['a','c']},"
                     + "    {'type': 'compute-fields', 'fields': ["
-                    + "        {'name': 'k', 'expression' :'%s', 'type' : 'STRING', 'part' : 'key'},"
-                    + "        {'name': 'v', 'expression' :'%s', 'type' : 'STRING', 'part' : 'value'}]}"
+                    + "        {'name': 'key.k', 'expression' :'%s', 'type' : 'STRING'},"
+                    + "        {'name': 'value.v', 'expression' :'%s', 'type' : 'STRING'}]}"
                     + "]}")
                 .replace("'", "\""),
             keyExpression,

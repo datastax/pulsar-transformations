@@ -15,6 +15,10 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -276,6 +280,37 @@ public class Utils {
     List<Field> pulsarFields =
         fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
+  }
+
+  static void assertOptionalField(
+      GenericData.Record record,
+      String fieldName,
+      org.apache.avro.Schema.Type expectedType,
+      Object expectedValue) {
+    assertTrue(record.hasField(fieldName));
+    org.apache.avro.Schema.Field field = record.getSchema().getField(fieldName);
+    assertTrue(field.schema().isNullable());
+    assertEquals(field.defaultVal(), org.apache.avro.Schema.NULL_VALUE);
+    assertTrue(field.schema().isUnion());
+    org.apache.avro.Schema nullSchema = field.schema().getTypes().get(0);
+    assertEquals(nullSchema.getType(), org.apache.avro.Schema.Type.NULL);
+    org.apache.avro.Schema typedSchema = field.schema().getTypes().get(1);
+    assertEquals(typedSchema.getType(), expectedType);
+    assertEquals(record.get(fieldName), expectedValue);
+  }
+
+  static void assertNonOptionalField(
+      GenericData.Record record,
+      String fieldName,
+      org.apache.avro.Schema.Type expectedType,
+      Object expectedValue) {
+    assertTrue(record.hasField(fieldName));
+    org.apache.avro.Schema.Field field = record.getSchema().getField(fieldName);
+    assertFalse(field.schema().isNullable());
+    assertEquals(field.defaultVal(), null);
+    assertFalse(field.schema().isUnion());
+    assertEquals(field.schema().getType(), expectedType);
+    assertEquals(record.get(fieldName), expectedValue);
   }
 
   @Builder

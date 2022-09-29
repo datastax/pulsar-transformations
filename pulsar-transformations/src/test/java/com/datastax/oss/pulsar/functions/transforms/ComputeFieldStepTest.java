@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.Utils.assertOptionalField;
 import static org.apache.avro.Schema.Type.BOOLEAN;
 import static org.apache.avro.Schema.Type.DOUBLE;
 import static org.apache.avro.Schema.Type.FLOAT;
@@ -46,6 +47,7 @@ import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 public class ComputeFieldStepTest {
@@ -70,10 +72,10 @@ public class ComputeFieldStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    List<ComputeField> fields = buildComputeFields(false, false);
+    List<ComputeField> fields = buildComputeFields("value", false, false);
     fields.add(
         ComputeField.builder()
-            .name("age")
+            .scopedName("value.age")
             .expression("value.age + 1")
             .type(ComputeFieldType.STRING)
             .build());
@@ -130,7 +132,7 @@ public class ComputeFieldStepTest {
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
-                        .name("newLongField")
+                        .scopedName("value.newLongField")
                         .expression("null")
                         .optional(false)
                         .type(ComputeFieldType.INT64)
@@ -152,7 +154,7 @@ public class ComputeFieldStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     ComputeFieldStep step =
-        ComputeFieldStep.builder().fields(buildComputeFields(true, false)).build();
+        ComputeFieldStep.builder().fields(buildComputeFields("value", true, false)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -181,7 +183,7 @@ public class ComputeFieldStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     ComputeFieldStep step =
-        ComputeFieldStep.builder().fields(buildComputeFields(true, true)).build();
+        ComputeFieldStep.builder().fields(buildComputeFields("value", true, true)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -203,16 +205,14 @@ public class ComputeFieldStepTest {
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
-                        .name("newValueStringField")
+                        .scopedName("value.newValueStringField")
                         .expression("'Hotaru'")
                         .type(ComputeFieldType.STRING)
-                        .part("value")
                         .build(),
                     ComputeField.builder()
-                        .name("newKeyStringField")
+                        .scopedName("key.newKeyStringField")
                         .expression("'Hotaru'")
                         .type(ComputeFieldType.STRING)
-                        .part("key")
                         .build()))
             .build();
 
@@ -260,7 +260,7 @@ public class ComputeFieldStepTest {
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
-                        .name("newField")
+                        .scopedName("value.newField")
                         .expression("newValue")
                         .type(ComputeFieldType.STRING)
                         .build()))
@@ -290,15 +290,14 @@ public class ComputeFieldStepTest {
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
-                        .name("newField")
+                        .scopedName("value.newField")
                         .expression("newValue")
                         .type(ComputeFieldType.STRING)
                         .build(),
                     ComputeField.builder()
-                        .name("newField")
+                        .scopedName("key.newField")
                         .expression("newValue")
                         .type(ComputeFieldType.STRING)
-                        .part("key")
                         .build()))
             .build();
 
@@ -314,70 +313,91 @@ public class ComputeFieldStepTest {
     assertSame(messageValue.getValue(), recordValue.getValue());
   }
 
+  @Test(dataProvider = "destinationTopicProvider")
+  void testAvroDestinationTopicChange(String topic) throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
+
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .schema(genericSchema)
+            .value(genericRecord)
+            .destinationTopic(topic)
+            .build();
+
+    List<ComputeField> fields = buildComputeFields("value", false, false);
+    fields.add(
+        ComputeField.builder()
+            .scopedName("destinationTopic")
+            .expression("destinationTopic == 'targetTopic' ? 'route' : 'dont-route'")
+            .type(ComputeFieldType.STRING)
+            .build());
+    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+
+    assertEquals(
+        outputRecord.getDestinationTopic().get(),
+        topic.equals("targetTopic") ? "route" : "dont-route");
+    assertEquals(read.get("firstName"), new Utf8("Jane"));
+  }
+
+  @DataProvider(name = "destinationTopicProvider")
+  public static Object[] destinationTopicProvider() {
+    return new Object[] {"targetTopic", "randomTopic"};
+  }
+
   private void assertOptionalFieldNull(
-      GenericData.Record record,
-      String fieldName,
-      org.apache.avro.Schema.Type expectedType) {
+      GenericData.Record record, String fieldName, org.apache.avro.Schema.Type expectedType) {
     assertOptionalField(record, fieldName, expectedType, null);
   }
 
-  private void assertOptionalField(
-      GenericData.Record record,
-      String fieldName,
-      org.apache.avro.Schema.Type expectedType,
-      Object expectedValue) {
-    assertTrue(record.hasField(fieldName));
-    org.apache.avro.Schema.Field field = record.getSchema().getField(fieldName);
-    assertTrue(field.schema().isNullable());
-    assertEquals(field.defaultVal(), org.apache.avro.Schema.NULL_VALUE);
-    assertTrue(field.schema().isUnion());
-    org.apache.avro.Schema nullSchema = field.schema().getTypes().get(0);
-    assertEquals(nullSchema.getType(), org.apache.avro.Schema.Type.NULL);
-    org.apache.avro.Schema typedSchema = field.schema().getTypes().get(1);
-    assertEquals(typedSchema.getType(), expectedType);
-    assertEquals(record.get(fieldName), expectedValue);
-  }
-
-  private List<ComputeField> buildComputeFields(boolean optional, boolean nullify) {
+  private List<ComputeField> buildComputeFields(String scope, boolean optional, boolean nullify) {
     List<ComputeField> fields = new ArrayList<>();
     fields.add(
         ComputeField.builder()
-            .name("newStringField")
+            .scopedName(scope + "." + "newStringField")
             .expression(nullify ? "null" : "'Hotaru'")
             .optional(optional)
             .type(ComputeFieldType.STRING)
             .build());
     fields.add(
         ComputeField.builder()
-            .name("newInt32Field")
+            .scopedName(scope + "." + "newInt32Field")
             .expression(nullify ? "null" : "2147483647")
             .optional(optional)
             .type(ComputeFieldType.INT32)
             .build());
     fields.add(
         ComputeField.builder()
-            .name("newInt64Field")
+            .scopedName(scope + "." + "newInt64Field")
             .expression(nullify ? "null" : "9223372036854775807")
             .optional(optional)
             .type(ComputeFieldType.INT64)
             .build());
     fields.add(
         ComputeField.builder()
-            .name("newFloatField")
+            .scopedName(scope + "." + "newFloatField")
             .expression(nullify ? "null" : "340282346638528859999999999999999999999.999999")
             .optional(optional)
             .type(ComputeFieldType.FLOAT)
             .build());
     fields.add(
         ComputeField.builder()
-            .name("newDoubleField")
+            .scopedName(scope + "." + "newDoubleField")
             .expression(nullify ? "null" : "1.79769313486231570e+308")
             .optional(optional)
             .type(ComputeFieldType.DOUBLE)
             .build());
     fields.add(
         ComputeField.builder()
-            .name("newBooleanField")
+            .scopedName(scope + "." + "newBooleanField")
             .expression(nullify ? "null" : "1 == 1")
             .optional(optional)
             .type(ComputeFieldType.BOOLEAN)

@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.Utils.assertNonOptionalField;
+import static com.datastax.oss.pulsar.functions.transforms.Utils.assertOptionalField;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 import static org.testng.AssertJUnit.assertNull;
@@ -71,22 +73,25 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'delimiter': null, 'part': null, 'when': null}]}"},
       {"{'steps': [{'type': 'drop', 'when': null}]}"},
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'string', type: 'STRING', part: 'key'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'string', type: 'STRING'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'value'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'int32', type: 'INT32'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int64', type: 'INT64'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'int64', type: 'INT64'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'float', type: 'FLOAT'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'float', type: 'FLOAT'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
       },
     };
   }
@@ -126,20 +131,31 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': ''}]}"},
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'record', type: 'AVRO'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'json', type: 'JSON', part: 'key'}]}]}"
+        "{'steps': [{'type': 'value,compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'non-key-or-value'}]}]}"
-      },
-      {"{'steps': [{'type': 'compute-fields', 'fields': [{expression: 'int64', type: 'INT64'}]}]}"},
-      {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', type: 'FLOAT'}]}]}"
+        "{'steps': [{'type': 'key,compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'record', type: 'AVRO'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'json', type: 'JSON', part: 'key'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'non-key-or-value'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{expression: 'int64', type: 'INT64'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', type: 'FLOAT'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
       },
       {"{'steps': [{'type': 'compute-fields', 'fields': null}]}"},
       {"{'steps': [{'type': 'compute-fields', 'fields': []}]}"},
@@ -147,10 +163,10 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute-fields', 'fields': [{'name': '', expression: 'double', type: 'DOUBLE'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: '', type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: '', type: 'DOUBLE'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
       },
     };
   }
@@ -209,10 +225,10 @@ public class TransformFunctionTest {
         (""
                 + "{'steps': ["
                 + "    {'type': 'compute-fields', 'fields':["
-                + "        {'name': 'newField1', 'expression' : '5*3', 'type': 'INT32', 'part' : 'key'},"
-                + "        {'name': 'newField2', 'expression' : 'value.valueField1.toUpperCase()', 'type': 'STRING', 'part' : 'key'},"
-                + "        {'name': 'newField1', 'expression' : '5+3', 'type': 'INT32', 'part' : 'value'},"
-                + "        {'name': 'newField2', 'expression' : 'value.valueField1.substring(0,5)', 'type': 'STRING'}]}"
+                + "        {'name': 'key.newField1', 'expression' : '5*3', 'type': 'INT32'},"
+                + "        {'name': 'key.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false},"
+                + "        {'name': 'value.newField1', 'expression' : '5+3', 'type': 'INT32'},"
+                + "        {'name': 'value.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false}]}"
                 + "]}")
             .replace("'", "\"");
 
@@ -233,16 +249,18 @@ public class TransformFunctionTest {
     assertEquals(keyAvroRecord.get("keyField1"), new Utf8("key1"));
     assertEquals(keyAvroRecord.get("keyField2"), new Utf8("key2"));
     assertEquals(keyAvroRecord.get("keyField3"), new Utf8("key3"));
-    assertEquals(keyAvroRecord.get("newField1"), 15);
-    assertEquals(keyAvroRecord.get("newField2"), new Utf8("VALUE1"));
+    assertOptionalField(keyAvroRecord, "newField1", org.apache.avro.Schema.Type.INT, 15);
+    assertNonOptionalField(
+        keyAvroRecord, "newField2", org.apache.avro.Schema.Type.STRING, new Utf8("value1"));
 
     GenericData.Record valueAvroRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(valueAvroRecord.get("valueField1"), new Utf8("value1"));
     assertEquals(valueAvroRecord.get("valueField2"), new Utf8("value2"));
     assertEquals(valueAvroRecord.get("valueField3"), new Utf8("value3"));
-    assertEquals(valueAvroRecord.get("newField1"), 8);
-    assertEquals(valueAvroRecord.get("newField2"), new Utf8("value"));
+    assertOptionalField(valueAvroRecord, "newField1", org.apache.avro.Schema.Type.INT, 8);
+    assertNonOptionalField(
+        valueAvroRecord, "newField2", org.apache.avro.Schema.Type.STRING, new Utf8("value1"));
   }
 
   @Test

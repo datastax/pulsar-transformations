@@ -44,6 +44,22 @@ public class JstlPredicateTest {
     assertTrue(predicate.test(transformContext) == match);
   }
 
+  @Test(
+    expectedExceptions = IllegalArgumentException.class,
+    expectedExceptionsMessageRegExp = "invalid when:.*",
+    dataProvider = "invalidWhenProvider"
+  )
+  void testInvalidWhen(String when) {
+    JstlPredicate predicate = new JstlPredicate(when);
+
+    Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(2);
+    Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
+    TransformContext transformContext =
+        new TransformContext(context, record.getValue().getNativeObject());
+
+    predicate.test(transformContext);
+  }
+
   @Test(dataProvider = "primitiveKeyValuePredicates")
   void testPrimitiveKeyValueAvro(String when, TransformContext context, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
@@ -131,10 +147,6 @@ public class JstlPredicateTest {
     return new Object[][] {
       // match
       {"value=='test-message'", primitiveStringContext, true},
-      {"value.contains('test')", primitiveStringContext, true},
-      {"value.toUpperCase() == 'TEST-MESSAGE'", primitiveStringContext, true},
-      {"value.toUpperCase().toLowerCase() == 'test-message'", primitiveStringContext, true},
-      {"value.substring(0, 4) == 'test'", primitiveStringContext, true},
       {"messageKey=='header-key'", primitiveStringContext, true},
       {"value==33", primitiveIntContext, true},
       {"value eq 33", primitiveIntContext, true},
@@ -155,7 +167,6 @@ public class JstlPredicateTest {
       {"key=='key' && messageKey=='header-key'", primitiveKVContext, true},
       // no-match
       {"value=='test-message-'", primitiveStringContext, false},
-      {"value.contains('random')", primitiveStringContext, false},
       {"messageKey!='header-key'", primitiveStringContext, false},
       {"messageKey ne 'header-key'", primitiveStringContext, false},
       {"value==34", primitiveIntContext, false},
@@ -252,13 +263,9 @@ public class JstlPredicateTest {
       {"key.level1Record.level2Integer == 9", true},
       {"key.level1Record.level2Double == 8.8", true},
       {"key.level1Record.level2Array[0] == 'level2_1'", true},
-      {"key.level1Record.level2Array.contains('level2_2')", true},
-      {"value.level1String.contains('level1')", true},
-      {"value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'", true},
       {"value.level1Record.level2Integer > 8", true},
       {"value.level1Record.level2Double < 8.9", true},
       {"value.level1Record.level2Array[0] == 'level2_1'", true},
-      {"value.level1Record.level2Array.contains('level2_1')", true},
       {"messageKey == 'key1'", true},
       {"destinationTopic == 'dest-topic-1'", true},
       {"topicName == 'topic-1'", true},
@@ -271,41 +278,36 @@ public class JstlPredicateTest {
       {"key.level1Record.level2Double < 8.8", false},
       {"key.level1Record.level2Array[0] == 'non_existing_item'", false},
       {"key.randomKey == 'k1'", false},
-      {"value.level1String.contains('level2')", false},
-      {"value.level1Record.level2String.toUpperCase() == 'LeVEL2_1'", false},
       {"value.level1Record.level2Integer > 10", false},
       {"value.level1Record.level2Double < 0", false},
-      {"value.level1Record.level2Array.contains('non_existing_item')", false},
       {"value.randomValue < 0", false},
       {"messageKey == 'key2'", false},
       {"topicName != 'topic-1'", false},
-      {"properties.p1.substring(0,1) == 'v1'", false},
       {"properties.p2 == 'v3'", false},
-      {"randomHeader == 'h1'", false},
-      // complex
+      {"randomHeader == 'h1'", false}
+    };
+  }
+
+  /** @return {"expression"} */
+  @DataProvider(name = "invalidWhenProvider")
+  public static Object[][] invalidWhenProvider() {
+    return new Object[][] {
+      {"value.level1String.contains('level1')"},
+      {"value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'"},
+      {"value.level1Record.level2Array.contains('level2_1')"},
+      {"value.level1String.contains('level2')"},
+      {"value.level1Record.level2String.toUpperCase() == 'LeVEL2_1'"},
+      {"value.level1Record.level2Array.contains('non_existing_item')"},
+      {"properties.p1.substring(0,1) == 'v1'"},
       {
         "properties.p1.toUpperCase() == 'V1' && messageKey == 'key1' && topicName == 'topic-1' && "
-            + "destinationTopic == 'dest-topic-1'",
-        true
+            + "destinationTopic == 'dest-topic-1'"
       },
       {
         "key.level1String == 'level1_1' || key.level1Record.level2String == 'random' || "
             + " key.level1Record.level2Integer == 5 || key.level1Record.level2Double != 8.8 || "
-            + "value.level1String.contains('level1')",
-        true
-      },
-      {
-        "key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
-            + " key.level1Record.level2Integer == 9 && key.level1Record.level2Double != 8.8} && "
-            + "value.level1String.contains('level1')",
-        false
-      },
-      {
-        "key.level1String == 'level1_1' && key.level1Record.level2String == 'level2_1' && "
-            + " key.level1Record.level2Integer == 9 && key.level1Record.level2Double != 8.8} && "
-            + "value.level1String.contains('level1')",
-        false
-      },
+            + "value.level1String.contains('level1')"
+      }
     };
   }
 }

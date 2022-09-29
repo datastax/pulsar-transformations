@@ -19,23 +19,28 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
 import lombok.Builder;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
-/** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
+/**
+ * Computes a field dynamically based on JSTL expressions and adds it to the key or the value .
+ */
 @Builder
 public class ComputeFieldStep implements TransformStep {
 
-  @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
+  @Builder.Default
+  private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
       new ConcurrentHashMap<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =
@@ -46,10 +51,13 @@ public class ComputeFieldStep implements TransformStep {
   @Override
   public void process(TransformContext transformContext) {
     computeKeyFields(
-        fields.stream().filter(f -> "key".equals(f.getPart())).collect(Collectors.toList()),
+        fields.stream().filter(f -> "key".equals(f.getScope())).collect(Collectors.toList()),
         transformContext);
     computeValueFields(
-        fields.stream().filter(f -> "value".equals(f.getPart())).collect(Collectors.toList()),
+        fields.stream().filter(f -> "value".equals(f.getScope())).collect(Collectors.toList()),
+        transformContext);
+    computeHeaderFields(
+        fields.stream().filter(f -> "header".equals(f.getScope())).collect(Collectors.toList()),
         transformContext);
   }
 
@@ -74,6 +82,32 @@ public class ComputeFieldStep implements TransformStep {
       }
       context.setKeyObject(newRecord);
     }
+  }
+
+  public void computeHeaderFields(List<ComputeField> fields, TransformContext context) {
+    fields.forEach(
+        field -> {
+          switch (field.getName()) {
+            case "destinationTopic":
+              String topic = validateAndGetString(field, context);
+              context.setOutputTopic(topic);
+              break;
+            default:
+              throw new IllegalArgumentException("Invalid compute field name: " + field.getName());
+          }
+        });
+  }
+
+  private String validateAndGetString(ComputeField field, TransformContext context) {
+    Object value = field.getEvaluator().evaluate(context);
+    if (value instanceof String) {
+      return (String) value;
+    }
+
+    throw new IllegalArgumentException(
+        String.format(
+            "Invalid compute field type. " + "Name: %s, Type: %s, Expected Type: %s",
+            field.getName(), value == null ? "null" : value.getClass().getSimpleName(), "String"));
   }
 
   private GenericRecord computeFields(
