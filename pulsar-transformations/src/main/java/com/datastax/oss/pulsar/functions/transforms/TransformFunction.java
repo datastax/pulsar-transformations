@@ -17,12 +17,18 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
-import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.TransformPredicate;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
-import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeFieldsConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
@@ -114,6 +120,7 @@ public class TransformFunction
   public void initialize(Context context) {
     Map<String, Object> userConfigMap = context.getUserConfigMap();
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+    mapper.registerModule(new Jdk8Module()); // Adds support for java.util.Optional
     JsonNode jsonNode = mapper.convertValue(userConfigMap, JsonNode.class);
 
     URNFactory urnFactory =
@@ -184,37 +191,35 @@ public class TransformFunction
     }
 
     TransformStep transformStep;
-    for (JsonNode node : jsonNode.get("steps")) {
-      TransformPredicate predicate = null;
-      if (node.hasNonNull("when")) {
-        predicate = new JstlPredicate(node.get("when").asText());
-      }
-      String type = node.get("type").asText();
-      switch (type) {
+
+    TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
+    for (StepConfig step : config.getSteps()) {
+      switch (step.getType()) {
         case "drop-fields":
-          transformStep = newRemoveFieldFunction(node);
+          transformStep = newRemoveFieldFunction((DropFieldsConfig) step);
           break;
         case "cast":
-          transformStep = newCastFunction(node);
+          transformStep = newCastFunction((CastConfig) step);
           break;
         case "merge-key-value":
           transformStep = new MergeKeyValueStep();
           break;
         case "unwrap-key-value":
-          transformStep = newUnwrapKeyValueFunction(node);
+          transformStep = newUnwrapKeyValueFunction((UnwrapKeyValueConfig) step);
           break;
         case "flatten":
-          transformStep = newFlattenFunction(node);
+          transformStep = newFlattenFunction((FlattenConfig) step);
           break;
         case "drop":
           transformStep = new DropStep();
           break;
         case "compute-fields":
-          transformStep = newComputeFieldFunction(node);
+          transformStep = newComputeFieldFunction((ComputeFieldsConfig) step);
           break;
         default:
-          throw new IllegalArgumentException("Invalid step type: " + type);
+          throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
+      JstlPredicate predicate = step.getWhen().map(JstlPredicate::new).orElse(null);
       steps.add(new StepPredicatePair(transformStep, predicate));
     }
   }
@@ -252,68 +257,64 @@ public class TransformFunction
     return Pattern.compile("(?:^|-)(.)").matcher(kebab).replaceAll(mr -> mr.group(1).toUpperCase());
   }
 
-  public static DropFieldStep newRemoveFieldFunction(JsonNode node) {
+  public static DropFieldStep newRemoveFieldFunction(DropFieldsConfig config) {
     DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
-    List<String> fieldList = new ArrayList<>();
-    node.get("fields").iterator().forEachRemaining(it -> fieldList.add(it.asText()));
-    if (node.hasNonNull("part")) {
-      if (node.get("part").asText().equals("key")) {
-        builder.keyFields(fieldList);
-      } else {
-        builder.valueFields(fieldList);
-      }
-    } else {
-      builder.keyFields(fieldList).valueFields(fieldList);
-    }
-    return builder.build();
+    return config
+        .getPart()
+        .map(
+            part -> {
+              if (part.equals("key")) {
+                return builder.keyFields(config.getFields());
+              } else {
+                return builder.valueFields(config.getFields());
+              }
+            })
+        .orElseGet(() -> builder.keyFields(config.getFields()).valueFields(config.getFields()))
+        .build();
   }
 
-  public static CastStep newCastFunction(JsonNode node) {
-    String schemaTypeParam = node.get("schema-type").asText();
+  public static CastStep newCastFunction(CastConfig config) {
+    String schemaTypeParam = config.getSchemaType();
     SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
     CastStep.CastStepBuilder builder = CastStep.builder();
-    if (node.hasNonNull("part")) {
-      if (node.get("part").asText().equals("key")) {
-        builder.keySchemaType(schemaType);
-      } else {
-        builder.valueSchemaType(schemaType);
-      }
-    } else {
-      builder.keySchemaType(schemaType).valueSchemaType(schemaType);
-    }
-    return builder.build();
+    return config
+        .getPart()
+        .map(
+            part -> {
+              if (part.equals("key")) {
+                return builder.keySchemaType(schemaType);
+              } else {
+                return builder.valueSchemaType(schemaType);
+              }
+            })
+        .orElseGet(() -> builder.keySchemaType(schemaType).valueSchemaType(schemaType))
+        .build();
   }
 
-  public static FlattenStep newFlattenFunction(JsonNode node) {
+  public static FlattenStep newFlattenFunction(FlattenConfig config) {
     FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    if (node.hasNonNull("part")) {
-      builder.part(node.get("part").asText());
-    }
-    if (node.hasNonNull("delimiter")) {
-      builder.delimiter(node.get("delimiter").asText());
-    }
+    config.getPart().ifPresent(builder::part);
+    config.getDelimiter().ifPresent(builder::delimiter);
     return builder.build();
   }
 
-  private static TransformStep newComputeFieldFunction(JsonNode node) {
+  private static TransformStep newComputeFieldFunction(ComputeFieldsConfig config) {
     List<ComputeField> fieldList = new ArrayList<>();
-    node.get("fields")
-        .iterator()
-        .forEachRemaining(
-            it ->
+    config
+        .getFields()
+        .forEach(
+            field ->
                 fieldList.add(
                     ComputeField.builder()
-                        .scopedName(it.get("name").asText())
-                        .expression(it.get("expression").asText())
-                        .type(ComputeFieldType.valueOf(it.get("type").asText()))
-                        .optional(
-                            it.get("optional") == null ? true : it.get("optional").asBoolean())
+                        .scopedName(field.getName())
+                        .expression(field.getExpression())
+                        .type(field.getType())
+                        .optional(field.isOptional())
                         .build()));
     return ComputeFieldStep.builder().fields(fieldList).build();
   }
 
-  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(JsonNode node) {
-    return new UnwrapKeyValueStep(
-        node.hasNonNull("unwrap-key") && node.get("unwrap-key").asBoolean());
+  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
+    return new UnwrapKeyValueStep(config.isUnwrapKey());
   }
 }
