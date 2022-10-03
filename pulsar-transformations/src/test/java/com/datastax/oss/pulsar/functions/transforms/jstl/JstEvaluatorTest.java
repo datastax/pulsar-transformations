@@ -83,13 +83,22 @@ public class JstEvaluatorTest {
     return new Object[][] {
       {"fn:uppercase('test')", primitiveStringContext, "TEST"},
       {"fn:uppercase(value) == 'TEST-MESSAGE'", primitiveStringContext, true},
+      {"fn:uppercase(null)", primitiveStringContext, null},
       {"fn:lowercase('TEST')", primitiveStringContext, "test"},
       {"fn:lowercase(value) == 'test-message'", primitiveStringContext, true},
       {"fn:lowercase(fn:uppercase(value)) == 'test-message'", primitiveStringContext, true},
       {"fn:lowercase(fn:coalesce(null, 'another-value'))", primitiveStringContext, "another-value"},
       {"fn:lowercase(fn:coalesce('value', 'another-value'))", primitiveStringContext, "value"},
+      {"fn:lowercase(null)", primitiveStringContext, null},
       {"fn:contains(value, 'test')", primitiveStringContext, true},
       {"fn:contains(value, 'random')", primitiveStringContext, false},
+      {"fn:contains(null, 'random')", primitiveStringContext, false},
+      {"fn:contains(value, null)", primitiveStringContext, false},
+      {"fn:trim('    trimmed      ')", primitiveStringContext, "trimmed"},
+      {"fn:trim(null)", primitiveStringContext, null},
+      {"fn:concat(value, '-suffix')", primitiveStringContext, "test-message-suffix"},
+      {"fn:concat(value, null)", primitiveStringContext, "test-message"},
+      {"fn:concat(null, '-suffix')", primitiveStringContext, "-suffix"},
     };
   }
 }
