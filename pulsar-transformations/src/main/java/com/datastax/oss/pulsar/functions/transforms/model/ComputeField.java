@@ -41,7 +41,7 @@ public class ComputeField {
 
   private JstlEvaluator evaluator;
   private final boolean optional;
-  private static final Set<String> validComputeHeaders = Set.of("destinationTopic");
+  private static final Set<String> validComputeHeaders = Set.of("destinationTopic", "messageKey");
 
   @Builder
   private ComputeField(String scopedName, ComputeFieldType type, boolean optional) {
