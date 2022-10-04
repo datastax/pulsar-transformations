@@ -47,11 +47,15 @@ public class JstlEvaluator<T> {
   @SneakyThrows
   private void registerFunctions(SimpleContext expressionContext) {
     this.expressionContext.setFunction(
-        "fn", "uppercase", JstlFunctions.class.getMethod("uppercase", String.class));
+        "fn", "uppercase", JstlFunctions.class.getMethod("uppercase", Object.class));
     this.expressionContext.setFunction(
-        "fn", "lowercase", JstlFunctions.class.getMethod("lowercase", String.class));
+        "fn", "lowercase", JstlFunctions.class.getMethod("lowercase", Object.class));
     this.expressionContext.setFunction(
-        "fn", "contains", JstlFunctions.class.getMethod("contains", String.class, String.class));
+        "fn", "contains", JstlFunctions.class.getMethod("contains", Object.class, Object.class));
+    this.expressionContext.setFunction(
+        "fn", "trim", JstlFunctions.class.getMethod("trim", Object.class));
+    this.expressionContext.setFunction(
+        "fn", "concat", JstlFunctions.class.getMethod("concat", Object.class, Object.class));
     this.expressionContext.setFunction(
         "fn", "coalesce", JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
   }

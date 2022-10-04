@@ -19,28 +19,23 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
 import lombok.Builder;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 
-/**
- * Computes a field dynamically based on JSTL expressions and adds it to the key or the value .
- */
+/** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
 public class ComputeFieldStep implements TransformStep {
 
-  @Builder.Default
-  private final List<ComputeField> fields = new ArrayList<>();
+  @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
       new ConcurrentHashMap<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =

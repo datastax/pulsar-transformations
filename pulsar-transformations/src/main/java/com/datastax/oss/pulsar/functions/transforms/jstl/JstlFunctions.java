@@ -15,19 +15,31 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 public class JstlFunctions {
 
-  public static String uppercase(String input) {
-    return input.toUpperCase();
+  public static String uppercase(Object input) {
+    return input == null ? null : input.toString().toUpperCase();
   }
 
-  public static String lowercase(String input) {
-    return input.toLowerCase();
+  public static String lowercase(Object input) {
+    return input == null ? null : input.toString().toLowerCase();
   }
 
-  public static boolean contains(String input, String value) {
-    return input.contains(value);
+  public static boolean contains(Object input, Object value) {
+    if (input == null || value == null) {
+      return false;
+    }
+    return input.toString().contains(value.toString());
+  }
+
+  public static String trim(Object input) {
+    return input == null ? null : input.toString().trim();
+  }
+
+  public static String concat(Object first, Object second) {
+    return (first == null ? "" : first.toString()) + (second == null ? "" : second.toString());
   }
 
   public static Object coalesce(Object value, Object valueIfNull) {
