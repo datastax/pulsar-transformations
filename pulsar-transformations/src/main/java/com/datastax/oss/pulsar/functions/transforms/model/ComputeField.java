@@ -16,6 +16,9 @@
 package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Set;
 import javax.el.ELException;
 import lombok.AccessLevel;
@@ -117,6 +120,12 @@ public class ComputeField {
           return double.class;
         case BOOLEAN:
           return boolean.class;
+        case DATE:
+          return LocalDate.class;
+        case TIME:
+          return LocalTime.class;
+        case DATETIME:
+          return LocalDateTime.class;
         default:
           throw new UnsupportedOperationException("Unsupported compute field type: " + type);
       }

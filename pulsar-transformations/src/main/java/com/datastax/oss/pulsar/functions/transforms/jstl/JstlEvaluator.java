@@ -31,7 +31,7 @@ public class JstlEvaluator<T> {
   }
 
   private static final ExpressionFactory FACTORY =
-      new ExpressionFactoryImpl(System.getProperties(), new NullableTypeConverter());
+      new ExpressionFactoryImpl(System.getProperties(), new CustomTypeConverter());
   private final ValueExpression valueExpression;
   private final SimpleContext expressionContext;
 
@@ -58,6 +58,11 @@ public class JstlEvaluator<T> {
         "fn", "concat", JstlFunctions.class.getMethod("concat", Object.class, Object.class));
     this.expressionContext.setFunction(
         "fn", "coalesce", JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
+    this.expressionContext.setFunction("fn", "now", JstlFunctions.class.getMethod("now"));
+    this.expressionContext.setFunction(
+        "fn",
+        "dateadd",
+        JstlFunctions.class.getMethod("dateadd", Object.class, long.class, String.class));
   }
 
   public T evaluate(TransformContext transformContext) {

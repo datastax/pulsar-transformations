@@ -19,29 +19,42 @@ import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import org.testng.annotations.Test;
 
-public class NullableTypeConverterTest {
+public class CustomTypeConverterTest {
 
   @Test
   void testNullConversion() {
-    NullableTypeConverter converter = new NullableTypeConverter();
+    CustomTypeConverter converter = new CustomTypeConverter();
     assertNull(converter.convert(null, String.class));
     assertNull(converter.convert(null, int.class));
     assertNull(converter.convert(null, long.class));
     assertNull(converter.convert(null, float.class));
     assertNull(converter.convert(null, double.class));
     assertNull(converter.convert(null, boolean.class));
+    assertNull(converter.convert(null, LocalDate.class));
+    assertNull(converter.convert(null, LocalTime.class));
+    assertNull(converter.convert(null, LocalDateTime.class));
   }
 
   @Test
   void testNonNullConversion() {
-    NullableTypeConverter converter = new NullableTypeConverter();
+    CustomTypeConverter converter = new CustomTypeConverter();
     assertEquals(converter.convert("test", String.class), "test");
     assertEquals((int) converter.convert(1, int.class), 1);
     assertEquals((long) converter.convert(1L, long.class), 1L);
     assertEquals(converter.convert(1.3F, float.class), 1.3F);
     assertEquals(converter.convert(1.4D, double.class), 1.4D);
     assertTrue(converter.convert(true, boolean.class));
+    LocalDate expectedDate = LocalDate.of(2022, 12, 2);
+    assertEquals(expectedDate, converter.convert("2022-12-02", LocalDate.class));
+    LocalTime expectedTime = LocalTime.of(10, 11, 12);
+    assertEquals(expectedTime, converter.convert("10:11:12", LocalTime.class));
+    assertEquals(
+        LocalDateTime.of(expectedDate, expectedTime),
+        converter.convert(LocalDateTime.parse("2022-12-02T10:11:12"), LocalDateTime.class));
   }
 }
