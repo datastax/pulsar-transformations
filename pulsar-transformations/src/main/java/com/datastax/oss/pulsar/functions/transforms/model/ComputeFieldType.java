@@ -21,5 +21,8 @@ public enum ComputeFieldType {
   INT64,
   FLOAT,
   DOUBLE,
-  BOOLEAN
+  BOOLEAN,
+  DATE,
+  TIME,
+  DATETIME
 }

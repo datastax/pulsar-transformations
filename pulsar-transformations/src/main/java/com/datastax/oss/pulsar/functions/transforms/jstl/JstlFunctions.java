@@ -15,6 +15,13 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 public class JstlFunctions {
@@ -44,5 +51,56 @@ public class JstlFunctions {
 
   public static Object coalesce(Object value, Object valueIfNull) {
     return value == null ? valueIfNull : value;
+  }
+
+  public static long now() {
+    return Instant.now().toEpochMilli();
+  }
+
+  private static final ZoneId UTC = ZoneId.of("UTC");
+  private static final Map<String, ChronoUnit> dateAddUnits = new HashMap<>();
+
+  static {
+    dateAddUnits.put("years", ChronoUnit.YEARS); // Instant.plus does not support years
+    dateAddUnits.put("months", ChronoUnit.MONTHS); // Instant.plus does not support months
+    dateAddUnits.put("days", ChronoUnit.DAYS);
+    dateAddUnits.put("hours", ChronoUnit.HOURS);
+    dateAddUnits.put("minutes", ChronoUnit.MINUTES);
+    dateAddUnits.put("seconds", ChronoUnit.SECONDS);
+    dateAddUnits.put("millis", ChronoUnit.MILLIS);
+  }
+
+  public static long dateadd(Object input, long delta, String unit) {
+    if (input instanceof String) {
+      return dateadd((String) input, delta, unit);
+    } else if (input instanceof Long) {
+      return dateadd((long) input, delta, unit);
+    }
+
+    throw new IllegalArgumentException(
+        "Invalid input type: "
+            + input.getClass().getSimpleName()
+            + ". Should either be an ISO datetime string like '2007-12-01T12:30:00' or epoch millis");
+  }
+
+  private static long dateadd(String isoDateTime, long delta, String unit) {
+    LocalDateTime localDateTime = LocalDateTime.parse(isoDateTime);
+    return dateadd(localDateTime, delta, unit);
+  }
+
+  private static long dateadd(long epochMillis, long delta, String unit) {
+    Instant instant = Instant.ofEpochMilli(epochMillis);
+    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, UTC);
+    return dateadd(localDateTime, delta, unit);
+  }
+
+  private static long dateadd(LocalDateTime localDateTime, long delta, String unit) {
+    ChronoUnit chronoUnit = dateAddUnits.get(unit);
+    if (chronoUnit == null) {
+      throw new IllegalArgumentException(
+          "Invalid unit: " + unit + ". Should be one of " + dateAddUnits.keySet());
+    }
+
+    return localDateTime.plus(delta, chronoUnit).toInstant(ZoneOffset.UTC).toEpochMilli();
   }
 }

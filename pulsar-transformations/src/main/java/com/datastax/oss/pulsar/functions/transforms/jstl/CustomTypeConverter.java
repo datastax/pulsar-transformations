@@ -17,17 +17,29 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import de.odysseus.el.misc.TypeConverter;
 import de.odysseus.el.misc.TypeConverterImpl;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import javax.el.ELException;
 
 /**
- * Overrides the default TypeConverter coerce for null values. This fits better with Avro's nullable
- * schemas.
+ * Overrides the default TypeConverter coerce to support null values & non-EL coercions (e.g.
+ * date/time types) schemas.
  */
-public class NullableTypeConverter implements TypeConverter {
+public class CustomTypeConverter implements TypeConverter {
   private static TypeConverterImpl typeConverter = new TypeConverterImpl();
 
   @Override
   public <T> T convert(Object o, Class<T> aClass) throws ELException {
-    return o == null ? null : typeConverter.convert(o, aClass);
+    if (o == null) {
+      return null;
+    } else if ("java.time.LocalDate".equals(aClass.getName())) {
+      return (T) LocalDate.parse(o.toString());
+    } else if ("java.time.LocalTime".equals(aClass.getName())) {
+      return (T) LocalTime.parse(o.toString());
+    } else if ("java.time.LocalDateTime".equals(aClass.getName())) {
+      return (T) LocalDateTime.parse(o.toString());
+    }
+    return typeConverter.convert(o, aClass);
   }
 }

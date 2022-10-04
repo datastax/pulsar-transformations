@@ -291,10 +291,11 @@ public abstract class AbstractDockerTest {
 
     String expression = String.format("'%s'", routingTopic);
     String when = "value.a ne 'a'";
-    String userConfig = (""
-        + "{'steps': ["
-        + "   {'type': 'compute-fields', 'fields': [{'name': 'destinationTopic', 'expression': '%s', 'type': 'STRING'}], 'when': '%s'}"
-        + "]}");
+    String userConfig =
+        (""
+            + "{'steps': ["
+            + "   {'type': 'compute-fields', 'fields': [{'name': 'destinationTopic', 'expression': '%s', 'type': 'STRING'}], 'when': '%s'}"
+            + "]}");
     userConfig = String.format(userConfig.replace("'", "\""), expression, when);
     deployFunction(userConfig, functionName, inputTopic, outputTopic);
     Producer producer = client.newProducer(Schema.AVRO(Pojo1.class)).topic(inputTopic).create();

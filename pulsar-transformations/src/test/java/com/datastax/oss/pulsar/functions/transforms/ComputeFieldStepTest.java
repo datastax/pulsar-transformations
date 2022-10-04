@@ -28,10 +28,12 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.avro.AvroRuntimeException;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.api.Schema;
@@ -51,6 +53,22 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 public class ComputeFieldStepTest {
+
+  private static final org.apache.avro.Schema STRING_SCHEMA = org.apache.avro.Schema.create(STRING);
+  private static final org.apache.avro.Schema INT_SCHEMA = org.apache.avro.Schema.create(INT);
+  private static final org.apache.avro.Schema LONG_SCHEMA = org.apache.avro.Schema.create(LONG);
+  private static final org.apache.avro.Schema FLOAT_SCHEMA = org.apache.avro.Schema.create(FLOAT);
+  private static final org.apache.avro.Schema DOUBLE_SCHEMA = org.apache.avro.Schema.create(DOUBLE);
+  private static final org.apache.avro.Schema BOOLEAN_SCHEMA =
+      org.apache.avro.Schema.create(BOOLEAN);
+
+  private static final org.apache.avro.Schema DATE_SCHEMA =
+      LogicalTypes.date().addToSchema(org.apache.avro.Schema.create(INT));
+
+  private static final org.apache.avro.Schema TIME_SCHEMA =
+      LogicalTypes.timeMillis().addToSchema(org.apache.avro.Schema.create(INT));
+  private static final org.apache.avro.Schema TIMESTAMP_SCHEMA =
+      LogicalTypes.timestampMillis().addToSchema(org.apache.avro.Schema.create(LONG));
 
   @Test
   void testAvro() throws Exception {
@@ -88,30 +106,43 @@ public class ComputeFieldStepTest {
     assertEquals(read.get("firstName"), new Utf8("Jane"));
 
     assertTrue(read.hasField("newStringField"));
-    assertEquals(read.getSchema().getField("newStringField").schema().getType(), STRING);
+    assertEquals(read.getSchema().getField("newStringField").schema(), STRING_SCHEMA);
     assertEquals(read.get("newStringField"), new Utf8("Hotaru"));
 
     assertTrue(read.hasField("newInt32Field"));
-    assertEquals(read.getSchema().getField("newInt32Field").schema().getType(), INT);
+    assertEquals(read.getSchema().getField("newInt32Field").schema(), INT_SCHEMA);
     assertEquals(read.get("newInt32Field"), 2147483647);
 
     assertTrue(read.hasField("newInt64Field"));
-    assertEquals(read.getSchema().getField("newInt64Field").schema().getType(), LONG);
+    assertEquals(read.getSchema().getField("newInt64Field").schema(), LONG_SCHEMA);
     assertEquals(read.get("newInt64Field"), 9223372036854775807L);
 
     assertTrue(read.hasField("newFloatField"));
-    assertEquals(read.getSchema().getField("newFloatField").schema().getType(), FLOAT);
+    assertEquals(read.getSchema().getField("newFloatField").schema(), FLOAT_SCHEMA);
     assertEquals(read.get("newFloatField"), 340282346638528859999999999999999999999.999999F);
 
     assertTrue(read.hasField("newDoubleField"));
-    assertEquals(read.getSchema().getField("newDoubleField").schema().getType(), DOUBLE);
+    assertEquals(read.getSchema().getField("newDoubleField").schema(), DOUBLE_SCHEMA);
     assertEquals(read.get("newDoubleField"), 1.79769313486231570e+308D);
 
     assertTrue(read.hasField("newBooleanField"));
-    assertEquals(read.getSchema().getField("newBooleanField").schema().getType(), BOOLEAN);
+    assertEquals(read.getSchema().getField("newBooleanField").schema(), BOOLEAN_SCHEMA);
     assertTrue((Boolean) read.get("newBooleanField"));
 
-    assertEquals(read.getSchema().getField("age").schema().getType(), STRING);
+    assertTrue(read.hasField("newDateField"));
+    assertEquals(read.getSchema().getField("newDateField").schema(), DATE_SCHEMA);
+    assertEquals(read.get("newDateField"), 13850); // 13850 days since 1970-01-01
+
+    assertTrue(read.hasField("newTimeField"));
+    assertEquals(read.getSchema().getField("newTimeField").schema(), TIME_SCHEMA);
+    assertEquals(read.get("newTimeField"), 36930000); // 36930000 ms since 00:00:00
+
+    assertTrue(read.hasField("newDateTimeField"));
+    assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(
+        read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+
+    assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
   }
 
@@ -401,6 +432,27 @@ public class ComputeFieldStepTest {
             .expression(nullify ? "null" : "1 == 1")
             .optional(optional)
             .type(ComputeFieldType.BOOLEAN)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newDateField")
+            .expression(nullify ? "null" : "'2007-12-03'")
+            .optional(optional)
+            .type(ComputeFieldType.DATE)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newTimeField")
+            .expression(nullify ? "null" : "'10:15:30'")
+            .optional(optional)
+            .type(ComputeFieldType.TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newDateTimeField")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
+            .optional(optional)
+            .type(ComputeFieldType.DATETIME)
             .build());
 
     return fields;

@@ -16,10 +16,12 @@
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import static org.testng.AssertJUnit.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
 import de.odysseus.el.tree.TreeBuilderException;
+import java.time.Instant;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -44,6 +46,47 @@ public class JstEvaluatorTest {
     assertEquals(
         expectedValue,
         new JstlEvaluator<>(String.format("${%s}", expression), Object.class).evaluate(context));
+  }
+
+  @Test
+  void testNowFunction() {
+    Record<GenericObject> primitiveStringRecord =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
+            "header-key");
+    TransformContext primitiveStringContext =
+        new TransformContext(
+            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
+            primitiveStringRecord.getValue().getNativeObject());
+
+    long expectedNow = Instant.now().toEpochMilli();
+    long actualNow =
+        new JstlEvaluator<Long>("${fn:now()}", long.class).evaluate(primitiveStringContext);
+
+    assertTrue(actualNow >= expectedNow);
+    assertTrue(actualNow < expectedNow + 100L);
+  }
+
+  @Test
+  void testDateAddFunctionsNow() {
+    Record<GenericObject> primitiveStringRecord =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
+            "header-key");
+    TransformContext primitiveStringContext =
+        new TransformContext(
+            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
+            primitiveStringRecord.getValue().getNativeObject());
+
+    long expected = Instant.now().plusSeconds(-3333).toEpochMilli();
+    long actual =
+        new JstlEvaluator<Long>("${fn:dateadd(fn:now(), -3333, 'seconds')}", long.class)
+            .evaluate(primitiveStringContext);
+
+    assertTrue(actual >= expected);
+    assertTrue(actual < expected + 100L);
   }
 
   /** @return {"expression", "transform context"} */
@@ -80,6 +123,8 @@ public class JstEvaluatorTest {
         new TransformContext(
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
+    Instant instant = Instant.parse("2017-01-02T00:01:02Z");
+    long millis = instant.toEpochMilli();
     return new Object[][] {
       {"fn:uppercase('test')", primitiveStringContext, "TEST"},
       {"fn:uppercase(value) == 'TEST-MESSAGE'", primitiveStringContext, true},
@@ -99,6 +144,76 @@ public class JstEvaluatorTest {
       {"fn:concat(value, '-suffix')", primitiveStringContext, "test-message-suffix"},
       {"fn:concat(value, null)", primitiveStringContext, "test-message"},
       {"fn:concat(null, '-suffix')", primitiveStringContext, "-suffix"},
+      {
+        "fn:dateadd('2017-01-02T00:01:02', 1, 'years')",
+        primitiveStringContext,
+        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', -1, 'months')",
+        primitiveStringContext,
+        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', 1, 'days')",
+        primitiveStringContext,
+        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', -1, 'hours')",
+        primitiveStringContext,
+        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', 1, 'minutes')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', -1, 'seconds')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02', 1, 'millis')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", 1, 'years')",
+        primitiveStringContext,
+        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", -1, 'months')",
+        primitiveStringContext,
+        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", 1, 'days')",
+        primitiveStringContext,
+        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", -1, 'hours')",
+        primitiveStringContext,
+        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", 1, 'minutes')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", -1, 'seconds')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", 1, 'millis')",
+        primitiveStringContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
     };
   }
 }
