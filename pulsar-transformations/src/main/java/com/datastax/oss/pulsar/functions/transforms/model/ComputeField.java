@@ -87,6 +87,10 @@ public class ComputeField {
         String[] nameParts = this.scopedName.split("\\.", 2);
         this.scope = nameParts[0];
         this.name = nameParts[1];
+      } else if (this.scopedName.startsWith("properties.")) {
+        String[] nameParts = this.scopedName.split("\\.", 2);
+        this.scope = "header.properties";
+        this.name = nameParts[1];
       } else if (validComputeHeaders.contains(this.scopedName)) {
         this.scope = "header";
         this.name = this.scopedName;
@@ -94,7 +98,7 @@ public class ComputeField {
         throw new IllegalArgumentException(
             String.format(
                 "Invalid compute field name: %s. "
-                    + "It should be prefixed with 'key.' or 'value.' or be one of %s",
+                    + "It should be prefixed with 'key.' or 'value.' or 'properties.' or be one of %s",
                 this.scopedName, validComputeHeaders));
       }
     }

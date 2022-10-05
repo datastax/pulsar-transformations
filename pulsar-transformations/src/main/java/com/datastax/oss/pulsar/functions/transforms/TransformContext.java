@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -126,16 +127,30 @@ public class TransformContext {
             .newOutputRecordBuilder(outputSchema)
             .destinationTopic(outputTopic)
             .value(outputObject)
-            .properties(
-                this.properties == null
-                    ? context.getCurrentRecord().getProperties()
-                    : this.properties);
+            .properties(getOutputProperties());
 
     if (keySchema == null && key != null) {
       recordBuilder.key(key);
     }
 
     return recordBuilder.build();
+  }
+
+  private Map<String, String> getOutputProperties() {
+    if (this.properties == null) {
+      return context.getCurrentRecord().getProperties();
+    }
+
+    if (context.getCurrentRecord().getProperties() == null) {
+      return this.properties;
+    }
+
+    Map<String, String> mergedProperties = new HashMap<>();
+    mergedProperties.putAll(this.context.getCurrentRecord().getProperties());
+    mergedProperties.putAll(
+        this.properties); // Computed props will overwrite current record props if the keys match
+
+    return mergedProperties;
   }
 
   public static byte[] serializeGenericRecord(GenericRecord record) throws IOException {
