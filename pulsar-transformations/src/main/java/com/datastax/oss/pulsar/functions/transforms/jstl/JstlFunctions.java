@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
-
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 public class JstlFunctions {
 

@@ -87,6 +87,10 @@ public class ComputeFieldStep implements TransformStep {
               String topic = validateAndGetString(field, context);
               context.setOutputTopic(topic);
               break;
+            case "messageKey":
+              String key = validateAndGetString(field, context);
+              context.setKey(key);
+              break;
             default:
               throw new IllegalArgumentException("Invalid compute field name: " + field.getName());
           }

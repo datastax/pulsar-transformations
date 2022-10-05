@@ -23,9 +23,7 @@ public class ComputeFieldTest {
 
   @Test(
     expectedExceptions = IllegalArgumentException.class,
-    expectedExceptionsMessageRegExp =
-        "Invalid compute field name: newStringField\\. "
-            + "It should be prefixed with 'key\\.' or 'value\\.' or be one of \\[destinationTopic\\]"
+    expectedExceptionsMessageRegExp = "Invalid compute field name: newStringField\\..*"
   )
   void testInvalidComputeFieldName() {
     ComputeField.builder()

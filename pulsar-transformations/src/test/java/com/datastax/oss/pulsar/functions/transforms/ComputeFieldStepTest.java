@@ -314,7 +314,7 @@ public class ComputeFieldStepTest {
   }
 
   @Test(dataProvider = "destinationTopicProvider")
-  void testAvroDestinationTopicChange(String topic) throws Exception {
+  void testAvroComputeDestinationTopic(String topic) throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
 
@@ -345,6 +345,40 @@ public class ComputeFieldStepTest {
     assertEquals(
         outputRecord.getDestinationTopic().get(),
         topic.equals("targetTopic") ? "route" : "dont-route");
+    assertEquals(read.get("firstName"), new Utf8("Jane"));
+  }
+
+  @Test
+  void testAvroComputeMessageKey() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
+
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .schema(genericSchema)
+            .value(genericRecord)
+            .key("old")
+            .build();
+
+    List<ComputeField> fields = buildComputeFields("value", false, false);
+    fields.add(
+        ComputeField.builder()
+            .scopedName("messageKey")
+            .expression("'new'")
+            .type(ComputeFieldType.STRING)
+            .build());
+    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+
+    assertTrue(outputRecord.getKey().isPresent());
+    assertEquals(outputRecord.getKey().get(), "new");
     assertEquals(read.get("firstName"), new Utf8("Jane"));
   }
 
