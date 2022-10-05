@@ -18,7 +18,6 @@ package com.datastax.oss.pulsar.functions.transforms.model.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import java.util.Optional;
 import lombok.Getter;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", visible = true)
@@ -38,5 +37,6 @@ public abstract class StepConfig {
   @JsonProperty(required = true)
   private String type;
 
-  private Optional<String> when = Optional.empty();
+  @JsonProperty(required = false)
+  private String when;
 }

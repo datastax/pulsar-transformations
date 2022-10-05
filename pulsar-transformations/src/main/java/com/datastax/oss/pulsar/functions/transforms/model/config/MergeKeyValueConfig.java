@@ -15,5 +15,4 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
-
 public class MergeKeyValueConfig extends StepConfig {}

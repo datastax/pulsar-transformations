@@ -17,7 +17,6 @@ package com.datastax.oss.pulsar.functions.transforms.model.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import java.util.Optional;
 import lombok.Getter;
 
 @Getter
@@ -25,5 +24,6 @@ public class DropFieldsConfig extends StepConfig {
   @JsonProperty(required = true)
   private List<String> fields;
 
-  private Optional<String> part = Optional.empty();
+  @JsonProperty(required = false)
+  private String part;
 }

@@ -15,11 +15,14 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 @Getter
 public class FlattenConfig extends StepConfig {
-  private Optional<String> delimiter = Optional.empty();
-  private Optional<String> part = Optional.empty();
+  @JsonProperty(required = false)
+  private String delimiter;
+
+  @JsonProperty(required = false)
+  private String part;
 }

@@ -28,7 +28,6 @@ import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueC
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion;
@@ -120,7 +119,6 @@ public class TransformFunction
   public void initialize(Context context) {
     Map<String, Object> userConfigMap = context.getUserConfigMap();
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    mapper.registerModule(new Jdk8Module()); // Adds support for java.util.Optional
     JsonNode jsonNode = mapper.convertValue(userConfigMap, JsonNode.class);
 
     URNFactory urnFactory =
@@ -219,8 +217,9 @@ public class TransformFunction
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
-      JstlPredicate predicate = step.getWhen().map(JstlPredicate::new).orElse(null);
-      steps.add(new StepPredicatePair(transformStep, predicate));
+      steps.add(
+          new StepPredicatePair(
+              transformStep, step.getWhen() == null ? null : new JstlPredicate(step.getWhen())));
     }
   }
 
@@ -259,42 +258,42 @@ public class TransformFunction
 
   public static DropFieldStep newRemoveFieldFunction(DropFieldsConfig config) {
     DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
-    return config
-        .getPart()
-        .map(
-            part -> {
-              if (part.equals("key")) {
-                return builder.keyFields(config.getFields());
-              } else {
-                return builder.valueFields(config.getFields());
-              }
-            })
-        .orElseGet(() -> builder.keyFields(config.getFields()).valueFields(config.getFields()))
-        .build();
+    if (config.getPart() != null) {
+      if (config.getPart().equals("key")) {
+        builder.keyFields(config.getFields());
+      } else {
+        builder.valueFields(config.getFields());
+      }
+    } else {
+      builder.keyFields(config.getFields()).valueFields(config.getFields());
+    }
+    return builder.build();
   }
 
   public static CastStep newCastFunction(CastConfig config) {
     String schemaTypeParam = config.getSchemaType();
     SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
     CastStep.CastStepBuilder builder = CastStep.builder();
-    return config
-        .getPart()
-        .map(
-            part -> {
-              if (part.equals("key")) {
-                return builder.keySchemaType(schemaType);
-              } else {
-                return builder.valueSchemaType(schemaType);
-              }
-            })
-        .orElseGet(() -> builder.keySchemaType(schemaType).valueSchemaType(schemaType))
-        .build();
+    if (config.getPart() != null) {
+      if (config.getPart().equals("key")) {
+        builder.keySchemaType(schemaType);
+      } else {
+        builder.valueSchemaType(schemaType);
+      }
+    } else {
+      builder.keySchemaType(schemaType).valueSchemaType(schemaType);
+    }
+    return builder.build();
   }
 
   public static FlattenStep newFlattenFunction(FlattenConfig config) {
     FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    config.getPart().ifPresent(builder::part);
-    config.getDelimiter().ifPresent(builder::delimiter);
+    if (config.getPart() != null) {
+      builder.part(config.getPart());
+    }
+    if (config.getDelimiter() != null) {
+      builder.delimiter(config.getDelimiter());
+    }
     return builder.build();
   }
 
