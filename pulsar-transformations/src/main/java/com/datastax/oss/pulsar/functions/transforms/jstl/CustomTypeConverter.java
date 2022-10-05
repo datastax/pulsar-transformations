@@ -33,11 +33,11 @@ public class CustomTypeConverter implements TypeConverter {
   public <T> T convert(Object o, Class<T> aClass) throws ELException {
     if (o == null) {
       return null;
-    } else if ("java.time.LocalDate".equals(aClass.getName())) {
+    } else if (aClass == LocalDate.class) {
       return (T) LocalDate.parse(o.toString());
-    } else if ("java.time.LocalTime".equals(aClass.getName())) {
+    } else if (aClass == LocalTime.class) {
       return (T) LocalTime.parse(o.toString());
-    } else if ("java.time.LocalDateTime".equals(aClass.getName())) {
+    } else if (aClass == LocalDateTime.class) {
       return (T) LocalDateTime.parse(o.toString());
     }
     return typeConverter.convert(o, aClass);
