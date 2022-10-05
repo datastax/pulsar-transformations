@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -22,9 +23,11 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.Setter;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 public class JstlFunctions {
+  @Setter private static Clock clock = Clock.systemUTC();
 
   public static String uppercase(Object input) {
     return input == null ? null : input.toString().toUpperCase();
@@ -54,7 +57,7 @@ public class JstlFunctions {
   }
 
   public static long now() {
-    return Instant.now().toEpochMilli();
+    return clock.millis();
   }
 
   private static final ZoneId UTC = ZoneId.of("UTC");

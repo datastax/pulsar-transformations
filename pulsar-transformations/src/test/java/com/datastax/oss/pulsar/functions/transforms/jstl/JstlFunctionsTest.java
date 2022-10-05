@@ -19,7 +19,9 @@ import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -105,10 +107,10 @@ public class JstlFunctionsTest {
 
   @Test
   void testNow() {
-    long minExpectedMillis = Instant.now().toEpochMilli();
-    long actualNow = JstlFunctions.now();
-    assertTrue(actualNow >= minExpectedMillis);
-    assertTrue(actualNow < minExpectedMillis + 100L);
+    long expectedMillis = 99L;
+    Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
+    JstlFunctions.setClock(clock);
+    assertEquals(expectedMillis, JstlFunctions.now());
   }
 
   @Test(dataProvider = "millisDateAddProvider")

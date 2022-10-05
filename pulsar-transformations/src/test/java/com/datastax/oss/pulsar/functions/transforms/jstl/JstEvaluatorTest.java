@@ -16,12 +16,13 @@
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import static org.testng.AssertJUnit.assertEquals;
-import static org.testng.AssertJUnit.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
 import de.odysseus.el.tree.TreeBuilderException;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -60,12 +61,14 @@ public class JstEvaluatorTest {
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
 
-    long expectedNow = Instant.now().toEpochMilli();
-    long actualNow =
+    long expectedMillis = 123L;
+    Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
+    JstlFunctions.setClock(clock);
+    ;
+    long actualMillis =
         new JstlEvaluator<Long>("${fn:now()}", long.class).evaluate(primitiveStringContext);
 
-    assertTrue(actualNow >= expectedNow);
-    assertTrue(actualNow < expectedNow + 100L);
+    assertEquals(expectedMillis, actualMillis);
   }
 
   @Test
@@ -80,13 +83,15 @@ public class JstEvaluatorTest {
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
 
-    long expected = Instant.now().plusSeconds(-3333).toEpochMilli();
-    long actual =
+    long nowMillis = 5000L;
+    long millisToAdd = -3333L * 1000L;
+    Clock clock = Clock.fixed(Instant.ofEpochMilli(nowMillis), ZoneOffset.UTC);
+    JstlFunctions.setClock(clock);
+    long actualMillis =
         new JstlEvaluator<Long>("${fn:dateadd(fn:now(), -3333, 'seconds')}", long.class)
             .evaluate(primitiveStringContext);
 
-    assertTrue(actual >= expected);
-    assertTrue(actual < expected + 100L);
+    assertEquals(nowMillis + millisToAdd, actualMillis);
   }
 
   /** @return {"expression", "transform context"} */
