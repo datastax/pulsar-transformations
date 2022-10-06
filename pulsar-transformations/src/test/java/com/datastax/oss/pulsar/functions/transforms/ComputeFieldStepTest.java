@@ -31,6 +31,7 @@ import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -380,6 +381,48 @@ public class ComputeFieldStepTest {
     assertTrue(outputRecord.getKey().isPresent());
     assertEquals(outputRecord.getKey().get(), "new");
     assertEquals(read.get("firstName"), new Utf8("Jane"));
+  }
+
+  @Test
+  void testAvroComputeHeaderProperties() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
+
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .schema(genericSchema)
+            .value(genericRecord)
+            .properties(Map.of("existingKey", "v1", "nonExistingKey", "v2"))
+            .build();
+
+    List<ComputeField> fields = new ArrayList<>();
+    fields.add(
+        ComputeField.builder()
+            .scopedName("properties.existingKey")
+            .expression("'c1'")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("properties.newKey")
+            .expression("'c2'")
+            .type(ComputeFieldType.STRING)
+            .build());
+    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+
+    assertEquals(outputRecord.getProperties().size(), 3);
+    assertTrue(outputRecord.getProperties().containsKey("existingKey"));
+    assertTrue(outputRecord.getProperties().containsKey("nonExistingKey"));
+    assertTrue(outputRecord.getProperties().containsKey("newKey"));
+    assertEquals(outputRecord.getProperties().get("existingKey"), "c1");
+    assertEquals(outputRecord.getProperties().get("nonExistingKey"), "v2");
+    assertEquals(outputRecord.getProperties().get("newKey"), "c2");
   }
 
   @DataProvider(name = "destinationTopicProvider")

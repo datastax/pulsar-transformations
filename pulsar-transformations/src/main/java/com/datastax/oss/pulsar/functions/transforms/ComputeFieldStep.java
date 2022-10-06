@@ -54,6 +54,12 @@ public class ComputeFieldStep implements TransformStep {
     computeHeaderFields(
         fields.stream().filter(f -> "header".equals(f.getScope())).collect(Collectors.toList()),
         transformContext);
+    computeHeaderPropertiesFields(
+        fields
+            .stream()
+            .filter(f -> "header.properties".equals(f.getScope()))
+            .collect(Collectors.toList()),
+        transformContext);
   }
 
   public void computeValueFields(List<ComputeField> fields, TransformContext context) {
@@ -95,6 +101,15 @@ public class ComputeFieldStep implements TransformStep {
               throw new IllegalArgumentException("Invalid compute field name: " + field.getName());
           }
         });
+  }
+
+  public void computeHeaderPropertiesFields(List<ComputeField> fields, TransformContext context) {
+    Map<String, String> properties =
+        fields
+            .stream()
+            .map(field -> Map.entry(field.getName(), validateAndGetString(field, context)))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    context.setProperties(properties);
   }
 
   private String validateAndGetString(ComputeField field, TransformContext context) {
