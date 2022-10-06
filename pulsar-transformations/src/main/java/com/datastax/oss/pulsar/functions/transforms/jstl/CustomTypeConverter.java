@@ -17,8 +17,8 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import de.odysseus.el.misc.TypeConverter;
 import de.odysseus.el.misc.TypeConverterImpl;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import javax.el.ELException;
 
@@ -37,8 +37,8 @@ public class CustomTypeConverter implements TypeConverter {
       return (T) LocalDate.parse(o.toString());
     } else if (aClass == LocalTime.class) {
       return (T) LocalTime.parse(o.toString());
-    } else if (aClass == LocalDateTime.class) {
-      return (T) LocalDateTime.parse(o.toString());
+    } else if (aClass == Instant.class) {
+      return (T) Instant.parse(o.toString());
     }
     return typeConverter.convert(o, aClass);
   }

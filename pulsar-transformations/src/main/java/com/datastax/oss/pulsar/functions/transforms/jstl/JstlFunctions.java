@@ -87,8 +87,8 @@ public class JstlFunctions {
   }
 
   private static long dateadd(String isoDateTime, long delta, String unit) {
-    LocalDateTime localDateTime = LocalDateTime.parse(isoDateTime);
-    return dateadd(localDateTime, delta, unit);
+    Instant instant = Instant.parse(isoDateTime);
+    return dateadd(LocalDateTime.ofInstant(instant, UTC), delta, unit);
   }
 
   private static long dateadd(long epochMillis, long delta, String unit) {

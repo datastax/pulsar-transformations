@@ -168,7 +168,7 @@ public class JstlFunctionsTest {
    */
   @DataProvider(name = "isoDateAddProvider")
   public static Object[][] isoDateAddProvider() {
-    String isoDateTime = "2022-10-02T01:02:03";
+    String isoDateTime = "2022-10-02T01:02:03Z";
     Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     return new Object[][] {
       {isoDateTime, 0, "years", instant.toEpochMilli()},

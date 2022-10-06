@@ -527,7 +527,7 @@ public class ComputeFieldStepTest {
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateTimeField")
-            .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30Z'")
             .optional(optional)
             .type(ComputeFieldType.DATETIME)
             .build());
