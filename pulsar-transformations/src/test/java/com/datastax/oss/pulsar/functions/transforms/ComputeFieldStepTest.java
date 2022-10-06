@@ -15,9 +15,11 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.ComputeFieldStep.DURATION_TYPE;
 import static com.datastax.oss.pulsar.functions.transforms.Utils.assertOptionalField;
 import static org.apache.avro.Schema.Type.BOOLEAN;
 import static org.apache.avro.Schema.Type.DOUBLE;
+import static org.apache.avro.Schema.Type.FIXED;
 import static org.apache.avro.Schema.Type.FLOAT;
 import static org.apache.avro.Schema.Type.INT;
 import static org.apache.avro.Schema.Type.LONG;
@@ -28,6 +30,8 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,6 +73,8 @@ public class ComputeFieldStepTest {
       LogicalTypes.timeMillis().addToSchema(org.apache.avro.Schema.create(INT));
   private static final org.apache.avro.Schema TIMESTAMP_SCHEMA =
       LogicalTypes.timestampMillis().addToSchema(org.apache.avro.Schema.create(LONG));
+  private static final org.apache.avro.Schema DURATION_SCHEMA =
+      DURATION_TYPE.addToSchema(org.apache.avro.Schema.createFixed("duration", "","", 3));
 
   @Test
   void testAvro() throws Exception {
@@ -141,6 +147,10 @@ public class ComputeFieldStepTest {
     assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
     assertEquals(
         read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+
+    assertTrue(read.hasField("newDurationField"));
+    assertEquals(read.getSchema().getField("newDurationField").schema(), DURATION_SCHEMA);
+    assertEquals(read.get("newDateTimeField"), Duration.parse("P1Y2M3W4DT5H6M7.987654321S"));
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
@@ -453,6 +463,13 @@ public class ComputeFieldStepTest {
             .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
             .optional(optional)
             .type(ComputeFieldType.DATETIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newDurationField")
+            .expression(nullify ? "null" : "'P2DT3H4M20.345S'")
+            .optional(optional)
+            .type(ComputeFieldType.DURATION)
             .build());
 
     return fields;

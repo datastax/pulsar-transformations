@@ -16,6 +16,8 @@
 package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -122,6 +124,8 @@ public class ComputeField {
           return LocalTime.class;
         case DATETIME:
           return LocalDateTime.class;
+        case DURATION:
+            return Duration.class;
         default:
           throw new UnsupportedOperationException("Unsupported compute field type: " + type);
       }
