@@ -17,9 +17,14 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
-import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.TransformPredicate;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
-import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeFieldsConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -184,38 +189,37 @@ public class TransformFunction
     }
 
     TransformStep transformStep;
-    for (JsonNode node : jsonNode.get("steps")) {
-      TransformPredicate predicate = null;
-      if (node.hasNonNull("when")) {
-        predicate = new JstlPredicate(node.get("when").asText());
-      }
-      String type = node.get("type").asText();
-      switch (type) {
+
+    TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
+    for (StepConfig step : config.getSteps()) {
+      switch (step.getType()) {
         case "drop-fields":
-          transformStep = newRemoveFieldFunction(node);
+          transformStep = newRemoveFieldFunction((DropFieldsConfig) step);
           break;
         case "cast":
-          transformStep = newCastFunction(node);
+          transformStep = newCastFunction((CastConfig) step);
           break;
         case "merge-key-value":
           transformStep = new MergeKeyValueStep();
           break;
         case "unwrap-key-value":
-          transformStep = newUnwrapKeyValueFunction(node);
+          transformStep = newUnwrapKeyValueFunction((UnwrapKeyValueConfig) step);
           break;
         case "flatten":
-          transformStep = newFlattenFunction(node);
+          transformStep = newFlattenFunction((FlattenConfig) step);
           break;
         case "drop":
           transformStep = new DropStep();
           break;
         case "compute-fields":
-          transformStep = newComputeFieldFunction(node);
+          transformStep = newComputeFieldFunction((ComputeFieldsConfig) step);
           break;
         default:
-          throw new IllegalArgumentException("Invalid step type: " + type);
+          throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
-      steps.add(new StepPredicatePair(transformStep, predicate));
+      steps.add(
+          new StepPredicatePair(
+              transformStep, step.getWhen() == null ? null : new JstlPredicate(step.getWhen())));
     }
   }
 
@@ -252,28 +256,26 @@ public class TransformFunction
     return Pattern.compile("(?:^|-)(.)").matcher(kebab).replaceAll(mr -> mr.group(1).toUpperCase());
   }
 
-  public static DropFieldStep newRemoveFieldFunction(JsonNode node) {
+  public static DropFieldStep newRemoveFieldFunction(DropFieldsConfig config) {
     DropFieldStep.DropFieldStepBuilder builder = DropFieldStep.builder();
-    List<String> fieldList = new ArrayList<>();
-    node.get("fields").iterator().forEachRemaining(it -> fieldList.add(it.asText()));
-    if (node.hasNonNull("part")) {
-      if (node.get("part").asText().equals("key")) {
-        builder.keyFields(fieldList);
+    if (config.getPart() != null) {
+      if (config.getPart().equals("key")) {
+        builder.keyFields(config.getFields());
       } else {
-        builder.valueFields(fieldList);
+        builder.valueFields(config.getFields());
       }
     } else {
-      builder.keyFields(fieldList).valueFields(fieldList);
+      builder.keyFields(config.getFields()).valueFields(config.getFields());
     }
     return builder.build();
   }
 
-  public static CastStep newCastFunction(JsonNode node) {
-    String schemaTypeParam = node.get("schema-type").asText();
+  public static CastStep newCastFunction(CastConfig config) {
+    String schemaTypeParam = config.getSchemaType();
     SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
     CastStep.CastStepBuilder builder = CastStep.builder();
-    if (node.hasNonNull("part")) {
-      if (node.get("part").asText().equals("key")) {
+    if (config.getPart() != null) {
+      if (config.getPart().equals("key")) {
         builder.keySchemaType(schemaType);
       } else {
         builder.valueSchemaType(schemaType);
@@ -284,36 +286,34 @@ public class TransformFunction
     return builder.build();
   }
 
-  public static FlattenStep newFlattenFunction(JsonNode node) {
+  public static FlattenStep newFlattenFunction(FlattenConfig config) {
     FlattenStep.FlattenStepBuilder builder = FlattenStep.builder();
-    if (node.hasNonNull("part")) {
-      builder.part(node.get("part").asText());
+    if (config.getPart() != null) {
+      builder.part(config.getPart());
     }
-    if (node.hasNonNull("delimiter")) {
-      builder.delimiter(node.get("delimiter").asText());
+    if (config.getDelimiter() != null) {
+      builder.delimiter(config.getDelimiter());
     }
     return builder.build();
   }
 
-  private static TransformStep newComputeFieldFunction(JsonNode node) {
+  private static TransformStep newComputeFieldFunction(ComputeFieldsConfig config) {
     List<ComputeField> fieldList = new ArrayList<>();
-    node.get("fields")
-        .iterator()
-        .forEachRemaining(
-            it ->
+    config
+        .getFields()
+        .forEach(
+            field ->
                 fieldList.add(
                     ComputeField.builder()
-                        .scopedName(it.get("name").asText())
-                        .expression(it.get("expression").asText())
-                        .type(ComputeFieldType.valueOf(it.get("type").asText()))
-                        .optional(
-                            it.get("optional") == null ? true : it.get("optional").asBoolean())
+                        .scopedName(field.getName())
+                        .expression(field.getExpression())
+                        .type(field.getType())
+                        .optional(field.isOptional())
                         .build()));
     return ComputeFieldStep.builder().fields(fieldList).build();
   }
 
-  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(JsonNode node) {
-    return new UnwrapKeyValueStep(
-        node.hasNonNull("unwrap-key") && node.get("unwrap-key").asBoolean());
+  private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
+    return new UnwrapKeyValueStep(config.isUnwrapKey());
   }
 }
