@@ -306,7 +306,7 @@ public class JstlFunctionsTest {
   @Test(
     expectedExceptions = IllegalArgumentException.class,
     expectedExceptionsMessageRegExp =
-        "Invalid unit: lightyear. Should be one of \\[hours, seconds, months, minutes, days, millis, years\\]"
+        "Invalid unit: lightyear. Should be one of \\[years, months, days, hours, minutes, seconds, millis\\]"
   )
   void testAddDateInvalidUnit() {
     JstlFunctions.dateadd(0L, 0, "lightyear");

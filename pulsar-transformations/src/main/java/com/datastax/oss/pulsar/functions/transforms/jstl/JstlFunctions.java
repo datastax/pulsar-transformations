@@ -20,8 +20,6 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.Setter;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
@@ -59,18 +57,6 @@ public class JstlFunctions {
     return clock.millis();
   }
 
-  private static final Map<String, ChronoUnit> dateAddUnits = new HashMap<>();
-
-  static {
-    dateAddUnits.put("years", ChronoUnit.YEARS);
-    dateAddUnits.put("months", ChronoUnit.MONTHS);
-    dateAddUnits.put("days", ChronoUnit.DAYS);
-    dateAddUnits.put("hours", ChronoUnit.HOURS);
-    dateAddUnits.put("minutes", ChronoUnit.MINUTES);
-    dateAddUnits.put("seconds", ChronoUnit.SECONDS);
-    dateAddUnits.put("millis", ChronoUnit.MILLIS);
-  }
-
   public static long dateadd(Object input, long delta, String unit) {
     if (input instanceof String) {
       return dateadd((String) input, delta, unit);
@@ -96,10 +82,34 @@ public class JstlFunctions {
   }
 
   private static long dateadd(OffsetDateTime offsetDateTime, long delta, String unit) {
-    ChronoUnit chronoUnit = dateAddUnits.get(unit);
-    if (chronoUnit == null) {
-      throw new IllegalArgumentException(
-          "Invalid unit: " + unit + ". Should be one of " + dateAddUnits.keySet());
+    final ChronoUnit chronoUnit;
+    switch (unit) {
+      case "years":
+        chronoUnit = ChronoUnit.YEARS;
+        break;
+      case "months":
+        chronoUnit = ChronoUnit.MONTHS;
+        break;
+      case "days":
+        chronoUnit = ChronoUnit.DAYS;
+        break;
+      case "hours":
+        chronoUnit = ChronoUnit.HOURS;
+        break;
+      case "minutes":
+        chronoUnit = ChronoUnit.MINUTES;
+        break;
+      case "seconds":
+        chronoUnit = ChronoUnit.SECONDS;
+        break;
+      case "millis":
+        chronoUnit = ChronoUnit.MILLIS;
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "Invalid unit: "
+                + unit
+                + ". Should be one of [years, months, days, hours, minutes, seconds, millis]");
     }
 
     return offsetDateTime.plus(delta, chronoUnit).toInstant().toEpochMilli();

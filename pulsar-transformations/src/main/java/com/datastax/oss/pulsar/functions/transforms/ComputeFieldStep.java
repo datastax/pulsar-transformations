@@ -25,6 +25,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -219,8 +220,8 @@ public class ComputeFieldStep implements TransformStep {
     return schema
         .getTypes()
         .stream()
-        .filter(subSchema -> subSchema.getLogicalType() != null)
         .map(Schema::getLogicalType)
+        .filter(Objects::nonNull)
         .findAny()
         .orElse(null);
   }
