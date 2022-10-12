@@ -19,9 +19,9 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -202,9 +202,9 @@ public class ComputeFieldStep implements TransformStep {
         LocalTime localTime = (LocalTime) value;
         return (int) (localTime.toNanoOfDay() / 1000000);
       case "timestamp-millis":
-        validateLogicalType(value, schema.getLogicalType(), Instant.class);
-        Instant instant = (Instant) value;
-        return instant.toEpochMilli();
+        validateLogicalType(value, schema.getLogicalType(), OffsetDateTime.class);
+        OffsetDateTime offsetDateTime = (OffsetDateTime) value;
+        return offsetDateTime.toInstant().toEpochMilli();
     }
 
     throw new IllegalArgumentException(

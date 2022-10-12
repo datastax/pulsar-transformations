@@ -20,8 +20,8 @@ import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import org.testng.annotations.Test;
 
 public class CustomTypeConverterTest {
@@ -37,7 +37,7 @@ public class CustomTypeConverterTest {
     assertNull(converter.convert(null, boolean.class));
     assertNull(converter.convert(null, LocalDate.class));
     assertNull(converter.convert(null, LocalTime.class));
-    assertNull(converter.convert(null, LocalDateTime.class));
+    assertNull(converter.convert(null, OffsetDateTime.class));
   }
 
   @Test
@@ -54,7 +54,7 @@ public class CustomTypeConverterTest {
     LocalTime expectedTime = LocalTime.of(10, 11, 12);
     assertEquals(expectedTime, converter.convert("10:11:12", LocalTime.class));
     assertEquals(
-        LocalDateTime.of(expectedDate, expectedTime),
-        converter.convert(LocalDateTime.parse("2022-12-02T10:11:12"), LocalDateTime.class));
+        OffsetDateTime.parse("2022-12-02T10:11:12Z"),
+        converter.convert("2022-12-02T10:11:12Z", OffsetDateTime.class));
   }
 }

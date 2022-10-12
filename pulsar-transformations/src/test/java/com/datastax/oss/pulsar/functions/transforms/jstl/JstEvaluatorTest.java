@@ -22,6 +22,7 @@ import com.datastax.oss.pulsar.functions.transforms.Utils;
 import de.odysseus.el.tree.TreeBuilderException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
@@ -128,8 +129,8 @@ public class JstEvaluatorTest {
         new TransformContext(
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
-    Instant instant = Instant.parse("2017-01-02T00:01:02Z");
-    long millis = instant.toEpochMilli();
+    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2017-01-02T00:01:02Z");
+    long millis = offsetDateTime.toInstant().toEpochMilli();
     return new Object[][] {
       {"fn:uppercase('test')", primitiveStringContext, "TEST"},
       {"fn:uppercase(value) == 'TEST-MESSAGE'", primitiveStringContext, true},
@@ -152,72 +153,72 @@ public class JstEvaluatorTest {
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'years')",
         primitiveStringContext,
-        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2018-01-02T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'months')",
         primitiveStringContext,
-        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2016-12-02T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'days')",
         primitiveStringContext,
-        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-03T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'hours')",
         primitiveStringContext,
-        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-01T23:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'minutes')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:02:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'seconds')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:01:01Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'millis')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:01:02.001Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'years')",
         primitiveStringContext,
-        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2018-01-02T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'months')",
         primitiveStringContext,
-        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2016-12-02T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'days')",
         primitiveStringContext,
-        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-03T00:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'hours')",
         primitiveStringContext,
-        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-01T23:01:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'minutes')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:02:02Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'seconds')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:01:01Z").toInstant().toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'millis')",
         primitiveStringContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        OffsetDateTime.parse("2017-01-02T00:01:02.001Z").toInstant().toEpochMilli()
       },
     };
   }

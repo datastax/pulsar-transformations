@@ -28,7 +28,7 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -141,7 +141,8 @@ public class ComputeFieldStepTest {
     assertTrue(read.hasField("newDateTimeField"));
     assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
     assertEquals(
-        read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+        read.get("newDateTimeField"),
+        OffsetDateTime.parse("2007-12-03T10:15:30.00Z").toInstant().toEpochMilli());
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
@@ -527,7 +528,7 @@ public class ComputeFieldStepTest {
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateTimeField")
-            .expression(nullify ? "null" : "'2007-12-03T10:15:30Z'")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
             .optional(optional)
             .type(ComputeFieldType.DATETIME)
             .build());
