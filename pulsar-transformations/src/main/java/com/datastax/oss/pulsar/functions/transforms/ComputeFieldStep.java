@@ -19,13 +19,19 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.Builder;
+import org.apache.avro.LogicalType;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
@@ -167,10 +173,64 @@ public class ComputeFieldStep implements TransformStep {
     }
     // Add computed fields
     for (ComputeField field : fields) {
-      newRecordBuilder.set(field.getName(), field.getEvaluator().evaluate(context));
-      ;
+      newRecordBuilder.set(
+          field.getName(),
+          getAvroValue(
+              newSchema.getField(field.getName()).schema(),
+              field.getEvaluator().evaluate(context)));
     }
     return newRecordBuilder.build();
+  }
+
+  private Object getAvroValue(Schema schema, Object value) {
+    if (value == null) {
+      return null;
+    }
+
+    LogicalType logicalType = getLogicalType(schema);
+    if (logicalType == null) {
+      return value;
+    }
+
+    // Avro logical type conversion: https://avro.apache.org/docs/1.8.2/spec.html#Logical+Types
+    switch (logicalType.getName()) {
+      case "date":
+        validateLogicalType(value, schema.getLogicalType(), LocalDate.class);
+        LocalDate localDate = (LocalDate) value;
+        return (int) localDate.toEpochDay();
+      case "time-millis":
+        validateLogicalType(value, schema.getLogicalType(), LocalTime.class);
+        LocalTime localTime = (LocalTime) value;
+        return (int) (localTime.toNanoOfDay() / 1000000);
+      case "timestamp-millis":
+        validateLogicalType(value, schema.getLogicalType(), OffsetDateTime.class);
+        OffsetDateTime offsetDateTime = (OffsetDateTime) value;
+        return offsetDateTime.toInstant().toEpochMilli();
+    }
+
+    throw new IllegalArgumentException(
+        String.format("Invalid logical type %s for value %s", schema.getLogicalType(), value));
+  }
+
+  private LogicalType getLogicalType(Schema schema) {
+    if (!schema.isUnion()) {
+      return schema.getLogicalType();
+    }
+
+    return schema
+        .getTypes()
+        .stream()
+        .map(Schema::getLogicalType)
+        .filter(Objects::nonNull)
+        .findAny()
+        .orElse(null);
+  }
+
+  void validateLogicalType(Object value, LogicalType logicalType, Class expectedClass) {
+    if (!(value.getClass().equals(expectedClass))) {
+      throw new IllegalArgumentException(
+          String.format("Invalid value %s for logical type %s", value, logicalType));
+    }
   }
 
   private Schema.Field createAvroField(ComputeField field) {
@@ -190,9 +250,12 @@ public class ComputeFieldStep implements TransformStep {
         schemaType = Schema.Type.STRING;
         break;
       case INT32:
+      case DATE:
+      case TIME:
         schemaType = Schema.Type.INT;
         break;
       case INT64:
+      case DATETIME:
         schemaType = Schema.Type.LONG;
         break;
       case FLOAT:
@@ -208,6 +271,21 @@ public class ComputeFieldStep implements TransformStep {
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
 
-    return fieldTypeToAvroSchemaCache.computeIfAbsent(type, (ignored) -> Schema.create(schemaType));
+    return fieldTypeToAvroSchemaCache.computeIfAbsent(
+        type,
+        key -> {
+          // Handle logical types: https://avro.apache.org/docs/1.10.2/spec.html#Logical+Types
+          Schema schema = Schema.create(schemaType);
+          switch (key) {
+            case DATE:
+              return LogicalTypes.date().addToSchema(schema);
+            case TIME:
+              return LogicalTypes.timeMillis().addToSchema(schema);
+            case DATETIME:
+              return LogicalTypes.timestampMillis().addToSchema(schema);
+            default:
+              return schema;
+          }
+        });
   }
 }
