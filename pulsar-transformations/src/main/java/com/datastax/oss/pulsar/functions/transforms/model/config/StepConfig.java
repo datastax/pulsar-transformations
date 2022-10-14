@@ -29,7 +29,7 @@ import lombok.Getter;
     @JsonSubTypes.Type(value = CastConfig.class, name = "cast"),
     @JsonSubTypes.Type(value = DropConfig.class, name = "drop"),
     @JsonSubTypes.Type(value = FlattenConfig.class, name = "flatten"),
-    @JsonSubTypes.Type(value = ComputeFieldsConfig.class, name = "compute-fields"),
+    @JsonSubTypes.Type(value = ComputeConfig.class, name = "compute"),
   }
 )
 @Getter

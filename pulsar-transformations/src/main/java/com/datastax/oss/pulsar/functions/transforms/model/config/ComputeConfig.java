@@ -21,7 +21,7 @@ import java.util.List;
 import lombok.Getter;
 
 @Getter
-public class ComputeFieldsConfig extends StepConfig {
+public class ComputeConfig extends StepConfig {
   @JsonProperty(required = true)
   private List<ComputeField> fields;
 

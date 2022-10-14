@@ -19,7 +19,7 @@ import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeFieldsConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
@@ -211,8 +211,8 @@ public class TransformFunction
         case "drop":
           transformStep = new DropStep();
           break;
-        case "compute-fields":
-          transformStep = newComputeFieldFunction((ComputeFieldsConfig) step);
+        case "compute":
+          transformStep = newComputeFieldFunction((ComputeConfig) step);
           break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
@@ -297,7 +297,7 @@ public class TransformFunction
     return builder.build();
   }
 
-  private static TransformStep newComputeFieldFunction(ComputeFieldsConfig config) {
+  private static TransformStep newComputeFieldFunction(ComputeConfig config) {
     List<ComputeField> fieldList = new ArrayList<>();
     config
         .getFields()
@@ -310,7 +310,7 @@ public class TransformFunction
                         .type(field.getType())
                         .optional(field.isOptional())
                         .build()));
-    return ComputeFieldStep.builder().fields(fieldList).build();
+    return ComputeStep.builder().fields(fieldList).build();
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {

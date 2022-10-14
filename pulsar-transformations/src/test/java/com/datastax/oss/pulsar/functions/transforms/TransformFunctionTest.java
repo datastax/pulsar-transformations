@@ -73,25 +73,25 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'delimiter': null, 'part': null, 'when': null}]}"},
       {"{'steps': [{'type': 'drop', 'when': null}]}"},
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'string', type: 'STRING'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'string', type: 'STRING'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'int32', type: 'INT32'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'int32', type: 'INT32'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'int64', type: 'INT64'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'int64', type: 'INT64'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'float', type: 'FLOAT'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'float', type: 'FLOAT'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'key.some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
       },
     };
   }
@@ -131,42 +131,38 @@ public class TransformFunctionTest {
       {"{'steps': [{'type': 'flatten', 'part': 'invalid'}]}"},
       {"{'steps': [{'type': 'flatten', 'when': ''}]}"},
       {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value,compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'key,compute-fields', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'true', type: 'BOOLEAN'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'record', type: 'AVRO'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'record', type: 'AVRO'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'json', type: 'JSON', part: 'key'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'json', type: 'JSON', part: 'key'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'non-key-or-value'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'int32', type: 'INT32', part: 'non-key-or-value'}]}]}"
+      },
+      {"{'steps': [{'type': 'compute', 'fields': [{expression: 'int64', type: 'INT64'}]}]}"},
+      {"{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', type: 'FLOAT'}]}]}"},
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
+      },
+      {"{'steps': [{'type': 'compute', 'fields': null}]}"},
+      {"{'steps': [{'type': 'compute', 'fields': []}]}"},
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': '', expression: 'double', type: 'DOUBLE'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{expression: 'int64', type: 'INT64'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: '', type: 'DOUBLE'}]}]}"
       },
       {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', type: 'FLOAT'}]}]}"
-      },
-      {
-        "{'steps': [{'type': 'value.compute-fields', 'fields': [{'name': 'some-field', expression: 'double'}]}]}"
-      },
-      {"{'steps': [{'type': 'compute-fields', 'fields': null}]}"},
-      {"{'steps': [{'type': 'compute-fields', 'fields': []}]}"},
-      {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': '', expression: 'double', type: 'DOUBLE'}]}]}"
-      },
-      {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: '', type: 'DOUBLE'}]}]}"
-      },
-      {
-        "{'steps': [{'type': 'compute-fields', 'fields': [{'name': 'value.some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
       },
     };
   }
@@ -224,7 +220,7 @@ public class TransformFunctionTest {
     String userConfig =
         (""
                 + "{'steps': ["
-                + "    {'type': 'compute-fields', 'fields':["
+                + "    {'type': 'compute', 'fields':["
                 + "        {'name': 'key.newField1', 'expression' : '5*3', 'type': 'INT32'},"
                 + "        {'name': 'key.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false},"
                 + "        {'name': 'value.newField1', 'expression' : '5+3', 'type': 'INT32'},"
