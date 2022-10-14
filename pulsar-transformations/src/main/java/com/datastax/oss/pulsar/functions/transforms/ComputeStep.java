@@ -39,7 +39,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 
 /** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
-public class ComputeFieldStep implements TransformStep {
+public class ComputeStep implements TransformStep {
 
   @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =

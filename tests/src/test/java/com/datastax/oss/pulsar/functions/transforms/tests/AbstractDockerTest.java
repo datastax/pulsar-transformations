@@ -158,7 +158,7 @@ public abstract class AbstractDockerTest {
                     + "{'steps': ["
                     + "    {'type': 'unwrap-key-value'},"
                     + "    {'type': 'drop-fields', 'fields': ['a']},"
-                    + "    {'type': 'compute-fields', 'fields': [{'name': 'value.c', 'expression' :'%s', 'type' : 'STRING'}]}"
+                    + "    {'type': 'compute', 'fields': [{'name': 'value.c', 'expression' :'%s', 'type' : 'STRING'}]}"
                     + "]}")
                 .replace("'", "\""),
             expression);
@@ -180,7 +180,7 @@ public abstract class AbstractDockerTest {
             (""
                     + "{'steps': ["
                     + "    {'type': 'drop-fields', 'fields': ['a','c']},"
-                    + "    {'type': 'compute-fields', 'fields': ["
+                    + "    {'type': 'compute', 'fields': ["
                     + "        {'name': 'key.k', 'expression' :'%s', 'type' : 'STRING'},"
                     + "        {'name': 'value.v', 'expression' :'%s', 'type' : 'STRING'}]}"
                     + "]}")
@@ -281,7 +281,7 @@ public abstract class AbstractDockerTest {
   }
 
   @Test
-  void testComputeFieldsTopicRouting()
+  void testComputeTopicRouting()
       throws PulsarClientException, PulsarAdminException, InterruptedException {
     String functionId = UUID.randomUUID().toString();
     String inputTopic = "input-" + functionId;
@@ -294,7 +294,7 @@ public abstract class AbstractDockerTest {
     String userConfig =
         (""
             + "{'steps': ["
-            + "   {'type': 'compute-fields', 'fields': [{'name': 'destinationTopic', 'expression': '%s', 'type': 'STRING'}], 'when': '%s'}"
+            + "   {'type': 'compute', 'fields': [{'name': 'destinationTopic', 'expression': '%s', 'type': 'STRING'}], 'when': '%s'}"
             + "]}");
     userConfig = String.format(userConfig.replace("'", "\""), expression, when);
     deployFunction(userConfig, functionName, inputTopic, outputTopic);

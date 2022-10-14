@@ -53,7 +53,7 @@ import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class ComputeFieldStepTest {
+public class ComputeStepTest {
 
   private static final org.apache.avro.Schema STRING_SCHEMA = org.apache.avro.Schema.create(STRING);
   private static final org.apache.avro.Schema INT_SCHEMA = org.apache.avro.Schema.create(INT);
@@ -98,7 +98,7 @@ public class ComputeFieldStepTest {
             .expression("value.age + 1")
             .type(ComputeFieldType.STRING)
             .build());
-    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -160,8 +160,8 @@ public class ComputeFieldStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    ComputeFieldStep step =
-        ComputeFieldStep.builder()
+    ComputeStep step =
+        ComputeStep.builder()
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
@@ -186,8 +186,8 @@ public class ComputeFieldStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    ComputeFieldStep step =
-        ComputeFieldStep.builder().fields(buildComputeFields("value", true, false)).build();
+    ComputeStep step =
+        ComputeStep.builder().fields(buildComputeFields("value", true, false)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -215,8 +215,8 @@ public class ComputeFieldStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    ComputeFieldStep step =
-        ComputeFieldStep.builder().fields(buildComputeFields("value", true, true)).build();
+    ComputeStep step =
+        ComputeStep.builder().fields(buildComputeFields("value", true, true)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -233,8 +233,8 @@ public class ComputeFieldStepTest {
 
   @Test
   void testKeyValueAvro() throws Exception {
-    ComputeFieldStep step =
-        ComputeFieldStep.builder()
+    ComputeStep step =
+        ComputeStep.builder()
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
@@ -288,8 +288,8 @@ public class ComputeFieldStepTest {
             AutoConsumeSchema.wrapPrimitiveObject("value", SchemaType.STRING, new byte[] {}),
             "test-key");
 
-    ComputeFieldStep step =
-        ComputeFieldStep.builder()
+    ComputeStep step =
+        ComputeStep.builder()
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
@@ -318,8 +318,8 @@ public class ComputeFieldStepTest {
             AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
             null);
 
-    ComputeFieldStep step =
-        ComputeFieldStep.builder()
+    ComputeStep step =
+        ComputeStep.builder()
             .fields(
                 Arrays.asList(
                     ComputeField.builder()
@@ -370,7 +370,7 @@ public class ComputeFieldStepTest {
             .expression("destinationTopic == 'targetTopic' ? 'route' : 'dont-route'")
             .type(ComputeFieldType.STRING)
             .build());
-    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
     Record<?> outputRecord = Utils.process(record, step);
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
@@ -405,7 +405,7 @@ public class ComputeFieldStepTest {
             .expression("'new'")
             .type(ComputeFieldType.STRING)
             .build());
-    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
     Record<?> outputRecord = Utils.process(record, step);
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
@@ -445,7 +445,7 @@ public class ComputeFieldStepTest {
             .expression("'c2'")
             .type(ComputeFieldType.STRING)
             .build());
-    ComputeFieldStep step = ComputeFieldStep.builder().fields(fields).build();
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
     Record<?> outputRecord = Utils.process(record, step);
 
     assertEquals(outputRecord.getProperties().size(), 3);
