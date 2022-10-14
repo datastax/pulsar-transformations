@@ -67,11 +67,11 @@ public class JstlFunctions {
     throw new IllegalArgumentException(
         "Invalid input type: "
             + input.getClass().getSimpleName()
-            + ". Should either be an RFC3339 datetime string like '2007-12-01T12:30:00Z' or epoch millis");
+            + ". Should either be an ISO 8601 datetime string like '2007-12-01T12:30:00Z' or epoch millis");
   }
 
-  private static long dateadd(String rfc3339, long delta, String unit) {
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse(rfc3339);
+  private static long dateadd(String iso8601, long delta, String unit) {
+    OffsetDateTime offsetDateTime = OffsetDateTime.parse(iso8601);
     return dateadd(offsetDateTime, delta, unit);
   }
 
