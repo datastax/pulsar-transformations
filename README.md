@@ -25,9 +25,6 @@ The `TransformFunction` reads its configuration as `JSON` from the Function `use
 {
   "steps": [
     {
-      "type": "cast", "schema-type": "STRING"
-    },
-    {
       "type": "drop-fields", "fields": "keyField1,keyField2", "part": "key"
     },
     {
@@ -37,13 +34,7 @@ The `TransformFunction` reads its configuration as `JSON` from the Function `use
       "type": "unwrap-key-value"
     },
     {
-      "type": "flatten", "delimiter": "_"
-    },
-    {
-      "type": "drop", "when": "value.field == 'value'"
-    },
-    {
-       "type": "compute", "fields": [{"name": "value.new-field", "expression": "key.existing-field == 'value'", "type": "BOOLEAN"}]
+      "type": "cast", "schema-type": "STRING"
     }
   ]
 }
@@ -215,22 +206,22 @@ Parameters:
 | type                     | the type of the computed field. this will translate to the schema type of the new field in the transformed message. The following types are currently supported [`STRING`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `DATE`, `TIME`, `DATETIME`]. For more details about each type, please check the next table.                                                                      |
 | optional (default: true) | if true, it marks the field as optional in the schema of the transformed message. This is useful when `null` is a possible value of the compute expression.                                                                                                                                                                                                                                 |
 
-| Name (field.type) | Description                                                                                                          | Expression Examples                                                                                    |
-|-------------------|----------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
- | `INT32`           | represents 32-bit integer.                                                                                           | expression1: "2147483647", expression2: "1 + 1"                                                        |
- | `INT64`           | represents 64-bit integer.                                                                                           | expression1: "9223372036854775807", expression2: "1 + 1"                                               |
- | `FLOAT`           | represents 32-bit floating point.                                                                                    | expression1: "340282346638528859999999999999999999999.999999", expression2: "1.1 + 1.1"                |
- | `DOUBLE`          | represents 64-bit floating point.                                                                                    | expression1: "1.79769313486231570e+308", expression2: "1.1 + 1.1"                                      |
- | `BOOLEAN`         | true or false                                                                                                        | expression1: "true", expression2: "1 == 1", expression3: "value.stringField == 'matching string'"      |
-| `DATE`            | a date without a time-zone in the [ISO-8601 format](https://www.iso.org/iso-8601-date-and-time-format.html)          | expression1: "2021-12-03"                                                                              |
-| `TIME`            | a time without a time-zone in the [ISO-8601 format](https://www.iso.org/iso-8601-date-and-time-format.html)          | expression1: "20:15:45"                                                                                |
-| `DATETIME`        | a date-time with an offset from UTC in the [ISO-8601 format](https://www.iso.org/iso-8601-date-and-time-format.html) | expression1: "2022-10-02T01:02:03+02:00", expression2: "2019-10-02T01:02:03Z", expression3: "fn:now()" |
+| Name (field.type) | Description                                                                                         | Expression Examples                                                                                    |
+|-------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+ | `INT32`           | represents 32-bit integer.                                                                          | expression1: "2147483647", expression2: "1 + 1"                                                        |
+ | `INT64`           | represents 64-bit integer.                                                                          | expression1: "9223372036854775807", expression2: "1 + 1"                                               |
+ | `FLOAT`           | represents 32-bit floating point.                                                                   | expression1: "340282346638528859999999999999999999999.999999", expression2: "1.1 + 1.1"                |
+ | `DOUBLE`          | represents 64-bit floating point.                                                                   | expression1: "1.79769313486231570e+308", expression2: "1.1 + 1.1"                                      |
+ | `BOOLEAN`         | true or false                                                                                       | expression1: "true", expression2: "1 == 1", expression3: "value.stringField == 'matching string'"      |
+| `DATE`            | a date without a time-zone in the [RFC3339 format](https://www.rfc-editor.org/rfc/rfc3339)          | expression1: "2021-12-03"                                                                              |
+| `TIME`            | a time without a time-zone in the [RFC3339 format](https://www.rfc-editor.org/rfc/rfc3339)          | expression1: "20:15:45"                                                                                |
+| `DATETIME`        | a date-time with an offset from UTC in the [RFC3339 format](https://www.rfc-editor.org/rfc/rfc3339) | expression1: "2022-10-02T01:02:03+02:00", expression2: "2019-10-02T01:02:03Z", expression3: "fn:now()" |
 
 ##### Example 1
 
 UserConfig: `{"steps": [{"type": "compute", "fields":[
                 {"name": "key.newKeyField",   "expression" : "5*3", "type": "INT32"},"
-                {"name": "value.valueField",  "expression" : "fn:contact(value.valueField, '_suffix')", "type": "STRING"}]}
+                {"name": "value.valueField",  "expression" : "fn:concat(value.valueField, '_suffix')", "type": "STRING"}]}
              ]}`
 
 Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>)`
@@ -267,7 +258,7 @@ Utility methods available under the `fn` namespace. For example, to calculate th
 * coalesce(value, valueIfNull): Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
 * now(): Returns the current epoch millis.
 * dateadd(input, delta, unit): Performs date/time arithmetic operations on the `input` date/time. 
-  * `input` can be either epoch millis or an [ISO 8601](https://www.iso.org/iso-8601-date-and-time-format.html) format like "2022-10-14T10:15:30+01:00"
+  * `input` can be either epoch millis or an [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format like "2022-10-14T10:15:30+01:00"
   * `delta` is the amount of `unit` to add to `input`. Can be a negative value to perform subtraction.
   * `unit` the unit of time to add or subtract. Can be one of [`years`, `months`, `days`, `hours`, `minutes`, `seconds`, `millis`]
 
