@@ -93,6 +93,15 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
       },
+      {
+          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'date', optional: true, type: 'DATE'}]}]}"
+      },
+      {
+          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'time', optional: true, type: 'TIME'}]}]}"
+      },
+      {
+          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'datetime', optional: true, type: 'DATETIME'}]}]}"
+      },
     };
   }
 

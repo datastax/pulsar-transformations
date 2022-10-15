@@ -180,6 +180,9 @@ components:
                       - FLOAT
                       - DOUBLE
                       - BOOLEAN
+                      - DATE
+                      - TIME
+                      - DATETIME
                   optional:
                     type: boolean
                     description: If true, the generated schema for the computed field will allow for null values.

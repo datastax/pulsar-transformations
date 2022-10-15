@@ -76,6 +76,11 @@ import org.apache.pulsar.functions.api.Record;
  *       <code>value</code>. If not specified, flatten will apply to key and value.
  *   <li><code>drop</code>: drops the message from further processing. Use in conjunction with
  *       <code>when</code> to selectively drop messages.
+ *   <li><code>compute</code>: dynamically calculates <code>fields</code> values in the key, value or header. Each
+ *       field has a <code>name</code> to represents a new or existing field (in this case, it will be overwritten). The
+ *       value of the fields is evaluated by the <code>expression</code> and respect the <code>type</code>. Supported
+ *       types are [INT32, INT64, FLOAT, DOUBLE, BOOLEAN, DATE, TIME, DATETIME]. Each field is marked as nullable by
+ *       default. To mark the field as non-nullable in the output schema, set <code>optional</code> to false.
  * </ul>
  *
  * <p>The <code>TransformFunction</code> reads its configuration as Json from the {@link Context}
@@ -84,6 +89,9 @@ import org.apache.pulsar.functions.api.Record;
  * <pre><code class="lang-json">
  * {
  *   "steps": [
+ *     {
+ *       "type": "cast", "schema-type": "STRING"
+ *     },
  *     {
  *       "type": "drop-fields", "fields": ["keyField1", "keyField2"], "part": "key"
  *     },
@@ -94,13 +102,13 @@ import org.apache.pulsar.functions.api.Record;
  *       "type": "unwrap-key-value"
  *     },
  *     {
- *       "type": "cast", "schema-type": "STRING"
- *     },
- *     {
  *       "type": "flatten", "delimiter" : "_" "part" : "value", "when": "value.field == 'value'"
  *     },
  *     {
  *       "type": "drop", "when": "value.field == 'value'"
+ *     },
+ *     {
+ *       "type": "compute", "fields": [{"name": "value.new-field", "expression": "key.existing-field == 'value'", "type": "BOOLEAN"}]
  *     }
  *   ]
  * }

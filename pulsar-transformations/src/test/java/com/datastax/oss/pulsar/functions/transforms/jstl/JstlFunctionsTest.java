@@ -169,7 +169,7 @@ public class JstlFunctionsTest {
   }
 
   /**
-   * @return {"input date in rfc 3339 format", "delta", "unit", "expected value (in epoch millis)"}
+   * @return {"input date", "delta", "unit", "expected value (in epoch millis)"}
    */
   @DataProvider(name = "utcDateAddProvider")
   public static Object[][] utcDateAddProvider() {
@@ -201,7 +201,7 @@ public class JstlFunctionsTest {
   }
 
   /**
-   * @return {"input date in rfc 3339 format)", "delta", "unit", "expected value (in epoch millis)"}
+   * @return {"input date", "delta", "unit", "expected value (in epoch millis)"}
    */
   @DataProvider(name = "nonUtcDateAddProvider")
   public static Object[][] nonUtcDateAddProvider() {
