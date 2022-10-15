@@ -202,7 +202,7 @@ Parameters:
 | Name (field)             | Description                                                                                                                                                                                                                                                                                                                                                                                 |
 |--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | name                     | the name of the field to be computed. Prefix with `key.` or `value.` to compute the fields in the key or value parts of the message. In addition, you can compute values on the following message headers [`destinationTopic`, `messageKey`, `properties.`]. Please note that properties is a map of key/value pairs that are referenced by the dot notation, for example `properties.key0` |
-| expression               | supports the [Expression Language](#Expression Language) syntax. It is evaluated at runtime and the result of the evaluation is assigned to the field.                                                                                                                                                                                                                                      |
+| expression               | supports the [Expression Language](#expression-language) syntax. It is evaluated at runtime and the result of the evaluation is assigned to the field.                                                                                                                                                                                                                                      |
 | type                     | the type of the computed field. this will translate to the schema type of the new field in the transformed message. The following types are currently supported [`STRING`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `DATE`, `TIME`, `DATETIME`]. For more details about each type, please check the next table.                                                                      |
 | optional (default: true) | if true, it marks the field as optional in the schema of the transformed message. This is useful when `null` is a possible value of the compute expression.                                                                                                                                                                                                                                 |
 
@@ -241,7 +241,7 @@ Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>),
 Output: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>), headers=destinationTopic:routed, propertes: {k1:overwritten, k2:new}`
 
 ### Expression Language
-In order to support [Condition Steps](#Conditional Steps) and [#Compute Transform](#Compute), an expression language is required to evaluate the conditional step `when` (boolean) or the compute step `expression` (any of the supported types defined here####) fields. The syntax is([EL](https://javaee.github.io/tutorial/jsf-el001.html#BNAHQ)) like that uses the dot notation to access field properties or map keys. It supports the following operators and functions:
+In order to support [Condition Steps](#conditional-steps) and the [Compute](#compute) Transform, an expression language is required to evaluate the conditional step `when` or the compute step `expression`. The syntax is([EL](https://javaee.github.io/tutorial/jsf-el001.html#BNAHQ)) like that uses the dot notation to access field properties or map keys. It supports the following operators and functions:
 
 #### Operators
 The Expression Language supports the following operators:
@@ -265,7 +265,7 @@ Utility methods available under the `fn` namespace. For example, to calculate th
 #### Conditional Steps
 
 Each step accept an optional `when` configuration that is evaluated at step execution time against current record (i.e. the as seen by
-the current step in the transformation pipeline). The `when` condition supports the [Expression Language](#Expression Language) syntax. It provides access to the record attributes as follows:
+the current step in the transformation pipeline). The `when` condition supports the [Expression Language](#expression-language) syntax. It provides access to the record attributes as follows:
 * `key`: the key portion of the record in a KeyValue schema. 
 * `value`: the value portion of the record in a KeyValue schema, or the message payload itself.
 * `messageKey`: the optional key messages are tagged with (aka. Partition Key).
