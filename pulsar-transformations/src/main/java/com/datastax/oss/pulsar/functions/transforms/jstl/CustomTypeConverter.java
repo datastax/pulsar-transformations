@@ -17,6 +17,8 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import de.odysseus.el.misc.TypeConverter;
 import de.odysseus.el.misc.TypeConverterImpl;
+import org.apache.avro.util.Utf8;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -39,6 +41,9 @@ public class CustomTypeConverter implements TypeConverter {
       return (T) LocalTime.parse(o.toString());
     } else if (aClass == OffsetDateTime.class) {
       return (T) OffsetDateTime.parse(o.toString());
+    }
+    if (o instanceof org.apache.avro.util.Utf8) {
+      o = o.toString();
     }
     return typeConverter.convert(o, aClass);
   }

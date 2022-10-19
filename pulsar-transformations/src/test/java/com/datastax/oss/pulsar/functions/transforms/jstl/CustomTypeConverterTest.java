@@ -22,6 +22,8 @@ import static org.testng.AssertJUnit.assertTrue;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+
+import org.apache.avro.util.Utf8;
 import org.testng.annotations.Test;
 
 public class CustomTypeConverterTest {
@@ -44,6 +46,9 @@ public class CustomTypeConverterTest {
   void testNonNullConversion() {
     CustomTypeConverter converter = new CustomTypeConverter();
     assertEquals(converter.convert("test", String.class), "test");
+    assertEquals((int) converter.convert("1", int.class), 1);
+    assertEquals(converter.convert(new Utf8("test"), String.class), "test");
+    assertEquals((int) converter.convert(new Utf8("1"), int.class), 1);
     assertEquals((int) converter.convert(1, int.class), 1);
     assertEquals((long) converter.convert(1L, long.class), 1L);
     assertEquals(converter.convert(1.3F, float.class), 1.3F);
