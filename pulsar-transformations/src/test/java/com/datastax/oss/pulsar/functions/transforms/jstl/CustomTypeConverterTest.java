@@ -22,7 +22,6 @@ import static org.testng.AssertJUnit.assertTrue;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-
 import org.apache.avro.util.Utf8;
 import org.testng.annotations.Test;
 
