@@ -40,6 +40,9 @@ public class CustomTypeConverter implements TypeConverter {
     } else if (aClass == OffsetDateTime.class) {
       return (T) OffsetDateTime.parse(o.toString());
     }
+    if (o instanceof org.apache.avro.util.Utf8) {
+      o = o.toString();
+    }
     return typeConverter.convert(o, aClass);
   }
 }
