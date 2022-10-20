@@ -20,7 +20,7 @@
   <parent>
     <artifactId>pulsar-transformations-parent</artifactId>
     <groupId>com.datastax.oss</groupId>
-    <version>2.0.2-SNAPSHOT</version>
+    <version>2.0.2</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>pulsar-transformations-tests</artifactId>
@@ -65,7 +65,7 @@
             <configuration>
               <tasks>
                 <echo>copy proxy protocol handler</echo>
-                <copy file="${basedir}/../pulsar-transformations/target/pulsar-transformations-${project.version}.nar" tofile="${project.build.outputDirectory}/pulsar-transformations.nar" />
+                <copy file="${basedir}/../pulsar-transformations/target/pulsar-transformations-${project.version}.nar" tofile="${project.build.outputDirectory}/pulsar-transformations.nar"/>
               </tasks>
             </configuration>
           </execution>
