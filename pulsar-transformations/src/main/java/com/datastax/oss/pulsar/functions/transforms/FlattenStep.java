@@ -170,17 +170,16 @@ public class FlattenStep implements TransformStep {
       return null;
     }
 
-    if (schema.getField(name).schema().isUnion()) {
-      for (org.apache.avro.Schema s : schema.getField(name).schema().getTypes()) {
+    org.apache.avro.Schema fieldSchema = schema.getField(name).schema();
+    if (fieldSchema.isUnion()) {
+      for (org.apache.avro.Schema s : fieldSchema.getTypes()) {
         if (s.getType() == org.apache.avro.Schema.Type.RECORD) {
           return s;
         }
       }
     }
 
-    return schema.getField(name).schema().getType() == org.apache.avro.Schema.Type.RECORD
-        ? schema.getField(name).schema()
-        : null;
+    return fieldSchema.getType() == org.apache.avro.Schema.Type.RECORD ? fieldSchema : null;
   }
 
   /**
