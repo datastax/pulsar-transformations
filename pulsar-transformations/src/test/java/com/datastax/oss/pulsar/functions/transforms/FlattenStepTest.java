@@ -15,10 +15,14 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.FlattenStep.AVRO_READ_OFFSET_PROP;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -123,7 +127,7 @@ public class FlattenStepTest {
   }
 
   @Test
-  void testNestedKeyValueFlattenedWithCustomerDelimiter() throws Exception {
+  void testNestedKeyValueFlattenedWithCustomDelimiter() throws Exception {
     // given
     Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
 
@@ -278,8 +282,8 @@ public class FlattenStepTest {
 
   private void assertSchemasFlattened(
       GenericData.Record actual, GenericData.Record expected, String delimiter) {
-    assertEquals(actual.getSchema().getFields().size(), 9);
-
+    assertEquals(actual.getSchema().getFields().size(), 11);
+    assertTopLevelSchema(actual.getSchema(), expected.getSchema());
     assertField(
         actual.getSchema().getField("level1String"), expected.getSchema().getField("level1String"));
     Schema.Field expectedL1 = expected.getSchema().getField("level1Record");
@@ -319,9 +323,9 @@ public class FlattenStepTest {
             .getSchema()
             .getField(
                 String.format(
-                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithProps",
+                    "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithPropsAndAlias",
                     delimiter)),
-        expectedL3.schema().getField("level4StringWithProps"));
+        expectedL3.schema().getField("level4StringWithPropsAndAlias"));
     assertField(
         actual
             .getSchema()
@@ -337,7 +341,7 @@ public class FlattenStepTest {
 
   private void assertValuesFlattened(
       GenericData.Record actual, GenericData.Record expected, String delimiter) {
-    assertEquals(actual.getSchema().getFields().size(), 9);
+    assertEquals(actual.getSchema().getFields().size(), 11);
 
     assertEquals(actual.get("level1String"), new Utf8((String) expected.get("level1String")));
     GenericData.Record expectedL1 = (GenericData.Record) expected.get("level1Record");
@@ -367,14 +371,23 @@ public class FlattenStepTest {
     assertEquals(
         actual.get(
             String.format(
-                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithProps",
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4StringWithPropsAndAlias",
                 delimiter)),
-        new Utf8((String) expectedL3.get("level4StringWithProps")));
+        new Utf8((String) expectedL3.get("level4StringWithPropsAndAlias")));
     assertEquals(
         actual.get(
             String.format(
                 "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Union", delimiter)),
         new Utf8((String) expectedL3.get("level4Union")));
+    assertNull(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4Null", delimiter)));
+    assertNull(
+        actual.get(
+            String.format(
+                "level1Record%1$slevel2Record%1$slevel3Record%1$slevel4NullRecord%1$signored",
+                delimiter)));
   }
 
   private void assertValuesFlattened(GenericData.Record actual, GenericData.Record expected) {
@@ -386,5 +399,20 @@ public class FlattenStepTest {
     assertEquals(actual.doc(), expected.doc());
     assertEquals(actual.defaultVal(), expected.defaultVal());
     assertEquals(actual.getObjectProps(), expected.getObjectProps());
+    assertEquals(actual.aliases(), expected.aliases());
+  }
+
+  private void assertTopLevelSchema(Schema actual, Schema expected) {
+    assertEquals(actual.getName(), expected.getName());
+    assertEquals(actual.getNamespace(), expected.getNamespace());
+    assertEquals(actual.getDoc(), expected.getDoc());
+    assertEquals(
+        actual.getObjectProps(),
+        expected
+            .getObjectProps()
+            .entrySet()
+            .stream()
+            .filter(e -> !AVRO_READ_OFFSET_PROP.equals(e.getKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
   }
 }

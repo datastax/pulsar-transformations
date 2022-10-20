@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.FlattenStep.AVRO_READ_OFFSET_PROP;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
@@ -210,6 +211,17 @@ public class Utils {
     List<org.apache.avro.Schema.Field> fields = new ArrayList<>();
     org.apache.avro.Schema nullAndString =
         SchemaBuilder.unionOf().stringType().and().nullType().endUnion();
+    org.apache.avro.Schema nullLevel =
+        org.apache.avro.Schema.createRecord(
+            "nullLevel",
+            "doc ",
+            "ns",
+            false,
+            List.of(
+                new org.apache.avro.Schema.Field(
+                    "ignored", org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING))));
+    org.apache.avro.Schema nullAndRecord =
+        SchemaBuilder.unionOf().nullType().and().type(nullLevel).endUnion();
     fields.add(
         new org.apache.avro.Schema.Field(
             "level" + levels + "String",
@@ -236,12 +248,16 @@ public class Utils {
             "level" + levels + "Array", arraySchema, "arrayDoc", Collections.emptyList()));
     org.apache.avro.Schema.Field stringWithProps =
         new org.apache.avro.Schema.Field(
-            "level" + levels + "StringWithProps",
+            "level" + levels + "StringWithPropsAndAlias",
             org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING));
     stringWithProps.addProp("p1", "v1");
     stringWithProps.addProp("p2", "v2");
+    stringWithProps.addProp(AVRO_READ_OFFSET_PROP, "5");
+    stringWithProps.addAlias("a1");
     fields.add(stringWithProps);
     fields.add(new org.apache.avro.Schema.Field("level" + levels + "Union", nullAndString));
+    fields.add(new org.apache.avro.Schema.Field("level" + levels + "Null", nullAndString));
+    fields.add(new org.apache.avro.Schema.Field("level" + levels + "NullRecord", nullAndRecord));
     org.apache.avro.Schema lastLevelSchema =
         org.apache.avro.Schema.createRecord("nested" + levels, "doc ", "ns", false, fields);
     org.apache.avro.generic.GenericRecord lastLevelRecord = new GenericData.Record(lastLevelSchema);
@@ -251,8 +267,11 @@ public class Utils {
     lastLevelRecord.put(
         "level" + levels + "Array",
         List.of("level" + levels + "_" + "1", "level" + levels + "_" + "2"));
-    lastLevelRecord.put("level" + levels + "StringWithProps", "level" + levels + "_" + "WithProps");
+    lastLevelRecord.put(
+        "level" + levels + "StringWithPropsAndAlias", "level" + levels + "_" + "WithProps");
     lastLevelRecord.put("level" + levels + "Union", "level" + levels + "_" + "2");
+    lastLevelRecord.put("level" + levels + "Null", null);
+    lastLevelRecord.put("level" + levels + "NullRecord", null);
 
     org.apache.avro.Schema nextLevelSchema = lastLevelSchema;
     org.apache.avro.generic.GenericRecord nextLevelRecord = lastLevelRecord;
@@ -277,6 +296,8 @@ public class Utils {
       nextLevelRecord = currentLevelRecord;
     }
 
+    nextLevelSchema.addProp(AVRO_READ_OFFSET_PROP, 5);
+    nextLevelSchema.addProp("t1", 9);
     List<Field> pulsarFields =
         fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
