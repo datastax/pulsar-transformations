@@ -16,10 +16,15 @@
 package com.datastax.oss.pulsar.functions.transforms;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
+
 import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -40,6 +45,10 @@ public class FlattenStep implements TransformStep {
 
   @Builder.Default private final String delimiter = DEFAULT_DELIMITER;
   private final String part;
+  private final Map<org.apache.avro.Schema, FlattenedSchema> keySchemaCache =
+      new ConcurrentHashMap<>();
+  private final Map<org.apache.avro.Schema, FlattenedSchema> valueSchemaCache =
+      new ConcurrentHashMap<>();
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
@@ -48,26 +57,26 @@ public class FlattenStep implements TransformStep {
       validateAvro(transformContext.getValueSchema());
       GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
       GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
-      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
+      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord, keySchemaCache));
+      transformContext.setValueObject(flattenGenericRecord(avroValueRecord, valueSchemaCache));
       transformContext.setKeyModified(true);
       transformContext.setValueModified(true);
     } else if ("key".equals(part)) {
       validateAvro(transformContext.getKeySchema());
       GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
-      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
+      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord, keySchemaCache));
       transformContext.setKeyModified(true);
     } else if ("value".equals(part)) {
       validateAvro(transformContext.getValueSchema());
       GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
+      transformContext.setValueObject(flattenGenericRecord(avroValueRecord, valueSchemaCache));
       transformContext.setValueModified(true);
     } else {
       throw new IllegalArgumentException("Unsupported part for Flatten: " + part);
     }
   }
 
-  void validateAvro(Schema<?> schema) {
+  private void validateAvro(Schema<?> schema) {
     if (schema == null) {
       throw new IllegalStateException("Flatten requires non-null schemas!");
     }
@@ -78,30 +87,53 @@ public class FlattenStep implements TransformStep {
     }
   }
 
-  GenericRecord flattenGenericRecord(GenericRecord record) {
-    List<FieldValuePair> fieldValuePairs = buildFlattenedFields(record);
-    List<org.apache.avro.Schema.Field> fields =
-        fieldValuePairs.stream().map(FieldValuePair::getField).collect(Collectors.toList());
-    org.apache.avro.Schema modified = buildFlattenedSchema(record, fields);
-    GenericRecord newRecord = new GenericData.Record(modified);
-    fieldValuePairs.forEach(pair -> newRecord.put(pair.getField().name(), pair.getValue()));
+  private GenericRecord flattenGenericRecord(
+      GenericRecord record, Map<org.apache.avro.Schema, FlattenedSchema> schemaCache) {
+    FlattenedSchema modified =
+        schemaCache.computeIfAbsent(
+            record.getSchema(),
+            schema -> {
+              Map<org.apache.avro.Schema.Field, List<String>> flattenedFieldMap = new HashMap<>();
+              buildFlattenedFields(record.getSchema(), flattenedFieldMap);
+              List<org.apache.avro.Schema.Field> fields =
+                  new ArrayList<>(flattenedFieldMap.keySet());
+              return new FlattenedSchema(buildFlattenedSchema(record.getSchema(), fields), flattenedFieldMap);
+            });
+
+    GenericRecord newRecord = new GenericData.Record(modified.getSchema());
+    modified.getFieldMap().forEach((k, v) -> newRecord.put(k.name(), getFlattenedFieldValue(v, record)));
     return newRecord;
   }
 
-  private List<FieldValuePair> buildFlattenedFields(GenericRecord record) {
-    List<FieldValuePair> flattenedFields = new ArrayList<>();
-    org.apache.avro.Schema originalSchema = record.getSchema();
-    for (org.apache.avro.Schema.Field field : originalSchema.getFields()) {
-      flattenedFields.addAll(
-          flattenField(record, record.getSchema(), field, field.schema().isNullable(), ""));
+  private Object getFlattenedFieldValue(
+      List<String> fieldNameParts, GenericRecord originalRecord) {
+    GenericRecord currentLevel = originalRecord;
+    for (int level = 0; level < fieldNameParts.size() - 1; level++) {
+      Object candidateRecord = currentLevel.get(fieldNameParts.get(level));
+      if (candidateRecord == null) {
+        return null;
+      }
+      currentLevel = (GenericRecord) candidateRecord;
     }
 
-    return flattenedFields;
+    return currentLevel.get(fieldNameParts.get(fieldNameParts.size() - 1));
   }
 
-  org.apache.avro.Schema buildFlattenedSchema(
-      GenericRecord record, List<org.apache.avro.Schema.Field> flattenedFields) {
-    org.apache.avro.Schema originalSchema = record.getSchema();
+  private void buildFlattenedFields(
+      org.apache.avro.Schema originalSchema,
+      Map<org.apache.avro.Schema.Field, List<String>> flattenedFieldMap) {
+    for (org.apache.avro.Schema.Field field : originalSchema.getFields()) {
+      flattenField(
+          originalSchema,
+          field,
+          field.schema().isNullable(),
+          new LinkedList<>(),
+          flattenedFieldMap);
+    }
+  }
+
+  private org.apache.avro.Schema buildFlattenedSchema(
+      org.apache.avro.Schema originalSchema, List<org.apache.avro.Schema.Field> flattenedFields) {
     org.apache.avro.Schema flattenedSchema =
         org.apache.avro.Schema.createRecord(
             originalSchema.getName(),
@@ -119,50 +151,40 @@ public class FlattenStep implements TransformStep {
   }
 
   /**
-   * @param record the record that contains the field to be flattened. Each recursive call will pass
-   *     the record one level deeper. At any level, the field could become null.
    * @param schema the schema of the record that contains the field to be flattened. Each recursive
    *     call will pass the schema one level deeper. At any level, the schema should exist.
    * @param field the field to be flattened
    * @param nullable true if the current field schema is nullable, this has to be passed all the way
    *     to the last nested level because anytime one of the ancestors is null, the flattened field
    *     schema could be null even if it is not nullable on the original schema
-   * @param flattenedFieldName the field name that is built incrementally with each recursive call.
+   * @param flattenedFieldNameParts the field name parts that is built incrementally with each
+   *     recursive call.
    * @return flattened key/value pairs.
    */
-  List<FieldValuePair> flattenField(
-      @Nullable GenericRecord record,
+  private void flattenField(
       org.apache.avro.Schema schema,
       org.apache.avro.Schema.Field field,
       boolean nullable,
-      String flattenedFieldName) {
-    List<FieldValuePair> flattenedFields = new ArrayList<>();
-    // Because of UNION schemas, we cannot tell for sure if the current field is a record, so we
-    // have to use reflection
+      LinkedList<String> flattenedFieldNameParts,
+      Map<org.apache.avro.Schema.Field, List<String>> flattenedFieldMap) {
+    flattenedFieldNameParts.addLast(field.name());
     org.apache.avro.Schema recordSchema = getRecordSchema(schema, field.name());
-    if (recordSchema != null) {
-      for (org.apache.avro.Schema.Field nestedField : recordSchema.getFields()) {
-        GenericRecord genericRecord =
-            record == null ? null : (GenericRecord) record.get(field.name());
-        flattenedFields.addAll(
-            flattenField(
-                genericRecord,
-                recordSchema,
-                nestedField,
-                nullable || nestedField.schema().isNullable(),
-                flattenedFieldName + field.name() + delimiter));
-      }
-
-      return flattenedFields;
+    if (recordSchema == null) {
+      org.apache.avro.Schema.Field flattenedField =
+          createField(field, String.join(delimiter, flattenedFieldNameParts), nullable);
+      flattenedFieldMap.put(flattenedField, new LinkedList<>(flattenedFieldNameParts));
+      flattenedFieldNameParts.removeLast();
+      return;
     }
 
-    org.apache.avro.Schema.Field flattenedField =
-        createField(field, flattenedFieldName + field.name(), nullable);
-    FieldValuePair fieldValuePair =
-        new FieldValuePair(flattenedField, record == null ? null : record.get(field.name()));
-    flattenedFields.add(fieldValuePair);
-
-    return flattenedFields;
+    for (org.apache.avro.Schema.Field nestedField : recordSchema.getFields()) {
+      flattenField(
+          recordSchema,
+          nestedField,
+          nullable || nestedField.schema().isNullable(),
+          flattenedFieldNameParts,
+          flattenedFieldMap);
+    }
   }
 
   private org.apache.avro.Schema getRecordSchema(org.apache.avro.Schema schema, String name) {
@@ -186,7 +208,7 @@ public class FlattenStep implements TransformStep {
    * Creates a new Field instance with the same schema, doc, defaultValue, and order as field has
    * with changing the name to the specified one. It also copies all the props and aliases.
    */
-  org.apache.avro.Schema.Field createField(
+  private org.apache.avro.Schema.Field createField(
       org.apache.avro.Schema.Field field, String name, boolean nullable) {
     org.apache.avro.Schema newSchema = field.schema();
     if (nullable && !newSchema.isNullable()) {
@@ -201,9 +223,13 @@ public class FlattenStep implements TransformStep {
     return newField;
   }
 
+  /**
+   * A convenience class to facilitate dealing with flattened schema caches
+   */
   @Value
-  private static class FieldValuePair {
-    org.apache.avro.Schema.Field field;
-    Object value;
+  @RequiredArgsConstructor
+  private static class FlattenedSchema {
+    private final org.apache.avro.Schema schema;
+    private final Map<org.apache.avro.Schema.Field, List<String>> fieldMap;
   }
 }

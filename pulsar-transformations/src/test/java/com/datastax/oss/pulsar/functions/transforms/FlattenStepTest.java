@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static com.datastax.oss.pulsar.functions.transforms.FlattenStep.AVRO_READ_OFFSET_PROP;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
@@ -104,6 +105,62 @@ public class FlattenStepTest {
     assertValuesFlattened(valueRecord, value);
 
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+  }
+
+  @Test
+  void testNestedKeyValueFlattenCached() throws Exception {
+    // given
+    Record<GenericObject> nestedKVRecord = Utils.createNestedAvroKeyValueRecord(4);
+    FlattenStep flattenStep = FlattenStep.builder().build();
+    // when
+    Record<?> outputRecord = Utils.process(nestedKVRecord, flattenStep);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    // process again to verify cache access
+    outputRecord = Utils.process(Utils.createNestedAvroKeyValueRecord(4), flattenStep);
+    KeyValueSchema<?, ?> newMessageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+
+    // then
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record keyRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    GenericData.Record valueRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+
+    // Assert value flattened
+    GenericData.Record key =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getKey())
+                .getAvroRecord();
+    assertSchemasFlattened(keyRecord, key);
+    assertValuesFlattened(keyRecord, key);
+
+    // Assert value flattened
+    GenericData.Record value =
+        (GenericData.Record)
+            ((GenericAvroRecord)
+                ((KeyValue<?, ?>) nestedKVRecord.getValue().getNativeObject()).getValue())
+                .getAvroRecord();
+    assertSchemasFlattened(valueRecord, value);
+    assertValuesFlattened(valueRecord, value);
+
+    // Schema was modified by process operation
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) nestedKVRecord.getSchema();
+    assertNotSame(
+        messageSchema.getKeySchema().getNativeSchema().orElseThrow(),
+        recordSchema.getKeySchema().getNativeSchema().orElseThrow());
+    assertNotSame(
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        recordSchema.getValueSchema().getNativeSchema().orElseThrow());
+
+    // Multiple process output the same cached schema
+    assertSame(
+        messageSchema.getKeySchema().getNativeSchema().orElseThrow(),
+        newMessageSchema.getKeySchema().getNativeSchema().orElseThrow());
+    assertSame(
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow(),
+        newMessageSchema.getValueSchema().getNativeSchema().orElseThrow());
   }
 
   @Test
