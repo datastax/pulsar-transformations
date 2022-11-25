@@ -38,7 +38,7 @@
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <pulsar.groupId>com.datastax.oss</pulsar.groupId>
-    <pulsar.version>2.10.1.5</pulsar.version>
+    <pulsar.version>2.10.2.5</pulsar.version>
     <surefire.version>3.0.0-M5</surefire.version>
     <!-- Must match version in pulsar -->
     <avro.version>1.10.2</avro.version>
