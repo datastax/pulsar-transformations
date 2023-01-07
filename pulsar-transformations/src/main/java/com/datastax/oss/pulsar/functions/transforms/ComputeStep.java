@@ -46,11 +46,17 @@ public class ComputeStep implements TransformStep {
       new ConcurrentHashMap<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =
       new ConcurrentHashMap<>();
+  private final Map<Schema, Schema> primitiveSchemaCache = new ConcurrentHashMap<>();
   private final Map<ComputeFieldType, org.apache.avro.Schema> fieldTypeToAvroSchemaCache =
       new ConcurrentHashMap<>();
 
   @Override
   public void process(TransformContext transformContext) {
+    fields
+        .stream()
+        .filter(f -> "primitive".equals(f.getScope()))
+        .findFirst()
+        .ifPresent(f -> computePrimitiveField(f, transformContext));
     computeKeyFields(
         fields.stream().filter(f -> "key".equals(f.getScope())).collect(Collectors.toList()),
         transformContext);
@@ -76,6 +82,15 @@ public class ComputeStep implements TransformStep {
         context.setValueModified(true);
       }
       context.setValueObject(newRecord);
+    }
+  }
+
+  public void computePrimitiveField(ComputeField field, TransformContext context) {
+    if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
+      Object newValue = field.getEvaluator().evaluate(context);
+      org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
+      context.setValueObject(newValue);
+      context.setValueSchema(newSchema);
     }
   }
 
@@ -287,5 +302,42 @@ public class ComputeStep implements TransformStep {
               return schema;
           }
         });
+  }
+
+  private org.apache.pulsar.client.api.Schema getPrimitiveSchema(ComputeFieldType type) {
+    org.apache.pulsar.client.api.Schema schema;
+    switch (type) {
+      case STRING:
+        schema = org.apache.pulsar.client.api.Schema.STRING;
+        break;
+      case INT32:
+        schema = org.apache.pulsar.client.api.Schema.INT32;
+        break;
+      case INT64:
+        schema = org.apache.pulsar.client.api.Schema.INT64;
+        break;
+      case FLOAT:
+        schema = org.apache.pulsar.client.api.Schema.FLOAT;
+        break;
+      case DOUBLE:
+        schema = org.apache.pulsar.client.api.Schema.DOUBLE;
+        break;
+      case BOOLEAN:
+        schema = org.apache.pulsar.client.api.Schema.BOOL;
+        break;
+      case DATE:
+        schema = org.apache.pulsar.client.api.Schema.DATE;
+        break;
+      case TIME:
+        schema = org.apache.pulsar.client.api.Schema.TIME;
+        break;
+      case DATETIME:
+        schema = org.apache.pulsar.client.api.Schema.TIMESTAMP;
+        break;
+      default:
+        throw new UnsupportedOperationException("Unsupported compute field type: " + type);
+    }
+
+    return schema;
   }
 }

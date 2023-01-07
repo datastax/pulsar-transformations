@@ -168,9 +168,7 @@ public class JstlFunctionsTest {
     };
   }
 
-  /**
-   * @return {"input date", "delta", "unit", "expected value (in epoch millis)"}
-   */
+  /** @return {"input date", "delta", "unit", "expected value (in epoch millis)"} */
   @DataProvider(name = "utcDateAddProvider")
   public static Object[][] utcDateAddProvider() {
     String utcDateTime = "2022-10-02T01:02:03Z";
@@ -200,9 +198,7 @@ public class JstlFunctionsTest {
     };
   }
 
-  /**
-   * @return {"input date", "delta", "unit", "expected value (in epoch millis)"}
-   */
+  /** @return {"input date", "delta", "unit", "expected value (in epoch millis)"} */
   @DataProvider(name = "nonUtcDateAddProvider")
   public static Object[][] nonUtcDateAddProvider() {
     String nonUtcDateTime = "2022-10-02T01:02:03+02:00";

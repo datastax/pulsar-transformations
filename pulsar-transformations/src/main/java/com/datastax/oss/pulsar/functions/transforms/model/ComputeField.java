@@ -85,8 +85,10 @@ public class ComputeField {
     }
 
     private void validateAndParseScopedName() {
-      // If the name is in the [key|value].fieldName format, split the name prefix from the part
-      if (this.scopedName.startsWith("key.") || this.scopedName.startsWith("value.")) {
+      if (this.scopedName.equals("value")) {
+        this.scope = "primitive";
+        this.name = "value";
+      } else if (this.scopedName.startsWith("key.") || this.scopedName.startsWith("value.")) {
         String[] nameParts = this.scopedName.split("\\.", 2);
         this.scope = nameParts[0];
         this.name = nameParts[1];
@@ -101,8 +103,9 @@ public class ComputeField {
         throw new IllegalArgumentException(
             String.format(
                 "Invalid compute field name: %s. "
-                    + "It should be prefixed with 'key.' or 'value.' or 'properties.' or be one of %s",
-                this.scopedName, validComputeHeaders));
+                    + "It should be prefixed with 'key.' or 'value.' or 'properties.' or be one of "
+                    + "[value, destinationTopic, messageKey]",
+                this.scopedName));
       }
     }
 

@@ -17,9 +17,11 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import de.odysseus.el.misc.TypeConverter;
 import de.odysseus.el.misc.TypeConverterImpl;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import javax.el.ELException;
 
 /**
@@ -38,11 +40,20 @@ public class CustomTypeConverter implements TypeConverter {
     } else if (aClass == LocalTime.class) {
       return (T) LocalTime.parse(o.toString());
     } else if (aClass == OffsetDateTime.class) {
-      return (T) OffsetDateTime.parse(o.toString());
+      return (T) toOffsetDateTime(o);
     }
     if (o instanceof org.apache.avro.util.Utf8) {
       o = o.toString();
     }
     return typeConverter.convert(o, aClass);
+  }
+
+  private OffsetDateTime toOffsetDateTime(Object o) {
+    if (o instanceof Long) {
+      Instant instant = Instant.ofEpochMilli((long) o);
+      return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
+    } else {
+      return OffsetDateTime.parse(o.toString());
+    }
   }
 }

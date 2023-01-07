@@ -102,6 +102,12 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'datetime', optional: true, type: 'DATETIME'}]}]}"
       },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'value', type: 'STRING'}]}]}"
+      },
+      {
+          "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: 'key', type: 'STRING'}]}]}"
+      },
     };
   }
 
@@ -172,6 +178,15 @@ public class TransformFunctionTest {
       },
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'double', optional: 'true', type: 'DOUBLE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'true', type: 'BOOLEAN'}, {'name': 'value.some-field', expression: 'true', type: 'STRING'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'true', type: 'BOOLEAN'}, {'name': 'key.some-field', expression: 'true', type: 'STRING'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'true', type: 'BOOLEAN'}, {'name': 'value', expression: 'true', type: 'STRING'}]}]}"
       },
     };
   }

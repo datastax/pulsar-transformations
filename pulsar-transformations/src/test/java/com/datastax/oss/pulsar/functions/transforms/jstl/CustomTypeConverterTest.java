@@ -60,5 +60,9 @@ public class CustomTypeConverterTest {
     assertEquals(
         OffsetDateTime.parse("2022-12-02T10:11:12Z"),
         converter.convert("2022-12-02T10:11:12Z", OffsetDateTime.class));
+    Long epoch = OffsetDateTime.parse("2022-12-02T10:11:12Z").toInstant().toEpochMilli();
+    assertEquals(
+        OffsetDateTime.parse("2022-12-02T10:11:12Z"),
+        converter.convert(epoch, OffsetDateTime.class));
   }
 }

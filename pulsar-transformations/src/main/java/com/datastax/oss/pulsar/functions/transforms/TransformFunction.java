@@ -37,6 +37,7 @@ import com.networknt.schema.urn.URNFactory;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -309,10 +310,16 @@ public class TransformFunction
 
   private static TransformStep newComputeFieldFunction(ComputeConfig config) {
     List<ComputeField> fieldList = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
     config
         .getFields()
         .forEach(
             field -> {
+              if (seen.contains(field.getName())) {
+                throw new IllegalArgumentException(
+                    "Duplicate compute field name detected: " + field.getName());
+              }
+              seen.add(field.getName());
               ComputeFieldType type =
                   "destinationTopic".equals(field.getName())
                           || "messageKey".equals(field.getName())
