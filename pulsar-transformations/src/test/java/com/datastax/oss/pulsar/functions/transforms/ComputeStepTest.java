@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static com.datastax.oss.pulsar.functions.transforms.Utils.assertOptionalField;
 import static org.apache.avro.Schema.Type.BOOLEAN;
+import static org.apache.avro.Schema.Type.BYTES;
 import static org.apache.avro.Schema.Type.DOUBLE;
 import static org.apache.avro.Schema.Type.FLOAT;
 import static org.apache.avro.Schema.Type.INT;
@@ -28,11 +29,14 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.AvroRuntimeException;
@@ -64,6 +68,7 @@ public class ComputeStepTest {
   private static final org.apache.avro.Schema DOUBLE_SCHEMA = org.apache.avro.Schema.create(DOUBLE);
   private static final org.apache.avro.Schema BOOLEAN_SCHEMA =
       org.apache.avro.Schema.create(BOOLEAN);
+  private static final org.apache.avro.Schema BYTES_SCHEMA = org.apache.avro.Schema.create(BYTES);
 
   private static final org.apache.avro.Schema DATE_SCHEMA =
       LogicalTypes.date().addToSchema(org.apache.avro.Schema.create(INT));
@@ -131,6 +136,11 @@ public class ComputeStepTest {
     assertTrue(read.hasField("newBooleanField"));
     assertEquals(read.getSchema().getField("newBooleanField").schema(), BOOLEAN_SCHEMA);
     assertTrue((Boolean) read.get("newBooleanField"));
+
+    assertTrue(read.hasField("newBytesField"));
+    assertEquals(read.getSchema().getField("newBytesField").schema(), BYTES_SCHEMA);
+    assertEquals(
+        read.get("newBytesField"), ByteBuffer.wrap("Hotaru".getBytes(StandardCharsets.UTF_8)));
 
     assertTrue(read.hasField("newDateField"));
     assertEquals(read.getSchema().getField("newDateField").schema(), DATE_SCHEMA);
@@ -203,6 +213,8 @@ public class ComputeStepTest {
         read, "newFloatField", FLOAT, 340282346638528859999999999999999999999.999999F);
     assertOptionalField(read, "newDoubleField", DOUBLE, 1.79769313486231570e+308D);
     assertOptionalField(read, "newBooleanField", BOOLEAN, true);
+    assertOptionalField(
+        read, "newBytesField", BYTES, ByteBuffer.wrap("Hotaru".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -231,6 +243,7 @@ public class ComputeStepTest {
     assertOptionalFieldNull(read, "newFloatField", FLOAT);
     assertOptionalFieldNull(read, "newDoubleField", DOUBLE);
     assertOptionalFieldNull(read, "newBooleanField", BOOLEAN);
+    assertOptionalFieldNull(read, "newBytesField", BYTES);
   }
 
   @Test
@@ -283,25 +296,25 @@ public class ComputeStepTest {
   }
 
   @Test(dataProvider = "primitiveTypeComputeProvider")
-  void testPrimitiveSchemaTypes(
+  void  testPrimitiveSchemaTypes(
       Object oldValue,
-      Schema oldSchema,
-      SchemaType oldType,
+      Schema<?> oldSchema,
       String expression,
       ComputeFieldType newSchema,
       Object expectedValue,
-      Schema expectedSchema)
+      Schema<?> expectedSchema)
       throws Exception {
     Record<GenericObject> record =
         new Utils.TestRecord<>(
             oldSchema,
-            AutoConsumeSchema.wrapPrimitiveObject(oldValue, oldType, new byte[] {}),
+            AutoConsumeSchema.wrapPrimitiveObject(
+                oldValue, oldSchema.getSchemaInfo().getType(), new byte[] {}),
             "test-key");
 
     ComputeStep step =
         ComputeStep.builder()
             .fields(
-                Arrays.asList(
+                Collections.singletonList(
                     ComputeField.builder()
                         .scopedName("value")
                         .expression(expression)
@@ -498,7 +511,7 @@ public class ComputeStepTest {
   }
 
   /**
-   * @return {"old value", "old schema", "old type", "expression", "new schema", "expected value",
+   * @return {"old value", "old schema", "expression", "new schema", "expected value",
    *     "expectedSchema"}
    */
   @DataProvider(name = "primitiveTypeComputeProvider")
@@ -507,7 +520,6 @@ public class ComputeStepTest {
       {
         "oldValue",
         Schema.STRING,
-        SchemaType.STRING,
         "'newValue'",
         ComputeFieldType.STRING,
         "newValue",
@@ -516,42 +528,38 @@ public class ComputeStepTest {
       {
         "oldValue",
         Schema.STRING,
-        SchemaType.STRING,
         "fn:concat(value, '!')",
         ComputeFieldType.STRING,
         "oldValue!",
         Schema.STRING
       },
       {
-        "1.3", Schema.STRING, SchemaType.STRING, "2.6", ComputeFieldType.DOUBLE, 2.6D, Schema.DOUBLE
+        "1.3", Schema.STRING, "2.6", ComputeFieldType.DOUBLE, 2.6D, Schema.DOUBLE
       },
-      {"3", Schema.INT32, SchemaType.INT32, "4", ComputeFieldType.INT32, 4, Schema.INT32},
-      {"3", Schema.INT32, SchemaType.INT32, "value + 2", ComputeFieldType.INT32, 5, Schema.INT32},
+      {"3", Schema.INT32, "4", ComputeFieldType.INT32, 4, Schema.INT32},
+      {"3", Schema.INT32, "value + 2", ComputeFieldType.INT32, 5, Schema.INT32},
       {
         "3",
         Schema.INT32,
-        SchemaType.INT32,
         "'newValue'",
         ComputeFieldType.STRING,
         "newValue",
         Schema.STRING
       },
-      {"3", Schema.INT64, SchemaType.INT64, "4", ComputeFieldType.INT64, 4L, Schema.INT64},
-      {"3", Schema.INT64, SchemaType.INT64, "value + 2", ComputeFieldType.INT64, 5L, Schema.INT64},
+      {"3", Schema.INT64, "4", ComputeFieldType.INT64, 4L, Schema.INT64},
+      {"3", Schema.INT64, "value + 2", ComputeFieldType.INT64, 5L, Schema.INT64},
       {
         "3",
         Schema.INT64,
-        SchemaType.INT64,
         "'newValue'",
         ComputeFieldType.STRING,
         "newValue",
         Schema.STRING
       },
-      {"3.2", Schema.FLOAT, SchemaType.FLOAT, "3.3", ComputeFieldType.FLOAT, 3.3F, Schema.FLOAT},
+      {"3.2", Schema.FLOAT, "3.3", ComputeFieldType.FLOAT, 3.3F, Schema.FLOAT},
       {
         "3.2",
         Schema.FLOAT,
-        SchemaType.FLOAT,
         "value + 1",
         ComputeFieldType.FLOAT,
         4.2F,
@@ -560,19 +568,17 @@ public class ComputeStepTest {
       {
         "3.2",
         Schema.FLOAT,
-        SchemaType.FLOAT,
         "'newValue'",
         ComputeFieldType.STRING,
         "newValue",
         Schema.STRING
       },
       {
-        "3.2", Schema.DOUBLE, SchemaType.DOUBLE, "3.3", ComputeFieldType.DOUBLE, 3.3D, Schema.DOUBLE
+        "3.2", Schema.DOUBLE, "3.3", ComputeFieldType.DOUBLE, 3.3D, Schema.DOUBLE
       },
       {
         "3.2",
         Schema.DOUBLE,
-        SchemaType.DOUBLE,
         "value + 1",
         ComputeFieldType.DOUBLE,
         4.2D,
@@ -581,7 +587,6 @@ public class ComputeStepTest {
       {
         "3.2",
         Schema.DOUBLE,
-        SchemaType.DOUBLE,
         "'newValue'",
         ComputeFieldType.STRING,
         "newValue",
@@ -590,7 +595,6 @@ public class ComputeStepTest {
       {
         "false",
         Schema.BOOL,
-        SchemaType.BOOLEAN,
         "true",
         ComputeFieldType.BOOLEAN,
         true,
@@ -599,17 +603,15 @@ public class ComputeStepTest {
       {
         "false",
         Schema.BOOL,
-        SchemaType.BOOLEAN,
         "value || true",
         ComputeFieldType.BOOLEAN,
         true,
         Schema.BOOL
       },
-      {"true", Schema.BOOL, SchemaType.BOOLEAN, "1", ComputeFieldType.DOUBLE, 1D, Schema.DOUBLE},
+      {"true", Schema.BOOL, "1", ComputeFieldType.DOUBLE, 1D, Schema.DOUBLE},
       {
         "2007-01-02",
         Schema.DATE,
-        SchemaType.DATE,
         "'2008-02-07'",
         ComputeFieldType.DATE,
         LocalDate.parse("2008-02-07"),
@@ -618,7 +620,6 @@ public class ComputeStepTest {
       {
         "2007-01-02",
         Schema.DATE,
-        SchemaType.DATE,
         "'2008-02-07'",
         ComputeFieldType.STRING,
         "2008-02-07",
@@ -627,7 +628,6 @@ public class ComputeStepTest {
       {
         "01:02:03",
         Schema.TIME,
-        SchemaType.TIME,
         "'03:04:05'",
         ComputeFieldType.TIME,
         LocalTime.parse("03:04:05"),
@@ -636,7 +636,6 @@ public class ComputeStepTest {
       {
         "01:02:03",
         Schema.TIME,
-        SchemaType.TIME,
         "'03:04:05'",
         ComputeFieldType.STRING,
         "03:04:05",
@@ -645,7 +644,6 @@ public class ComputeStepTest {
       {
         "2007-01-02T01:02:03Z",
         Schema.TIMESTAMP,
-        SchemaType.TIMESTAMP,
         "'2022-01-02T02:03:04Z'",
         ComputeFieldType.DATETIME,
         OffsetDateTime.parse("2022-01-02T02:03:04Z"),
@@ -654,7 +652,6 @@ public class ComputeStepTest {
       {
         "2007-01-02T01:02:03Z",
         Schema.TIMESTAMP,
-        SchemaType.TIMESTAMP,
         "fn:dateadd(value, 2, 'years')",
         ComputeFieldType.DATETIME,
         OffsetDateTime.parse("2009-01-02T01:02:03Z"),
@@ -663,12 +660,20 @@ public class ComputeStepTest {
       {
         "2007-01-02T01:02:03Z",
         Schema.TIMESTAMP,
-        SchemaType.TIMESTAMP,
         "'2010-01-02T01:02:03Z'",
         ComputeFieldType.STRING,
         "2010-01-02T01:02:03Z",
         Schema.STRING
       },
+      {
+          "'oldValue'",
+          Schema.BYTES,
+          "'newValue'.bytes",
+          ComputeFieldType.BYTES,
+          "newValue".getBytes(StandardCharsets.UTF_8),
+          Schema.BYTES
+      },
+      {"'oldValue'", Schema.BYTES, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
     };
   }
 
@@ -741,6 +746,13 @@ public class ComputeStepTest {
             .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
             .optional(optional)
             .type(ComputeFieldType.DATETIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newBytesField")
+            .expression(nullify ? "null" : "'Hotaru'.bytes")
+            .optional(optional)
+            .type(ComputeFieldType.BYTES)
             .build());
 
     return fields;

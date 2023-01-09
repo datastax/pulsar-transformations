@@ -129,6 +129,8 @@ public class ComputeField {
           return LocalTime.class;
         case DATETIME:
           return OffsetDateTime.class;
+        case BYTES:
+          return byte[].class;
         default:
           throw new UnsupportedOperationException("Unsupported compute field type: " + type);
       }

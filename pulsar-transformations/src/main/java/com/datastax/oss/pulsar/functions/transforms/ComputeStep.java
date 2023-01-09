@@ -19,6 +19,7 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -46,7 +47,6 @@ public class ComputeStep implements TransformStep {
       new ConcurrentHashMap<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =
       new ConcurrentHashMap<>();
-  private final Map<Schema, Schema> primitiveSchemaCache = new ConcurrentHashMap<>();
   private final Map<ComputeFieldType, org.apache.avro.Schema> fieldTypeToAvroSchemaCache =
       new ConcurrentHashMap<>();
 
@@ -202,6 +202,10 @@ public class ComputeStep implements TransformStep {
       return null;
     }
 
+    if (value instanceof byte[]) {
+      return ByteBuffer.wrap((byte[]) value);
+    }
+
     LogicalType logicalType = getLogicalType(schema);
     if (logicalType == null) {
       return value;
@@ -282,6 +286,9 @@ public class ComputeStep implements TransformStep {
       case BOOLEAN:
         schemaType = Schema.Type.BOOLEAN;
         break;
+      case BYTES:
+        schemaType = Schema.Type.BYTES;
+        break;
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
@@ -333,6 +340,9 @@ public class ComputeStep implements TransformStep {
         break;
       case DATETIME:
         schema = org.apache.pulsar.client.api.Schema.TIMESTAMP;
+        break;
+      case BYTES:
+        schema = org.apache.pulsar.client.api.Schema.BYTES;
         break;
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);

@@ -24,5 +24,6 @@ public enum ComputeFieldType {
   BOOLEAN,
   DATE,
   TIME,
-  DATETIME
+  DATETIME,
+  BYTES
 }

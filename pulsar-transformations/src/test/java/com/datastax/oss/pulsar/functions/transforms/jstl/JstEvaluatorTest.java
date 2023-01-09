@@ -51,6 +51,24 @@ public class JstEvaluatorTest {
   }
 
   @Test
+  void testPrimitiveValue() {
+    Record<GenericObject> primitiveStringRecord =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
+            "");
+    TransformContext primitiveStringContext =
+        new TransformContext(
+            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
+            primitiveStringRecord.getValue().getNativeObject());
+
+    String value =
+        new JstlEvaluator<String>("${value}", String.class).evaluate(primitiveStringContext);
+
+    assertEquals("test-message", value);
+  }
+
+  @Test
   void testNowFunction() {
     Record<GenericObject> primitiveStringRecord =
         new Utils.TestRecord<>(
@@ -65,7 +83,7 @@ public class JstEvaluatorTest {
     long expectedMillis = 123L;
     Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
-    ;
+
     long actualMillis =
         new JstlEvaluator<Long>("${fn:now()}", long.class).evaluate(primitiveStringContext);
 
