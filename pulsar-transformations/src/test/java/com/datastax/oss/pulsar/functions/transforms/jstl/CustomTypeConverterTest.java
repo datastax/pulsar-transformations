@@ -19,6 +19,7 @@ import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -58,11 +59,10 @@ public class CustomTypeConverterTest {
     LocalTime expectedTime = LocalTime.of(10, 11, 12);
     assertEquals(expectedTime, converter.convert("10:11:12", LocalTime.class));
     assertEquals(
-        OffsetDateTime.parse("2022-12-02T10:11:12Z"),
+        Instant.parse("2022-12-02T10:11:12Z"),
         converter.convert("2022-12-02T10:11:12Z", OffsetDateTime.class));
     Long epoch = OffsetDateTime.parse("2022-12-02T10:11:12Z").toInstant().toEpochMilli();
     assertEquals(
-        OffsetDateTime.parse("2022-12-02T10:11:12Z"),
-        converter.convert(epoch, OffsetDateTime.class));
+        Instant.parse("2022-12-02T10:11:12Z"), converter.convert(epoch, OffsetDateTime.class));
   }
 }

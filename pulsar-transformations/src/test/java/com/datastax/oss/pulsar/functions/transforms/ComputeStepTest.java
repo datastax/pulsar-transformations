@@ -31,6 +31,7 @@ import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -296,7 +297,7 @@ public class ComputeStepTest {
   }
 
   @Test(dataProvider = "primitiveTypeComputeProvider")
-  void  testPrimitiveSchemaTypes(
+  void testPrimitiveSchemaTypes(
       Object oldValue,
       Schema<?> oldSchema,
       String expression,
@@ -517,14 +518,7 @@ public class ComputeStepTest {
   @DataProvider(name = "primitiveTypeComputeProvider")
   public static Object[][] primitiveTypeComputeProvider() {
     return new Object[][] {
-      {
-        "oldValue",
-        Schema.STRING,
-        "'newValue'",
-        ComputeFieldType.STRING,
-        "newValue",
-        Schema.STRING
-      },
+      {"oldValue", Schema.STRING, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
       {
         "oldValue",
         Schema.STRING,
@@ -533,93 +527,33 @@ public class ComputeStepTest {
         "oldValue!",
         Schema.STRING
       },
-      {
-        "1.3", Schema.STRING, "2.6", ComputeFieldType.DOUBLE, 2.6D, Schema.DOUBLE
-      },
+      {"1.3", Schema.STRING, "2.6", ComputeFieldType.DOUBLE, 2.6D, Schema.DOUBLE},
       {"3", Schema.INT32, "4", ComputeFieldType.INT32, 4, Schema.INT32},
       {"3", Schema.INT32, "value + 2", ComputeFieldType.INT32, 5, Schema.INT32},
-      {
-        "3",
-        Schema.INT32,
-        "'newValue'",
-        ComputeFieldType.STRING,
-        "newValue",
-        Schema.STRING
-      },
+      {"3", Schema.INT32, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
       {"3", Schema.INT64, "4", ComputeFieldType.INT64, 4L, Schema.INT64},
       {"3", Schema.INT64, "value + 2", ComputeFieldType.INT64, 5L, Schema.INT64},
-      {
-        "3",
-        Schema.INT64,
-        "'newValue'",
-        ComputeFieldType.STRING,
-        "newValue",
-        Schema.STRING
-      },
+      {"3", Schema.INT64, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
       {"3.2", Schema.FLOAT, "3.3", ComputeFieldType.FLOAT, 3.3F, Schema.FLOAT},
-      {
-        "3.2",
-        Schema.FLOAT,
-        "value + 1",
-        ComputeFieldType.FLOAT,
-        4.2F,
-        Schema.FLOAT
-      },
-      {
-        "3.2",
-        Schema.FLOAT,
-        "'newValue'",
-        ComputeFieldType.STRING,
-        "newValue",
-        Schema.STRING
-      },
-      {
-        "3.2", Schema.DOUBLE, "3.3", ComputeFieldType.DOUBLE, 3.3D, Schema.DOUBLE
-      },
-      {
-        "3.2",
-        Schema.DOUBLE,
-        "value + 1",
-        ComputeFieldType.DOUBLE,
-        4.2D,
-        Schema.DOUBLE
-      },
-      {
-        "3.2",
-        Schema.DOUBLE,
-        "'newValue'",
-        ComputeFieldType.STRING,
-        "newValue",
-        Schema.STRING
-      },
-      {
-        "false",
-        Schema.BOOL,
-        "true",
-        ComputeFieldType.BOOLEAN,
-        true,
-        Schema.BOOL
-      },
-      {
-        "false",
-        Schema.BOOL,
-        "value || true",
-        ComputeFieldType.BOOLEAN,
-        true,
-        Schema.BOOL
-      },
+      {"3.2", Schema.FLOAT, "value + 1", ComputeFieldType.FLOAT, 4.2F, Schema.FLOAT},
+      {"3.2", Schema.FLOAT, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
+      {"3.2", Schema.DOUBLE, "3.3", ComputeFieldType.DOUBLE, 3.3D, Schema.DOUBLE},
+      {"3.2", Schema.DOUBLE, "value + 1", ComputeFieldType.DOUBLE, 4.2D, Schema.DOUBLE},
+      {"3.2", Schema.DOUBLE, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
+      {"false", Schema.BOOL, "true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
+      {"false", Schema.BOOL, "value || true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
       {"true", Schema.BOOL, "1", ComputeFieldType.DOUBLE, 1D, Schema.DOUBLE},
       {
         "2007-01-02",
-        Schema.DATE,
+        Schema.LOCAL_DATE,
         "'2008-02-07'",
         ComputeFieldType.DATE,
         LocalDate.parse("2008-02-07"),
-        Schema.DATE
+        Schema.LOCAL_DATE
       },
       {
         "2007-01-02",
-        Schema.DATE,
+        Schema.LOCAL_DATE,
         "'2008-02-07'",
         ComputeFieldType.STRING,
         "2008-02-07",
@@ -627,53 +561,48 @@ public class ComputeStepTest {
       },
       {
         "01:02:03",
-        Schema.TIME,
+        Schema.LOCAL_TIME,
         "'03:04:05'",
         ComputeFieldType.TIME,
         LocalTime.parse("03:04:05"),
-        Schema.TIME
+        Schema.LOCAL_TIME
       },
-      {
-        "01:02:03",
-        Schema.TIME,
-        "'03:04:05'",
-        ComputeFieldType.STRING,
-        "03:04:05",
-        Schema.STRING
-      },
+      {"01:02:03", Schema.TIME, "'03:04:05'", ComputeFieldType.STRING, "03:04:05", Schema.STRING},
       {
         "2007-01-02T01:02:03Z",
-        Schema.TIMESTAMP,
+        Schema.INSTANT,
         "'2022-01-02T02:03:04Z'",
         ComputeFieldType.DATETIME,
-        OffsetDateTime.parse("2022-01-02T02:03:04Z"),
-        Schema.TIMESTAMP
+        Instant.parse("2022-01-02T02:03:04Z"),
+        Schema.INSTANT
       },
       {
         "2007-01-02T01:02:03Z",
-        Schema.TIMESTAMP,
+        Schema.INSTANT,
         "fn:dateadd(value, 2, 'years')",
         ComputeFieldType.DATETIME,
-        OffsetDateTime.parse("2009-01-02T01:02:03Z"),
-        Schema.TIMESTAMP
+        Instant.parse("2009-01-02T01:02:03Z"),
+        Schema.INSTANT
       },
       {
         "2007-01-02T01:02:03Z",
-        Schema.TIMESTAMP,
+        Schema.LOCAL_DATE_TIME,
         "'2010-01-02T01:02:03Z'",
         ComputeFieldType.STRING,
         "2010-01-02T01:02:03Z",
         Schema.STRING
       },
       {
-          "'oldValue'",
-          Schema.BYTES,
-          "'newValue'.bytes",
-          ComputeFieldType.BYTES,
-          "newValue".getBytes(StandardCharsets.UTF_8),
-          Schema.BYTES
+        "'oldValue'",
+        Schema.BYTES,
+        "'newValue'.bytes",
+        ComputeFieldType.BYTES,
+        "newValue".getBytes(StandardCharsets.UTF_8),
+        Schema.BYTES
       },
-      {"'oldValue'", Schema.BYTES, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
+      {
+        "'oldValue'", Schema.BYTES, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING
+      },
     };
   }
 

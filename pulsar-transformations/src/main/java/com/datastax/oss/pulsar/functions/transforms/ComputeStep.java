@@ -20,9 +20,9 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -222,9 +222,9 @@ public class ComputeStep implements TransformStep {
         LocalTime localTime = (LocalTime) value;
         return (int) (localTime.toNanoOfDay() / 1000000);
       case "timestamp-millis":
-        validateLogicalType(value, schema.getLogicalType(), OffsetDateTime.class);
-        OffsetDateTime offsetDateTime = (OffsetDateTime) value;
-        return offsetDateTime.toInstant().toEpochMilli();
+        validateLogicalType(value, schema.getLogicalType(), Instant.class);
+        Instant instant = (Instant) value;
+        return instant.toEpochMilli();
     }
 
     throw new IllegalArgumentException(
@@ -333,13 +333,13 @@ public class ComputeStep implements TransformStep {
         schema = org.apache.pulsar.client.api.Schema.BOOL;
         break;
       case DATE:
-        schema = org.apache.pulsar.client.api.Schema.DATE;
+        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE;
         break;
       case TIME:
-        schema = org.apache.pulsar.client.api.Schema.TIME;
+        schema = org.apache.pulsar.client.api.Schema.LOCAL_TIME;
         break;
       case DATETIME:
-        schema = org.apache.pulsar.client.api.Schema.TIMESTAMP;
+        schema = org.apache.pulsar.client.api.Schema.INSTANT;
         break;
       case BYTES:
         schema = org.apache.pulsar.client.api.Schema.BYTES;
