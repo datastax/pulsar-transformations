@@ -15,61 +15,40 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.DateDeserializers;
-import java.nio.charset.StandardCharsets;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.function.Consumer;
 import lombok.Builder;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
 @Builder
 public class CastStep implements TransformStep {
-
   private final SchemaType keySchemaType;
   private final SchemaType valueSchemaType;
 
-  // TODO: make thread local
-  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-
   @Override
   public void process(TransformContext transformContext) {
-    if (transformContext.getKeySchema() != null) {
-      Schema<?> schema = toSchema(keySchemaType);
-      Object value = convertValue((Schema<Object>) transformContext.getKeySchema(), transformContext.getKeyObject(), schema);
-      transformContext.setKeySchema(schema);
+    if (transformContext.getKeySchema() != null
+        && keySchemaType != null
+        && transformContext.getKeySchema().getSchemaInfo().getType() != keySchemaType) {
+      Object value = convertValue(transformContext.getKeyObject(), keySchemaType);
+      transformContext.setKeySchema(toSchema(keySchemaType));
       transformContext.setKeyObject(value);
     }
-    Schema<?> schema = toSchema(valueSchemaType);
-    Object value = convertValue((Schema<Object>) transformContext.getValueSchema(), transformContext.getValueObject(), schema);
-    transformContext.setValueSchema(schema);
-    transformContext.setValueObject(value);
+    if (valueSchemaType != null
+        && transformContext.getValueSchema().getSchemaInfo().getType() != valueSchemaType) {
+      Object value = convertValue(transformContext.getValueObject(), valueSchemaType);
+      transformContext.setValueSchema(toSchema(valueSchemaType));
+      transformContext.setValueObject(value);
+    }
   }
 
-  private Object convertValue(Schema<Object> originalSchema, Object originalValue, Schema<?> targetSchema) {
-    if (originalSchema == targetSchema) {
-      return originalValue;
-    }
-    if (originalValue instanceof byte[]) {
-      return targetSchema.decode((byte[]) originalValue);
-    }
-    if (targetSchema == Schema.BYTES) {
-      return originalSchema.encode(originalValue);
-    }
-    switch (targetSchema.getSchemaInfo().getType()) {
+  private Object convertValue(Object originalValue, SchemaType schemaType) {
+    switch (schemaType) {
+      case BYTES:
+        return ConverterUtil.toBytes(originalValue);
       case STRING:
         return ConverterUtil.toString(originalValue);
+      case BOOLEAN:
+        return ConverterUtil.toBoolean(originalValue);
       case INT8:
         return ConverterUtil.toByte(originalValue);
       case INT16:
@@ -97,7 +76,7 @@ public class CastStep implements TransformStep {
       case LOCAL_DATE_TIME:
         return ConverterUtil.toLocalDateTime(originalValue);
       default:
-        throw new IllegalStateException("Unexpected value: " + targetSchema.getSchemaInfo().getType());
+        throw new IllegalStateException("Unexpected value: " + schemaType);
     }
   }
 
@@ -105,6 +84,8 @@ public class CastStep implements TransformStep {
     switch (schemaType) {
       case STRING:
         return Schema.STRING;
+      case BOOLEAN:
+        return Schema.BOOL;
       case INT8:
         return Schema.INT8;
       case INT16:
@@ -143,7 +124,8 @@ public class CastStep implements TransformStep {
     private SchemaType valueSchemaType;
 
     public CastStepBuilder keySchemaType(SchemaType keySchemaType) {
-      if (keySchemaType != null && keySchemaType != SchemaType.STRING) {
+      if (keySchemaType != null
+          && (!keySchemaType.isPrimitive() || keySchemaType == SchemaType.NONE)) {
         throw new IllegalArgumentException(
             "Unsupported key schema-type for Cast: " + keySchemaType);
       }
@@ -152,7 +134,8 @@ public class CastStep implements TransformStep {
     }
 
     public CastStepBuilder valueSchemaType(SchemaType valueSchemaType) {
-      if (valueSchemaType != null && valueSchemaType != SchemaType.STRING) {
+      if (valueSchemaType != null
+          && (!valueSchemaType.isPrimitive() || valueSchemaType == SchemaType.NONE)) {
         throw new IllegalArgumentException(
             "Unsupported value schema-type for Cast: " + valueSchemaType);
       }

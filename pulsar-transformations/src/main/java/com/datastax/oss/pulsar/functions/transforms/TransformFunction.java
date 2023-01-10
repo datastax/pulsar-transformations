@@ -130,7 +130,6 @@ public class TransformFunction
     Map<String, Object> userConfigMap = context.getUserConfigMap();
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     JsonNode jsonNode = mapper.convertValue(userConfigMap, JsonNode.class);
-    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
 
     URNFactory urnFactory =
         urn -> {
