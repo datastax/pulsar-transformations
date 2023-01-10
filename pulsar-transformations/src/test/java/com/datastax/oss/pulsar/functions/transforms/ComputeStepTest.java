@@ -567,7 +567,7 @@ public class ComputeStepTest {
         LocalTime.parse("03:04:05"),
         Schema.LOCAL_TIME
       },
-      {"01:02:03", Schema.TIME, "'03:04:05'", ComputeFieldType.STRING, "03:04:05", Schema.STRING},
+      {"01:02:03", Schema.LOCAL_TIME, "'03:04:05'", ComputeFieldType.STRING, "03:04:05", Schema.STRING},
       {
         "2007-01-02T01:02:03Z",
         Schema.INSTANT,
