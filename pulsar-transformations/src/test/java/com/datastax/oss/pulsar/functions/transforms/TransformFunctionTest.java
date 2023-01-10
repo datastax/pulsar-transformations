@@ -103,6 +103,9 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'datetime', optional: true, type: 'DATETIME'}]}]}"
       },
       {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'bytes', optional: true, type: 'BYTES'}]}]}"
+      },
+      {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'value', type: 'STRING'}]}]}"
       },
       {

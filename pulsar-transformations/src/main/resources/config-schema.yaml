@@ -198,6 +198,7 @@ components:
                       - DATE
                       - TIME
                       - DATETIME
+                      - BYTES
                   optional:
                     type: boolean
                     description: If true, the generated schema for the computed field will allow for null values.
