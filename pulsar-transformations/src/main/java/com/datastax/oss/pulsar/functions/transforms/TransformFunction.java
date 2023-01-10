@@ -35,10 +35,12 @@ import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
 import java.io.InputStream;
 import java.net.URL;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -128,6 +130,7 @@ public class TransformFunction
     Map<String, Object> userConfigMap = context.getUserConfigMap();
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
     JsonNode jsonNode = mapper.convertValue(userConfigMap, JsonNode.class);
+    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
 
     URNFactory urnFactory =
         urn -> {
