@@ -260,7 +260,7 @@ public class ConverterUtil {
     if (o instanceof byte[]) {
       return Schema.TIME.decode((byte[]) o);
     }
-    if (o instanceof String) {
+    if (o instanceof CharSequence) {
       return Time.valueOf(LocalTime.parse((CharSequence) o));
     }
     try {

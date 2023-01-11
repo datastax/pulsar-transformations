@@ -78,9 +78,24 @@ components:
               type:
                 - string
                 - 'null'
-              description: The target schema type. Only `STRING` is available.
+              description: The target schema type.
               enum:
+                - BYTES
                 - STRING
+                - INT8
+                - INT16
+                - INT32
+                - INT64
+                - FLOAT
+                - DOUBLE
+                - BOOLEAN
+                - DATE
+                - TIMESTAMP
+                - TIME
+                - LOCAL_DATE_TIME
+                - LOCAL_DATE
+                - LOCAL_TIME
+                - INSTANT
                 - null
           required:
             - schema-type

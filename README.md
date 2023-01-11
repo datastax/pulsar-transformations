@@ -73,14 +73,20 @@ This example config applied on a `KeyValue<AVRO, AVRO>` input record with value 
 
 Transforms the data to a target compatible schema.
 
+Conversion rules:
+* date and time related objects assume UTC time zone if it is not explicit.
+* date and time related objects to/from STRING use the RFC3339 format.
+* date related objects to/from LONG and DOUBLE are done using the number of milliseconds since EPOCH (1970-01-01T00:00:00Z).
+* time related objects to/from LONG and DOUBLE are done using the number of milliseconds since midnight.
+
 Step name: `cast`
 
 Parameters:
 
-| Name        | Description |
-| ----------- | ----------- |
-| schema-type | the target schema type. Only `STRING` is available. |
-| part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
+| Name        | Description                                                                                                                                                                       |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema-type | the target schema type.                                                                                                                                                           |
+| part        | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
 #### Example:
 
@@ -98,10 +104,10 @@ Step name: `drop-field`
 
 Parameters:
 
-| Name        | Description |
-| ----------- | ----------- |
-| fields | the list of fields to drop separated by commas `,` |
-| part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
+| Name   | Description                                                                                                                                                                       |
+|--------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| fields | the list of fields to drop separated by commas `,`                                                                                                                                |
+| part   | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
 #### Example
 
@@ -135,8 +141,8 @@ Step name: `unwrap-key-value`
 
 Parameters:
 
-| Name        | Description |
-| ----------- | ----------- |
+| Name      | Description                                                                                 |
+|-----------|---------------------------------------------------------------------------------------------|
 | unwrapKey | by default, the value is unwrapped. Set this parameter to `true` to unwrap the key instead. |
 
 ##### Example
@@ -154,10 +160,10 @@ The names of the new fields are built by concatenating the intermediate level fi
 
 Step name: `flatten`
 
-| Name        | Description |
-| ----------- | ----------- |
-| delimiter | the delimiter to use when concatenating the field names (default: `_`) |
-| part | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
+| Name        | Description                                                                                                                                                                       |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| delimiter   | the delimiter to use when concatenating the field names (default: `_`)                                                                                                            |
+| part        | when used with KeyValue data, defines if the transformation is done on the `key` or on the `value`. If `null` or absent the transformation applies to both the key and the value. |
 
 ### Drop
 
