@@ -32,11 +32,11 @@ import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.apache.avro.AvroRuntimeException;
@@ -546,8 +546,8 @@ public class ComputeStepTest {
         Schema.LOCAL_DATE,
         "'2008-02-07'",
         ComputeFieldType.DATE,
-        LocalDate.parse("2008-02-07"),
-        Schema.LOCAL_DATE
+        Date.from(Instant.parse("2008-02-07T00:00:00Z")),
+        Schema.DATE
       },
       {
         "2007-01-02",

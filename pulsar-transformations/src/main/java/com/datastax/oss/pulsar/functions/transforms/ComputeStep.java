@@ -21,14 +21,15 @@ import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.avro.LogicalType;
@@ -214,9 +215,9 @@ public class ComputeStep implements TransformStep {
     // Avro logical type conversion: https://avro.apache.org/docs/1.8.2/spec.html#Logical+Types
     switch (logicalType.getName()) {
       case "date":
-        validateLogicalType(value, schema.getLogicalType(), LocalDate.class);
-        LocalDate localDate = (LocalDate) value;
-        return (int) localDate.toEpochDay();
+        validateLogicalType(value, schema.getLogicalType(), Date.class);
+        Date date = (Date) value;
+        return (int) (date.getTime() / TimeUnit.DAYS.toMillis(1));
       case "time-millis":
         validateLogicalType(value, schema.getLogicalType(), LocalTime.class);
         LocalTime localTime = (LocalTime) value;
@@ -333,7 +334,7 @@ public class ComputeStep implements TransformStep {
         schema = org.apache.pulsar.client.api.Schema.BOOL;
         break;
       case DATE:
-        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE;
+        schema = org.apache.pulsar.client.api.Schema.DATE;
         break;
       case TIME:
         schema = org.apache.pulsar.client.api.Schema.LOCAL_TIME;

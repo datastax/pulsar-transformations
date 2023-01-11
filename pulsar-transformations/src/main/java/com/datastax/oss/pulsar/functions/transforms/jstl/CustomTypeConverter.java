@@ -360,6 +360,11 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return Instant.ofEpochSecond(seconds, nanos);
     }
     if (value instanceof CharSequence) {
+      if (((CharSequence) value).length() == 10) {
+        LocalDate localDate =
+            DateTimeFormatter.ISO_LOCAL_DATE.parse((CharSequence) value, LocalDate::from);
+        return localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+      }
       return DateTimeFormatter.ISO_DATE_TIME.parse((CharSequence) value, Instant::from);
     }
     if (value instanceof byte[]) {

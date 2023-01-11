@@ -270,6 +270,7 @@ public class CustomTypeConverterTest {
       // Instant
       {Schema.INSTANT.encode(instant), Instant.class, instant},
       {"2023-01-02T23:04:05.000000006Z", Instant.class, instant},
+      {"2023-01-02", Instant.class, localDate.atStartOfDay(ZoneOffset.UTC).toInstant()},
       {dateTimeMillis, Instant.class, Instant.ofEpochMilli(dateTimeMillis)},
       {(double) dateTimeMillis, Instant.class, Instant.ofEpochMilli(dateTimeMillis)},
       {date, Instant.class, Instant.ofEpochMilli(dateTimeMillis)},
