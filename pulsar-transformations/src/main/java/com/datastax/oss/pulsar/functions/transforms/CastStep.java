@@ -15,12 +15,22 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import com.datastax.oss.pulsar.functions.transforms.jstl.CustomTypeConverter;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Date;
 import lombok.Builder;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
 @Builder
 public class CastStep implements TransformStep {
+
+  private static final CustomTypeConverter customTypeConverter = new CustomTypeConverter();
   private final SchemaType keySchemaType;
   private final SchemaType valueSchemaType;
 
@@ -42,41 +52,45 @@ public class CastStep implements TransformStep {
   }
 
   private Object convertValue(Object originalValue, SchemaType schemaType) {
-    switch (schemaType) {
-      case BYTES:
-        return ConverterUtil.toBytes(originalValue);
+    return customTypeConverter.convert(originalValue, getJavaType(schemaType));
+  }
+
+  private Class<?> getJavaType(SchemaType type) {
+    switch (type) {
       case STRING:
-        return ConverterUtil.toString(originalValue);
-      case BOOLEAN:
-        return ConverterUtil.toBoolean(originalValue);
+        return String.class;
       case INT8:
-        return ConverterUtil.toByte(originalValue);
+        return Byte.class;
       case INT16:
-        return ConverterUtil.toShort(originalValue);
+        return Short.class;
       case INT32:
-        return ConverterUtil.toInteger(originalValue);
+        return Integer.class;
       case INT64:
-        return ConverterUtil.toLong(originalValue);
+        return Long.class;
       case FLOAT:
-        return ConverterUtil.toFloat(originalValue);
+        return Float.class;
       case DOUBLE:
-        return ConverterUtil.toDouble(originalValue);
+        return Double.class;
+      case BOOLEAN:
+        return Boolean.class;
       case DATE:
-        return ConverterUtil.toDate(originalValue);
-      case TIME:
-        return ConverterUtil.toTime(originalValue);
+        return Date.class;
       case TIMESTAMP:
-        return ConverterUtil.toTimestamp(originalValue);
-      case INSTANT:
-        return ConverterUtil.toInstant(originalValue);
-      case LOCAL_DATE:
-        return ConverterUtil.toLocalDate(originalValue);
-      case LOCAL_TIME:
-        return ConverterUtil.toLocalTime(originalValue);
+        return Timestamp.class;
+      case TIME:
+        return Time.class;
       case LOCAL_DATE_TIME:
-        return ConverterUtil.toLocalDateTime(originalValue);
+        return LocalDateTime.class;
+      case LOCAL_DATE:
+        return LocalDate.class;
+      case LOCAL_TIME:
+        return LocalTime.class;
+      case INSTANT:
+        return Instant.class;
+      case BYTES:
+        return byte[].class;
       default:
-        throw new IllegalStateException("Unexpected value: " + schemaType);
+        throw new UnsupportedOperationException("Unsupported schema type: " + type);
     }
   }
 

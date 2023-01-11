@@ -22,7 +22,6 @@ import static org.testng.AssertJUnit.assertTrue;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -141,28 +140,28 @@ public class JstlFunctionsTest {
   /** @return {"input date in epoch millis", "delta", "unit", "expected value (in epoch millis)"} */
   @DataProvider(name = "millisDateAddProvider")
   public static Object[][] millisDateAddProvider() {
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2022-10-02T01:02:03Z");
-    long millis = offsetDateTime.toInstant().toEpochMilli();
+    Instant instant = Instant.parse("2022-10-02T01:02:03Z");
+    long millis = instant.toEpochMilli();
     return new Object[][] {
-      {millis, 0, "years", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "years", instant.toEpochMilli()},
       {millis, 5, "years", Instant.parse("2027-10-02T01:02:03Z").toEpochMilli()},
       {millis, -3, "years", Instant.parse("2019-10-02T01:02:03Z").toEpochMilli()},
-      {millis, 0, "months", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "months", instant.toEpochMilli()},
       {millis, 5, "months", Instant.parse("2023-03-02T01:02:03Z").toEpochMilli()},
       {millis, -3, "months", Instant.parse("2022-07-02T01:02:03Z").toEpochMilli()},
-      {millis, 0, "days", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "days", instant.toEpochMilli()},
       {millis, 5, "days", Instant.parse("2022-10-07T01:02:03Z").toEpochMilli()},
       {millis, -3, "days", Instant.parse("2022-09-29T01:02:03Z").toEpochMilli()},
-      {millis, 0, "hours", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "hours", instant.toEpochMilli()},
       {millis, 5, "hours", Instant.parse("2022-10-02T06:02:03Z").toEpochMilli()},
       {millis, -3, "hours", Instant.parse("2022-10-01T22:02:03Z").toEpochMilli()},
-      {millis, 0, "minutes", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "minutes", instant.toEpochMilli()},
       {millis, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z").toEpochMilli()},
       {millis, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z").toEpochMilli()},
-      {millis, 0, "seconds", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "seconds", instant.toEpochMilli()},
       {millis, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z").toEpochMilli()},
       {millis, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z").toEpochMilli()},
-      {millis, 0, "millis", offsetDateTime.toInstant().toEpochMilli()},
+      {millis, 0, "millis", instant.toEpochMilli()},
       {millis, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
       {millis, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
     };
@@ -172,27 +171,27 @@ public class JstlFunctionsTest {
   @DataProvider(name = "utcDateAddProvider")
   public static Object[][] utcDateAddProvider() {
     String utcDateTime = "2022-10-02T01:02:03Z";
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2022-10-02T01:02:03Z");
+    Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     return new Object[][] {
-      {utcDateTime, 0, "years", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "years", instant.toEpochMilli()},
       {utcDateTime, 5, "years", Instant.parse("2027-10-02T01:02:03Z").toEpochMilli()},
       {utcDateTime, -3, "years", Instant.parse("2019-10-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "months", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "months", instant.toEpochMilli()},
       {utcDateTime, 5, "months", Instant.parse("2023-03-02T01:02:03Z").toEpochMilli()},
       {utcDateTime, -3, "months", Instant.parse("2022-07-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "days", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "days", instant.toEpochMilli()},
       {utcDateTime, 5, "days", Instant.parse("2022-10-07T01:02:03Z").toEpochMilli()},
       {utcDateTime, -3, "days", Instant.parse("2022-09-29T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "hours", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "hours", instant.toEpochMilli()},
       {utcDateTime, 5, "hours", Instant.parse("2022-10-02T06:02:03Z").toEpochMilli()},
       {utcDateTime, -3, "hours", Instant.parse("2022-10-01T22:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "minutes", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "minutes", instant.toEpochMilli()},
       {utcDateTime, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z").toEpochMilli()},
       {utcDateTime, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z").toEpochMilli()},
-      {utcDateTime, 0, "seconds", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "seconds", instant.toEpochMilli()},
       {utcDateTime, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z").toEpochMilli()},
       {utcDateTime, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z").toEpochMilli()},
-      {utcDateTime, 0, "millis", offsetDateTime.toInstant().toEpochMilli()},
+      {utcDateTime, 0, "millis", instant.toEpochMilli()},
       {utcDateTime, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
       {utcDateTime, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
     };
@@ -203,9 +202,9 @@ public class JstlFunctionsTest {
   public static Object[][] nonUtcDateAddProvider() {
     String nonUtcDateTime = "2022-10-02T01:02:03+02:00";
     long twoHoursMillis = Duration.ofHours(2).toMillis();
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2022-10-02T01:02:03Z");
+    Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     return new Object[][] {
-      {nonUtcDateTime, 0, "years", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "years", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -218,7 +217,7 @@ public class JstlFunctionsTest {
         "years",
         Instant.parse("2019-10-02T01:02:03Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "months", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "months", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -231,7 +230,7 @@ public class JstlFunctionsTest {
         "months",
         Instant.parse("2022-07-02T01:02:03Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "days", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "days", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -244,7 +243,7 @@ public class JstlFunctionsTest {
         "days",
         Instant.parse("2022-09-29T01:02:03Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "hours", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "hours", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -257,7 +256,7 @@ public class JstlFunctionsTest {
         "hours",
         Instant.parse("2022-10-01T22:02:03Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "minutes", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "minutes", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -270,7 +269,7 @@ public class JstlFunctionsTest {
         "minutes",
         Instant.parse("2022-10-02T00:59:03Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "seconds", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "seconds", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,
@@ -283,7 +282,7 @@ public class JstlFunctionsTest {
         "seconds",
         Instant.parse("2022-10-02T01:02:00Z").toEpochMilli() - twoHoursMillis
       },
-      {nonUtcDateTime, 0, "millis", offsetDateTime.toInstant().toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "millis", instant.toEpochMilli() - twoHoursMillis},
       {
         nonUtcDateTime,
         5,

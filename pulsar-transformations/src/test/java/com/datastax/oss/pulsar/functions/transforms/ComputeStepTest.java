@@ -34,7 +34,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -154,8 +153,7 @@ public class ComputeStepTest {
     assertTrue(read.hasField("newDateTimeField"));
     assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
     assertEquals(
-        read.get("newDateTimeField"),
-        OffsetDateTime.parse("2007-12-03T10:15:30.00Z").toInstant().toEpochMilli());
+        read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
