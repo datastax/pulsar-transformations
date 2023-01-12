@@ -20,8 +20,13 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -53,11 +58,9 @@ public class ComputeStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) {
-    fields
-        .stream()
-        .filter(f -> "primitive".equals(f.getScope()))
-        .findFirst()
-        .ifPresent(f -> computePrimitiveField(f, transformContext));
+    computePrimitiveField(
+        fields.stream().filter(f -> "primitive".equals(f.getScope())).collect(Collectors.toList()),
+        transformContext);
     computeKeyFields(
         fields.stream().filter(f -> "key".equals(f.getScope())).collect(Collectors.toList()),
         transformContext);
@@ -86,13 +89,35 @@ public class ComputeStep implements TransformStep {
     }
   }
 
-  public void computePrimitiveField(ComputeField field, TransformContext context) {
-    if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
-      Object newValue = field.getEvaluator().evaluate(context);
-      org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
-      context.setValueObject(newValue);
-      context.setValueSchema(newSchema);
-    }
+  public void computePrimitiveField(List<ComputeField> fields, TransformContext context) {
+    fields
+        .stream()
+        .filter(f -> "key".equals(f.getName()))
+        .findFirst()
+        .ifPresent(
+            field -> {
+              if (context.getKeySchema() != null
+                  && context.getKeySchema().getSchemaInfo().getType().isPrimitive()) {
+                Object newKey = field.getEvaluator().evaluate(context);
+                org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
+                context.setKeyObject(newKey);
+                context.setKeySchema(newSchema);
+              }
+            });
+
+    fields
+        .stream()
+        .filter(f -> "value".equals(f.getName()))
+        .findFirst()
+        .ifPresent(
+            field -> {
+              if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
+                Object newValue = field.getEvaluator().evaluate(context);
+                org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
+                context.setValueObject(newValue);
+                context.setValueSchema(newSchema);
+              }
+            });
   }
 
   public void computeKeyFields(List<ComputeField> fields, TransformContext context) {
@@ -207,6 +232,10 @@ public class ComputeStep implements TransformStep {
       return ByteBuffer.wrap((byte[]) value);
     }
 
+    if (value instanceof Byte || value instanceof Short) {
+      return ((Number) value).intValue();
+    }
+
     LogicalType logicalType = getLogicalType(schema);
     if (logicalType == null) {
       return value;
@@ -215,21 +244,41 @@ public class ComputeStep implements TransformStep {
     // Avro logical type conversion: https://avro.apache.org/docs/1.8.2/spec.html#Logical+Types
     switch (logicalType.getName()) {
       case "date":
-        validateLogicalType(value, schema.getLogicalType(), Date.class);
-        Date date = (Date) value;
-        return (int) (date.getTime() / TimeUnit.DAYS.toMillis(1));
+        return getAvroData(value, schema.getLogicalType());
       case "time-millis":
-        validateLogicalType(value, schema.getLogicalType(), LocalTime.class);
-        LocalTime localTime = (LocalTime) value;
-        return (int) (localTime.toNanoOfDay() / 1000000);
+        return getAvroTimeMillis(value, schema.getLogicalType());
       case "timestamp-millis":
-        validateLogicalType(value, schema.getLogicalType(), Instant.class);
-        Instant instant = (Instant) value;
-        return instant.toEpochMilli();
+        return getAvroTimeTimestampMillis(value, schema.getLogicalType());
     }
 
     throw new IllegalArgumentException(
         String.format("Invalid logical type %s for value %s", schema.getLogicalType(), value));
+  }
+
+  private Object getAvroTimeTimestampMillis(Object value, LogicalType logicalType) {
+    validateLogicalType(value, logicalType, Instant.class, Timestamp.class, LocalDateTime.class);
+    final Instant instant;
+    if (value instanceof Timestamp) {
+      instant = ((Timestamp) value).toInstant();
+    } else if (value instanceof LocalDateTime) {
+      instant = ((LocalDateTime) value).toInstant(ZoneOffset.UTC);
+    } else {
+      instant = (Instant) value;
+    }
+    return instant.toEpochMilli();
+  }
+
+  private Object getAvroData(Object value, LogicalType logicalType) {
+    validateLogicalType(value, logicalType, Date.class, LocalDate.class);
+    return (value instanceof LocalDate)
+        ? (int) ((LocalDate) value).toEpochDay()
+        : (int) (((Date) value).getTime() / TimeUnit.DAYS.toMillis(1));
+  }
+
+  private Object getAvroTimeMillis(Object value, LogicalType logicalType) {
+    validateLogicalType(value, logicalType, Time.class, LocalTime.class);
+    LocalTime time = (value instanceof Time) ? ((Time) value).toLocalTime() : (LocalTime) value;
+    return (int) (time.toNanoOfDay() / 1000000);
   }
 
   private LogicalType getLogicalType(Schema schema) {
@@ -246,11 +295,14 @@ public class ComputeStep implements TransformStep {
         .orElse(null);
   }
 
-  void validateLogicalType(Object value, LogicalType logicalType, Class expectedClass) {
-    if (!(value.getClass().equals(expectedClass))) {
-      throw new IllegalArgumentException(
-          String.format("Invalid value %s for logical type %s", value, logicalType));
+  void validateLogicalType(Object value, LogicalType logicalType, Class... expectedClasses) {
+    for (Class clazz : expectedClasses) {
+      if ((value.getClass().equals(clazz))) {
+        return;
+      }
     }
+    throw new IllegalArgumentException(
+        String.format("Invalid java type %s for logical type %s", value.getClass(), logicalType));
   }
 
   private Schema.Field createAvroField(ComputeField field) {
@@ -269,13 +321,20 @@ public class ComputeStep implements TransformStep {
       case STRING:
         schemaType = Schema.Type.STRING;
         break;
+      case INT8:
+      case INT16:
       case INT32:
       case DATE:
+      case LOCAL_DATE:
       case TIME:
+      case LOCAL_TIME:
         schemaType = Schema.Type.INT;
         break;
       case INT64:
       case DATETIME:
+      case TIMESTAMP:
+      case INSTANT:
+      case LOCAL_DATE_TIME:
         schemaType = Schema.Type.LONG;
         break;
       case FLOAT:
@@ -301,10 +360,15 @@ public class ComputeStep implements TransformStep {
           Schema schema = Schema.create(schemaType);
           switch (key) {
             case DATE:
+            case LOCAL_DATE:
               return LogicalTypes.date().addToSchema(schema);
             case TIME:
+            case LOCAL_TIME:
               return LogicalTypes.timeMillis().addToSchema(schema);
             case DATETIME:
+            case INSTANT:
+            case TIMESTAMP:
+            case LOCAL_DATE_TIME:
               return LogicalTypes.timestampMillis().addToSchema(schema);
             default:
               return schema;
@@ -317,6 +381,12 @@ public class ComputeStep implements TransformStep {
     switch (type) {
       case STRING:
         schema = org.apache.pulsar.client.api.Schema.STRING;
+        break;
+      case INT8:
+        schema = org.apache.pulsar.client.api.Schema.INT8;
+        break;
+      case INT16:
+        schema = org.apache.pulsar.client.api.Schema.INT16;
         break;
       case INT32:
         schema = org.apache.pulsar.client.api.Schema.INT32;
@@ -336,11 +406,24 @@ public class ComputeStep implements TransformStep {
       case DATE:
         schema = org.apache.pulsar.client.api.Schema.DATE;
         break;
+      case LOCAL_DATE:
+        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE;
+        break;
       case TIME:
+        schema = org.apache.pulsar.client.api.Schema.TIME;
+        break;
+      case LOCAL_TIME:
         schema = org.apache.pulsar.client.api.Schema.LOCAL_TIME;
         break;
+      case LOCAL_DATE_TIME:
+        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE_TIME;
+        break;
       case DATETIME:
+      case INSTANT:
         schema = org.apache.pulsar.client.api.Schema.INSTANT;
+        break;
+      case TIMESTAMP:
+        schema = org.apache.pulsar.client.api.Schema.TIMESTAMP;
         break;
       case BYTES:
         schema = org.apache.pulsar.client.api.Schema.BYTES;

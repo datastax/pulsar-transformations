@@ -17,6 +17,8 @@ package com.datastax.oss.pulsar.functions.transforms.model;
 
 public enum ComputeFieldType {
   STRING,
+  INT8,
+  INT16,
   INT32,
   INT64,
   FLOAT,
@@ -24,6 +26,16 @@ public enum ComputeFieldType {
   BOOLEAN,
   DATE,
   TIME,
+  TIMESTAMP,
+  INSTANT,
+  LOCAL_DATE,
+  LOCAL_TIME,
+  LOCAL_DATE_TIME,
+
+  /**
+   * @deprecated Use TIMESTAMP, INSTANT or LOCAL_DATE_TIME instead to represent a date-time value.
+   */
+  @Deprecated
   DATETIME,
   BYTES
 }

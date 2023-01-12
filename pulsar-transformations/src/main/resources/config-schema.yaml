@@ -190,13 +190,20 @@ components:
                     description: The data type of the computed fields. It should match with the output of the expression.
                     enum:
                       - STRING
+                      - INT8
+                      - INT16
                       - INT32
                       - INT64
                       - FLOAT
                       - DOUBLE
                       - BOOLEAN
                       - DATE
+                      - LOCAL_DATE
                       - TIME
+                      - LOCAL_TIME
+                      - INSTANT
+                      - TIMESTAMP
+                      - LOCAL_DATE_TIME
                       - DATETIME
                       - BYTES
                   optional:

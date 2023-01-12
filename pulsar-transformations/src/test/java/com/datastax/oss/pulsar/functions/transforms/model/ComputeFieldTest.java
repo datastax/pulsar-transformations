@@ -80,4 +80,13 @@ public class ComputeFieldTest {
     assertEquals("value", field.getName());
     assertEquals("primitive", field.getScope());
   }
+
+  @Test
+  void testPrimitiveKeyComputeFieldName() {
+    ComputeField field =
+        ComputeField.builder().scopedName("key").type(ComputeFieldType.STRING).build();
+
+    assertEquals("key", field.getName());
+    assertEquals("primitive", field.getScope());
+  }
 }

@@ -31,7 +31,11 @@ import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,6 +121,18 @@ public class ComputeStepTest {
     assertEquals(read.getSchema().getField("newStringField").schema(), STRING_SCHEMA);
     assertEquals(read.get("newStringField"), new Utf8("Hotaru"));
 
+    assertTrue(read.hasField("newInt8Field"));
+    assertEquals(read.getSchema().getField("newInt8Field").schema(), INT_SCHEMA);
+    assertEquals(read.get("newInt8Field"), 127);
+
+    assertTrue(read.hasField("newInt16Field"));
+    assertEquals(read.getSchema().getField("newInt16Field").schema(), INT_SCHEMA);
+    assertEquals(read.get("newInt16Field"), 32767);
+
+    assertTrue(read.hasField("newInt32Field"));
+    assertEquals(read.getSchema().getField("newInt32Field").schema(), INT_SCHEMA);
+    assertEquals(read.get("newInt32Field"), 2147483647);
+
     assertTrue(read.hasField("newInt32Field"));
     assertEquals(read.getSchema().getField("newInt32Field").schema(), INT_SCHEMA);
     assertEquals(read.get("newInt32Field"), 2147483647);
@@ -146,14 +162,37 @@ public class ComputeStepTest {
     assertEquals(read.getSchema().getField("newDateField").schema(), DATE_SCHEMA);
     assertEquals(read.get("newDateField"), 13850); // 13850 days since 1970-01-01
 
+    assertTrue(read.hasField("newLocalDateField"));
+    assertEquals(read.getSchema().getField("newLocalDateField").schema(), DATE_SCHEMA);
+    assertEquals(read.get("newLocalDateField"), 13850); // 13850 days since 1970-01-01
+
     assertTrue(read.hasField("newTimeField"));
     assertEquals(read.getSchema().getField("newTimeField").schema(), TIME_SCHEMA);
     assertEquals(read.get("newTimeField"), 36930000); // 36930000 ms since 00:00:00
+
+    assertTrue(read.hasField("newLocalTimeField"));
+    assertEquals(read.getSchema().getField("newLocalTimeField").schema(), TIME_SCHEMA);
+    assertEquals(read.get("newLocalTimeField"), 36930000); // 36930000 ms since 00:00:00
 
     assertTrue(read.hasField("newDateTimeField"));
     assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
     assertEquals(
         read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+
+    assertTrue(read.hasField("newInstantField"));
+    assertEquals(read.getSchema().getField("newInstantField").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(
+        read.get("newInstantField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+
+    assertTrue(read.hasField("newTimestampField"));
+    assertEquals(read.getSchema().getField("newTimestampField").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(
+        read.get("newTimestampField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+
+    assertTrue(read.hasField("newLocalDateTimeField"));
+    assertEquals(read.getSchema().getField("newLocalDateTimeField").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(
+        read.get("newLocalDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
@@ -294,20 +333,14 @@ public class ComputeStepTest {
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
   }
 
-  @Test(dataProvider = "primitiveTypeComputeProvider")
+  @Test(dataProvider = "primitiveSchemaTypesProvider")
   void testPrimitiveSchemaTypes(
-      Object oldValue,
-      Schema<?> oldSchema,
-      String expression,
-      ComputeFieldType newSchema,
-      Object expectedValue,
-      Schema<?> expectedSchema)
+      String expression, ComputeFieldType newSchema, Object expectedValue, Schema<?> expectedSchema)
       throws Exception {
     Record<GenericObject> record =
         new Utils.TestRecord<>(
-            oldSchema,
-            AutoConsumeSchema.wrapPrimitiveObject(
-                oldValue, oldSchema.getSchemaInfo().getType(), new byte[] {}),
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("", SchemaType.STRING, new byte[] {}),
             "test-key");
 
     ComputeStep step =
@@ -325,6 +358,46 @@ public class ComputeStepTest {
 
     assertEquals(outputRecord.getSchema(), expectedSchema);
     assertEquals(outputRecord.getValue(), expectedValue);
+  }
+
+  @Test
+  void testKeyValuePrimitivesModified() throws Exception {
+    Schema<KeyValue<String, Integer>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.INT32, KeyValueEncodingType.SEPARATED);
+
+    KeyValue<String, Integer> keyValue = new KeyValue<>("key", 42);
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            null);
+
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                Arrays.asList(
+                    ComputeField.builder()
+                        .scopedName("key")
+                        .expression("88")
+                        .type(ComputeFieldType.INT32)
+                        .build(),
+                    ComputeField.builder()
+                        .scopedName("value")
+                        .expression("'newValue'")
+                        .type(ComputeFieldType.STRING)
+                        .build()))
+            .build();
+
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(messageSchema.getKeySchema(), Schema.INT32);
+    assertEquals(messageSchema.getValueSchema(), Schema.STRING);
+
+    assertEquals(messageValue.getKey(), 88);
+    assertEquals(messageValue.getValue(), "newValue");
   }
 
   @Test
@@ -509,104 +582,61 @@ public class ComputeStepTest {
     return new Object[] {"targetTopic", "randomTopic"};
   }
 
-  /**
-   * @return {"old value", "old schema", "expression", "new schema", "expected value",
-   *     "expectedSchema"}
-   */
-  @DataProvider(name = "primitiveTypeComputeProvider")
-  public static Object[][] primitiveTypeComputeProvider() {
+  /** @return {"expression", "new schema", "expected value", "expectedSchema"} */
+  @DataProvider(name = "primitiveSchemaTypesProvider")
+  public static Object[][] primitiveSchemaTypesProvider() {
     return new Object[][] {
-      {"oldValue", Schema.STRING, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
+      {"'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
+      {"'4'", ComputeFieldType.INT8, (byte) 4, Schema.INT8},
+      {"'4'", ComputeFieldType.INT16, (short) 4, Schema.INT16},
+      {"'4'", ComputeFieldType.INT32, 4, Schema.INT32},
+      {"'4'", ComputeFieldType.INT64, 4L, Schema.INT64},
+      {"'3.2'", ComputeFieldType.FLOAT, 3.2F, Schema.FLOAT},
+      {"'3.2'", ComputeFieldType.DOUBLE, 3.2D, Schema.DOUBLE},
+      {"true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
       {
-        "oldValue",
-        Schema.STRING,
-        "fn:concat(value, '!')",
-        ComputeFieldType.STRING,
-        "oldValue!",
-        Schema.STRING
-      },
-      {"1.3", Schema.STRING, "2.6", ComputeFieldType.DOUBLE, 2.6D, Schema.DOUBLE},
-      {"3", Schema.INT32, "4", ComputeFieldType.INT32, 4, Schema.INT32},
-      {"3", Schema.INT32, "value + 2", ComputeFieldType.INT32, 5, Schema.INT32},
-      {"3", Schema.INT32, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
-      {"3", Schema.INT64, "4", ComputeFieldType.INT64, 4L, Schema.INT64},
-      {"3", Schema.INT64, "value + 2", ComputeFieldType.INT64, 5L, Schema.INT64},
-      {"3", Schema.INT64, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
-      {"3.2", Schema.FLOAT, "3.3", ComputeFieldType.FLOAT, 3.3F, Schema.FLOAT},
-      {"3.2", Schema.FLOAT, "value + 1", ComputeFieldType.FLOAT, 4.2F, Schema.FLOAT},
-      {"3.2", Schema.FLOAT, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
-      {"3.2", Schema.DOUBLE, "3.3", ComputeFieldType.DOUBLE, 3.3D, Schema.DOUBLE},
-      {"3.2", Schema.DOUBLE, "value + 1", ComputeFieldType.DOUBLE, 4.2D, Schema.DOUBLE},
-      {"3.2", Schema.DOUBLE, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING},
-      {"false", Schema.BOOL, "true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
-      {"false", Schema.BOOL, "value || true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
-      {"true", Schema.BOOL, "1", ComputeFieldType.DOUBLE, 1D, Schema.DOUBLE},
-      {
-        "2007-01-02",
-        Schema.LOCAL_DATE,
         "'2008-02-07'",
         ComputeFieldType.DATE,
         Date.from(Instant.parse("2008-02-07T00:00:00Z")),
         Schema.DATE
       },
       {
-        "2007-01-02",
-        Schema.LOCAL_DATE,
         "'2008-02-07'",
-        ComputeFieldType.STRING,
-        "2008-02-07",
-        Schema.STRING
+        ComputeFieldType.LOCAL_DATE,
+        LocalDate.parse("2008-02-07"),
+        Schema.LOCAL_DATE
       },
+      {"'03:04:05'", ComputeFieldType.TIME, Time.valueOf("03:04:05"), Schema.TIME},
+      {"'03:04:05'", ComputeFieldType.LOCAL_TIME, LocalTime.parse("03:04:05"), Schema.LOCAL_TIME},
       {
-        "01:02:03",
-        Schema.LOCAL_TIME,
-        "'03:04:05'",
-        ComputeFieldType.TIME,
-        LocalTime.parse("03:04:05"),
-        Schema.LOCAL_TIME
-      },
-      {
-        "01:02:03",
-        Schema.LOCAL_TIME,
-        "'03:04:05'",
-        ComputeFieldType.STRING,
-        "03:04:05",
-        Schema.STRING
-      },
-      {
-        "2007-01-02T01:02:03Z",
-        Schema.INSTANT,
-        "'2022-01-02T02:03:04Z'",
-        ComputeFieldType.DATETIME,
-        Instant.parse("2022-01-02T02:03:04Z"),
+        "'2009-01-02T01:02:03Z'",
+        ComputeFieldType.INSTANT,
+        Instant.parse("2009-01-02T01:02:03Z"),
         Schema.INSTANT
       },
       {
-        "2007-01-02T01:02:03Z",
-        Schema.INSTANT,
-        "fn:dateadd(value, 2, 'years')",
+        "'2009-01-02T01:02:03Z'",
         ComputeFieldType.DATETIME,
         Instant.parse("2009-01-02T01:02:03Z"),
         Schema.INSTANT
       },
       {
-        "2007-01-02T01:02:03Z",
-        Schema.LOCAL_DATE_TIME,
-        "'2010-01-02T01:02:03Z'",
-        ComputeFieldType.STRING,
-        "2010-01-02T01:02:03Z",
-        Schema.STRING
+        "'2009-01-02T01:02:03Z'",
+        ComputeFieldType.TIMESTAMP,
+        Timestamp.from(Instant.parse("2009-01-02T01:02:03Z")),
+        Schema.TIMESTAMP
       },
       {
-        "'oldValue'",
-        Schema.BYTES,
+        "'2009-01-02T01:02:03'",
+        ComputeFieldType.LOCAL_DATE_TIME,
+        LocalDateTime.parse("2009-01-02T01:02:03"),
+        Schema.LOCAL_DATE_TIME
+      },
+      {
         "'newValue'.bytes",
         ComputeFieldType.BYTES,
         "newValue".getBytes(StandardCharsets.UTF_8),
         Schema.BYTES
-      },
-      {
-        "'oldValue'", Schema.BYTES, "'newValue'", ComputeFieldType.STRING, "newValue", Schema.STRING
       },
     };
   }
@@ -624,6 +654,20 @@ public class ComputeStepTest {
             .expression(nullify ? "null" : "'Hotaru'")
             .optional(optional)
             .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newInt8Field")
+            .expression(nullify ? "null" : "127")
+            .optional(optional)
+            .type(ComputeFieldType.INT8)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newInt16Field")
+            .expression(nullify ? "null" : "32767")
+            .optional(optional)
+            .type(ComputeFieldType.INT16)
             .build());
     fields.add(
         ComputeField.builder()
@@ -663,9 +707,16 @@ public class ComputeStepTest {
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateField")
-            .expression(nullify ? "null" : "'2007-12-03'")
+            .expression(nullify ? "null" : "'2007-12-03T00:00:00Z'")
             .optional(optional)
             .type(ComputeFieldType.DATE)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newLocalDateField")
+            .expression(nullify ? "null" : "'2007-12-03'")
+            .optional(optional)
+            .type(ComputeFieldType.LOCAL_DATE)
             .build());
     fields.add(
         ComputeField.builder()
@@ -673,6 +724,34 @@ public class ComputeStepTest {
             .expression(nullify ? "null" : "'10:15:30'")
             .optional(optional)
             .type(ComputeFieldType.TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newLocalTimeField")
+            .expression(nullify ? "null" : "'10:15:30'")
+            .optional(optional)
+            .type(ComputeFieldType.LOCAL_TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newTimestampField")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
+            .optional(optional)
+            .type(ComputeFieldType.INSTANT)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newInstantField")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
+            .optional(optional)
+            .type(ComputeFieldType.TIMESTAMP)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newLocalDateTimeField")
+            .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
+            .optional(optional)
+            .type(ComputeFieldType.LOCAL_DATE_TIME)
             .build());
     fields.add(
         ComputeField.builder()
