@@ -38,6 +38,12 @@ import org.apache.pulsar.client.api.Schema;
  */
 public class CustomTypeConverter extends TypeConverterImpl {
 
+  public static final CustomTypeConverter INSTANCE = new CustomTypeConverter();
+
+  private CustomTypeConverter() {
+    super();
+  }
+
   @Override
   protected Boolean coerceToBoolean(Object value) {
     if (value instanceof byte[]) {
@@ -54,10 +60,17 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof Time) {
       return (double) ((Time) value).toLocalTime().toNanoOfDay() / 1_000_000;
     }
+    if (value instanceof Timestamp) {
+      return (((Timestamp) value).getTime() / 1_000) * 1000
+          + (double) ((Timestamp) value).getNanos() / 1_000_000_000;
+    }
+    if (value instanceof Date) {
+      return (double) (((Date) value).getTime());
+    }
     if (value instanceof byte[]) {
       return Schema.DOUBLE.decode((byte[]) value);
     }
-    if (value instanceof TemporalAccessor || value instanceof Date) {
+    if (value instanceof TemporalAccessor) {
       Instant instant = coerceToInstant(value);
       return (double) instant.getEpochSecond() * 1000 + (double) instant.getNano() / 1_000_000;
     }
@@ -80,10 +93,13 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof Time) {
       return ((Time) value).toLocalTime().toNanoOfDay() / 1_000_000;
     }
+    if (value instanceof Date) {
+      return ((Date) value).getTime();
+    }
     if (value instanceof byte[]) {
       return Schema.INT64.decode((byte[]) value);
     }
-    if (value instanceof TemporalAccessor || value instanceof Date) {
+    if (value instanceof TemporalAccessor) {
       return coerceToInstant(value).toEpochMilli();
     }
     return super.coerceToLong(value);
@@ -91,6 +107,12 @@ public class CustomTypeConverter extends TypeConverterImpl {
 
   @Override
   protected Integer coerceToInteger(Object value) {
+    if (value instanceof LocalTime) {
+      return (int) (((LocalTime) value).toNanoOfDay() / 1_000_000);
+    }
+    if (value instanceof Time) {
+      return (int) (((Time) value).toLocalTime().toNanoOfDay() / 1_000_000);
+    }
     if (value instanceof byte[]) {
       return Schema.INT32.decode((byte[]) value);
     }

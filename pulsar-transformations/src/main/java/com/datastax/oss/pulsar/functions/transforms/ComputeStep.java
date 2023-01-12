@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
+import com.datastax.oss.pulsar.functions.transforms.jstl.CustomTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
@@ -26,7 +27,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -48,6 +48,7 @@ import org.apache.avro.generic.GenericRecordBuilder;
 @Builder
 public class ComputeStep implements TransformStep {
 
+  public static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
   @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
       new ConcurrentHashMap<>();
@@ -244,41 +245,32 @@ public class ComputeStep implements TransformStep {
     // Avro logical type conversion: https://avro.apache.org/docs/1.8.2/spec.html#Logical+Types
     switch (logicalType.getName()) {
       case "date":
-        return getAvroData(value, schema.getLogicalType());
+        return getAvroDate(value, schema.getLogicalType());
       case "time-millis":
         return getAvroTimeMillis(value, schema.getLogicalType());
       case "timestamp-millis":
-        return getAvroTimeTimestampMillis(value, schema.getLogicalType());
+        return getAvroTimestampMillis(value, schema.getLogicalType());
     }
 
     throw new IllegalArgumentException(
         String.format("Invalid logical type %s for value %s", schema.getLogicalType(), value));
   }
 
-  private Object getAvroTimeTimestampMillis(Object value, LogicalType logicalType) {
+  private Long getAvroTimestampMillis(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Instant.class, Timestamp.class, LocalDateTime.class);
-    final Instant instant;
-    if (value instanceof Timestamp) {
-      instant = ((Timestamp) value).toInstant();
-    } else if (value instanceof LocalDateTime) {
-      instant = ((LocalDateTime) value).toInstant(ZoneOffset.UTC);
-    } else {
-      instant = (Instant) value;
-    }
-    return instant.toEpochMilli();
+    return CustomTypeConverter.INSTANCE.convert(value, Long.class);
   }
 
-  private Object getAvroData(Object value, LogicalType logicalType) {
+  private Integer getAvroDate(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Date.class, LocalDate.class);
     return (value instanceof LocalDate)
         ? (int) ((LocalDate) value).toEpochDay()
-        : (int) (((Date) value).getTime() / TimeUnit.DAYS.toMillis(1));
+        : (int) (((Date) value).getTime() / MILLIS_PER_DAY);
   }
 
-  private Object getAvroTimeMillis(Object value, LogicalType logicalType) {
+  private Integer getAvroTimeMillis(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Time.class, LocalTime.class);
-    LocalTime time = (value instanceof Time) ? ((Time) value).toLocalTime() : (LocalTime) value;
-    return (int) (time.toNanoOfDay() / 1000000);
+    return CustomTypeConverter.INSTANCE.convert(value, Integer.class);
   }
 
   private LogicalType getLogicalType(Schema schema) {

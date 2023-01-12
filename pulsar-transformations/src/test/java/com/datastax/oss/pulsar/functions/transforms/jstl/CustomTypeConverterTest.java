@@ -36,7 +36,7 @@ import org.testng.annotations.Test;
 
 public class CustomTypeConverterTest {
 
-  private static final CustomTypeConverter converter = new CustomTypeConverter();
+  private static final CustomTypeConverter converter = CustomTypeConverter.INSTANCE;
 
   @Test
   void testNullConversion() {

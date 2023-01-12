@@ -29,8 +29,6 @@ import org.apache.pulsar.common.schema.SchemaType;
 
 @Builder
 public class CastStep implements TransformStep {
-
-  private static final CustomTypeConverter customTypeConverter = new CustomTypeConverter();
   private final SchemaType keySchemaType;
   private final SchemaType valueSchemaType;
 
@@ -52,7 +50,7 @@ public class CastStep implements TransformStep {
   }
 
   private Object convertValue(Object originalValue, SchemaType schemaType) {
-    return customTypeConverter.convert(originalValue, getJavaType(schemaType));
+    return CustomTypeConverter.INSTANCE.convert(originalValue, getJavaType(schemaType));
   }
 
   private Class<?> getJavaType(SchemaType type) {

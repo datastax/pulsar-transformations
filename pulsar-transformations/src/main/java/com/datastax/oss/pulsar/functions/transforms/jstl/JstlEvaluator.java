@@ -31,7 +31,7 @@ public class JstlEvaluator<T> {
   }
 
   private static final ExpressionFactory FACTORY =
-      new ExpressionFactoryImpl(System.getProperties(), new CustomTypeConverter());
+      new ExpressionFactoryImpl(System.getProperties(), CustomTypeConverter.INSTANCE);
   private final ValueExpression valueExpression;
   private final SimpleContext expressionContext;
 
