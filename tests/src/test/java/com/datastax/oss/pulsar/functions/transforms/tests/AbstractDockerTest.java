@@ -331,6 +331,16 @@ public abstract class AbstractDockerTest {
     assertEquals(pojo2.getValue().getNativeObject().toString(), "{\"a\": \"c\", \"b\": \"d\"}");
   }
 
+  @Test
+  public void testComputePrimitive() throws Exception {
+    String userConfig =
+        ("{\"steps\": [{\"type\": \"compute\", \"fields\": [{\"name\": \"value\", \"expression\": \"fn:concat(value, '!')\", \"type\": \"STRING\"}]}]}");
+
+    GenericRecord value = testTransformFunction(userConfig, Schema.STRING, "hello", "test-key");
+    assertEquals(value.getSchemaType(), SchemaType.STRING);
+    assertEquals(value.getNativeObject(), "hello!");
+  }
+
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     return testTransformFunction(userConfig, schema, value, null);

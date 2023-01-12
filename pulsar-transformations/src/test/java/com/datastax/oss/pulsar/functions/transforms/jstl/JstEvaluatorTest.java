@@ -22,7 +22,6 @@ import com.datastax.oss.pulsar.functions.transforms.Utils;
 import de.odysseus.el.tree.TreeBuilderException;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
@@ -51,6 +50,24 @@ public class JstEvaluatorTest {
   }
 
   @Test
+  void testPrimitiveValue() {
+    Record<GenericObject> primitiveStringRecord =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
+            "");
+    TransformContext primitiveStringContext =
+        new TransformContext(
+            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
+            primitiveStringRecord.getValue().getNativeObject());
+
+    String value =
+        new JstlEvaluator<String>("${value}", String.class).evaluate(primitiveStringContext);
+
+    assertEquals("test-message", value);
+  }
+
+  @Test
   void testNowFunction() {
     Record<GenericObject> primitiveStringRecord =
         new Utils.TestRecord<>(
@@ -65,7 +82,7 @@ public class JstEvaluatorTest {
     long expectedMillis = 123L;
     Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
-    ;
+
     long actualMillis =
         new JstlEvaluator<Long>("${fn:now()}", long.class).evaluate(primitiveStringContext);
 
@@ -129,8 +146,7 @@ public class JstEvaluatorTest {
         new TransformContext(
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse("2017-01-02T00:01:02Z");
-    long millis = offsetDateTime.toInstant().toEpochMilli();
+    long millis = Instant.parse("2017-01-02T00:01:02Z").toEpochMilli();
     return new Object[][] {
       {"fn:uppercase('test')", primitiveStringContext, "TEST"},
       {"fn:uppercase(value) == 'TEST-MESSAGE'", primitiveStringContext, true},
@@ -153,72 +169,72 @@ public class JstEvaluatorTest {
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'years')",
         primitiveStringContext,
-        OffsetDateTime.parse("2018-01-02T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'months')",
         primitiveStringContext,
-        OffsetDateTime.parse("2016-12-02T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'days')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-03T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'hours')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-01T23:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'minutes')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:02:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'seconds')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:01:01Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'millis')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:01:02.001Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'years')",
         primitiveStringContext,
-        OffsetDateTime.parse("2018-01-02T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'months')",
         primitiveStringContext,
-        OffsetDateTime.parse("2016-12-02T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'days')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-03T00:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'hours')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-01T23:01:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'minutes')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:02:02Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'seconds')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:01:01Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'millis')",
         primitiveStringContext,
-        OffsetDateTime.parse("2017-01-02T00:01:02.001Z").toInstant().toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
     };
   }

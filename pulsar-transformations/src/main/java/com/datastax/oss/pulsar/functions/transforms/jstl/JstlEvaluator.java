@@ -31,7 +31,7 @@ public class JstlEvaluator<T> {
   }
 
   private static final ExpressionFactory FACTORY =
-      new ExpressionFactoryImpl(System.getProperties(), new CustomTypeConverter());
+      new ExpressionFactoryImpl(System.getProperties(), CustomTypeConverter.INSTANCE);
   private final ValueExpression valueExpression;
   private final SimpleContext expressionContext;
 
@@ -40,12 +40,12 @@ public class JstlEvaluator<T> {
   public JstlEvaluator(String expression, Class<?> type) {
     this.type = type;
     this.expressionContext = new SimpleContext();
-    registerFunctions(this.expressionContext);
+    registerFunctions();
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
   }
 
   @SneakyThrows
-  private void registerFunctions(SimpleContext expressionContext) {
+  private void registerFunctions() {
     this.expressionContext.setFunction(
         "fn", "uppercase", JstlFunctions.class.getMethod("uppercase", Object.class));
     this.expressionContext.setFunction(

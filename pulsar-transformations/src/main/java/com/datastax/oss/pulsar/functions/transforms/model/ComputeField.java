@@ -16,9 +16,13 @@
 package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
+import java.util.Date;
 import java.util.Set;
 import javax.el.ELException;
 import lombok.AccessLevel;
@@ -85,8 +89,13 @@ public class ComputeField {
     }
 
     private void validateAndParseScopedName() {
-      // If the name is in the [key|value].fieldName format, split the name prefix from the part
-      if (this.scopedName.startsWith("key.") || this.scopedName.startsWith("value.")) {
+      if (this.scopedName.equals("value")) {
+        this.scope = "primitive";
+        this.name = "value";
+      } else if (this.scopedName.equals("key")) {
+        this.scope = "primitive";
+        this.name = "key";
+      } else if (this.scopedName.startsWith("key.") || this.scopedName.startsWith("value.")) {
         String[] nameParts = this.scopedName.split("\\.", 2);
         this.scope = nameParts[0];
         this.name = nameParts[1];
@@ -101,8 +110,9 @@ public class ComputeField {
         throw new IllegalArgumentException(
             String.format(
                 "Invalid compute field name: %s. "
-                    + "It should be prefixed with 'key.' or 'value.' or 'properties.' or be one of %s",
-                this.scopedName, validComputeHeaders));
+                    + "It should be prefixed with 'key.' or 'value.' or 'properties.' or be one of "
+                    + "[key, value, destinationTopic, messageKey]",
+                this.scopedName));
       }
     }
 
@@ -110,6 +120,10 @@ public class ComputeField {
       switch (this.type) {
         case STRING:
           return String.class;
+        case INT8:
+          return byte.class;
+        case INT16:
+          return short.class;
         case INT32:
           return int.class;
         case INT64:
@@ -121,11 +135,22 @@ public class ComputeField {
         case BOOLEAN:
           return boolean.class;
         case DATE:
+          return Date.class;
+        case LOCAL_DATE:
           return LocalDate.class;
         case TIME:
+          return Time.class;
+        case LOCAL_TIME:
           return LocalTime.class;
+        case LOCAL_DATE_TIME:
+          return LocalDateTime.class;
         case DATETIME:
-          return OffsetDateTime.class;
+        case INSTANT:
+          return Instant.class;
+        case TIMESTAMP:
+          return Timestamp.class;
+        case BYTES:
+          return byte[].class;
         default:
           throw new UnsupportedOperationException("Unsupported compute field type: " + type);
       }
