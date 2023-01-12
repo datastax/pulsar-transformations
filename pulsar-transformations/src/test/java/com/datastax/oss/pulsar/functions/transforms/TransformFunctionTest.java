@@ -94,13 +94,13 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
       },
       {
-          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'date', optional: true, type: 'DATE'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'date', optional: true, type: 'DATE'}]}]}"
       },
       {
-          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'time', optional: true, type: 'TIME'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'time', optional: true, type: 'TIME'}]}]}"
       },
       {
-          "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'datetime', optional: true, type: 'DATETIME'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'datetime', optional: true, type: 'DATETIME'}]}]}"
       },
     };
   }
@@ -233,7 +233,8 @@ public class TransformFunctionTest {
                 + "        {'name': 'key.newField1', 'expression' : '5*3', 'type': 'INT32'},"
                 + "        {'name': 'key.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false},"
                 + "        {'name': 'value.newField1', 'expression' : '5+3', 'type': 'INT32'},"
-                + "        {'name': 'value.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false}]}"
+                + "        {'name': 'value.newField2', 'expression' : 'value.valueField1', 'type': 'STRING', 'optional' : false}"
+                + "    ]}"
                 + "]}")
             .replace("'", "\"");
 
@@ -266,6 +267,33 @@ public class TransformFunctionTest {
     assertOptionalField(valueAvroRecord, "newField1", org.apache.avro.Schema.Type.INT, 8);
     assertNonOptionalField(
         valueAvroRecord, "newField2", org.apache.avro.Schema.Type.STRING, new Utf8("value1"));
+  }
+
+  @Test
+  void testComputeWithoutType() throws Exception {
+    String userConfig =
+        (""
+                + "{`steps`: ["
+                + "    {`type`: `compute`, `fields`:["
+                + "        {`name`: `destinationTopic`, `expression` : `'routed'`},"
+                + "        {`name`: `messageKey`, `expression` : `'newKey'`},"
+                + "        {`name`: `properties.foo`, `expression` : `'bar'`}"
+                + "    ]}"
+                + "]}")
+            .replace("`", "\"");
+
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = new TransformFunction();
+
+    Record<GenericObject> record = Utils.createNestedAvroRecord(1, "");
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    assertEquals(outputRecord.getDestinationTopic().orElseThrow(), "routed");
+    assertEquals(outputRecord.getKey().orElseThrow(), "newKey");
+    assertEquals(outputRecord.getProperties().get("foo"), "bar");
   }
 
   @Test
