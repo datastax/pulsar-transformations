@@ -18,6 +18,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
+import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
@@ -35,12 +36,10 @@ import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
 import java.io.InputStream;
 import java.net.URL;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -78,11 +77,12 @@ import org.apache.pulsar.functions.api.Record;
  *       <code>value</code>. If not specified, flatten will apply to key and value.
  *   <li><code>drop</code>: drops the message from further processing. Use in conjunction with
  *       <code>when</code> to selectively drop messages.
- *   <li><code>compute</code>: dynamically calculates <code>fields</code> values in the key, value or header. Each
- *       field has a <code>name</code> to represents a new or existing field (in this case, it will be overwritten). The
- *       value of the fields is evaluated by the <code>expression</code> and respect the <code>type</code>. Supported
- *       types are [INT32, INT64, FLOAT, DOUBLE, BOOLEAN, DATE, TIME, DATETIME]. Each field is marked as nullable by
- *       default. To mark the field as non-nullable in the output schema, set <code>optional</code> to false.
+ *   <li><code>compute</code>: dynamically calculates <code>fields</code> values in the key, value
+ *       or header. Each field has a <code>name</code> to represents a new or existing field (in
+ *       this case, it will be overwritten). The value of the fields is evaluated by the <code>
+ *       expression</code> and respect the <code>type</code>. Supported types are [INT32, INT64,
+ *       FLOAT, DOUBLE, BOOLEAN, DATE, TIME, DATETIME]. Each field is marked as nullable by default.
+ *       To mark the field as non-nullable in the output schema, set <code>optional</code> to false.
  * </ul>
  *
  * <p>The <code>TransformFunction</code> reads its configuration as Json from the {@link Context}
@@ -312,14 +312,21 @@ public class TransformFunction
     config
         .getFields()
         .forEach(
-            field ->
-                fieldList.add(
-                    ComputeField.builder()
-                        .scopedName(field.getName())
-                        .expression(field.getExpression())
-                        .type(field.getType())
-                        .optional(field.isOptional())
-                        .build()));
+            field -> {
+              ComputeFieldType type =
+                  "destinationTopic".equals(field.getName())
+                          || "messageKey".equals(field.getName())
+                          || field.getName().startsWith("properties.")
+                      ? ComputeFieldType.STRING
+                      : field.getType();
+              fieldList.add(
+                  ComputeField.builder()
+                      .scopedName(field.getName())
+                      .expression(field.getExpression())
+                      .type(type)
+                      .optional(field.isOptional())
+                      .build());
+            });
     return ComputeStep.builder().fields(fieldList).build();
   }
 
