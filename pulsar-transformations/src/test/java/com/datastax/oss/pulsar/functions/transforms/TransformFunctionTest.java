@@ -109,7 +109,7 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'value', type: 'STRING'}]}]}"
       },
       {
-          "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: 'key', type: 'STRING'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: 'key', type: 'STRING'}]}]}"
       },
     };
   }
