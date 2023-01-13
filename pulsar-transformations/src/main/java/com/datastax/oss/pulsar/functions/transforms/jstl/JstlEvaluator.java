@@ -19,26 +19,20 @@ import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import de.odysseus.el.ExpressionFactoryImpl;
 import de.odysseus.el.util.SimpleContext;
 import java.util.Map;
+import java.util.Properties;
 import javax.el.ExpressionFactory;
 import javax.el.ValueExpression;
 import lombok.SneakyThrows;
 
 public class JstlEvaluator<T> {
 
-  static {
-    // Disable method invocation: https://juel.sourceforge.net/guide/advanced/index.html
-    System.setProperty("javax.el.methodInvocations", "false");
-  }
-
   private static final ExpressionFactory FACTORY =
-      new ExpressionFactoryImpl(System.getProperties(), CustomTypeConverter.INSTANCE);
+      new ExpressionFactoryImpl(buildDefaultProperties(), CustomTypeConverter.INSTANCE);
+
   private final ValueExpression valueExpression;
   private final SimpleContext expressionContext;
 
-  private final Class<?> type;
-
-  public JstlEvaluator(String expression, Class<?> type) {
-    this.type = type;
+  public JstlEvaluator(String expression, Class<? extends T> type) {
     this.expressionContext = new SimpleContext();
     registerFunctions();
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
@@ -91,5 +85,11 @@ public class JstlEvaluator<T> {
         .createValueExpression(expressionContext, "${properties}", Map.class)
         .setValue(expressionContext, adapter.getHeader().get("properties"));
     return (T) this.valueExpression.getValue(expressionContext);
+  }
+
+  private static Properties buildDefaultProperties() {
+    Properties properties = new Properties();
+    properties.setProperty(ExpressionFactoryImpl.PROP_METHOD_INVOCATIONS, "false");
+    return properties;
   }
 }

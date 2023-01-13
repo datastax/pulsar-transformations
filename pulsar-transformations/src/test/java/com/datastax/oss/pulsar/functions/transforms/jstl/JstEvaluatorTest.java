@@ -61,8 +61,7 @@ public class JstEvaluatorTest {
             new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
             primitiveStringRecord.getValue().getNativeObject());
 
-    String value =
-        new JstlEvaluator<String>("${value}", String.class).evaluate(primitiveStringContext);
+    String value = new JstlEvaluator<>("${value}", String.class).evaluate(primitiveStringContext);
 
     assertEquals("test-message", value);
   }
@@ -84,7 +83,7 @@ public class JstEvaluatorTest {
     JstlFunctions.setClock(clock);
 
     long actualMillis =
-        new JstlEvaluator<Long>("${fn:now()}", long.class).evaluate(primitiveStringContext);
+        new JstlEvaluator<>("${fn:now()}", long.class).evaluate(primitiveStringContext);
 
     assertEquals(expectedMillis, actualMillis);
   }
@@ -106,7 +105,7 @@ public class JstEvaluatorTest {
     Clock clock = Clock.fixed(Instant.ofEpochMilli(nowMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
     long actualMillis =
-        new JstlEvaluator<Long>("${fn:dateadd(fn:now(), -3333, 'seconds')}", long.class)
+        new JstlEvaluator<>("${fn:dateadd(fn:now(), -3333, 'seconds')}", long.class)
             .evaluate(primitiveStringContext);
 
     assertEquals(nowMillis + millisToAdd, actualMillis);
