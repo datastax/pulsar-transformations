@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl.predicate;
 
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
@@ -41,7 +41,7 @@ public class JstlPredicateTest {
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
 
-    assertTrue(predicate.test(transformContext) == match);
+    assertEquals(predicate.test(transformContext), match);
   }
 
   @Test(
@@ -63,19 +63,19 @@ public class JstlPredicateTest {
   @Test(dataProvider = "primitiveKeyValuePredicates")
   void testPrimitiveKeyValueAvro(String when, TransformContext context, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
-    assertTrue(predicate.test(context) == match);
+    assertEquals(predicate.test(context), match);
   }
 
   @Test(dataProvider = "nestedKeyValuePredicates")
   void testNestedKeyValueAvro(String when, TransformContext context, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
-    assertTrue(predicate.test(context) == match);
+    assertEquals(predicate.test(context), match);
   }
 
   @Test(dataProvider = "primitivePredicates")
   void testPrimitiveValueAvro(String when, TransformContext context, boolean match) {
     JstlPredicate predicate = new JstlPredicate(when);
-    assertTrue(predicate.test(context) == match);
+    assertEquals(predicate.test(context), match);
   }
 
   /** @return {"expression", "transform context" "expected match boolean"} */

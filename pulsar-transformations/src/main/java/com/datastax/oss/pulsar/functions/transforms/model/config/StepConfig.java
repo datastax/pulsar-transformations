@@ -37,6 +37,5 @@ public abstract class StepConfig {
   @JsonProperty(required = true)
   private String type;
 
-  @JsonProperty(required = false)
-  private String when;
+  @JsonProperty private String when;
 }

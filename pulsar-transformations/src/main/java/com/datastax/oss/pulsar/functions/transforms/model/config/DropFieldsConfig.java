@@ -24,6 +24,5 @@ public class DropFieldsConfig extends StepConfig {
   @JsonProperty(required = true)
   private List<String> fields;
 
-  @JsonProperty(required = false)
-  private String part;
+  @JsonProperty private String part;
 }

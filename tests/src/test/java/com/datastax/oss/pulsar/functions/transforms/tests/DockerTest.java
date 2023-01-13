@@ -20,8 +20,8 @@ public class DockerTest {
   private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_1.5";
   private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.0";
 
-  public static class LunaStreaming210 extends AbstractDockerTest {
-    LunaStreaming210() {
+  public static class LunaStreaming210Test extends AbstractDockerTest {
+    LunaStreaming210Test() {
       super(IMAGE_LUNASTREAMING210);
     }
   }

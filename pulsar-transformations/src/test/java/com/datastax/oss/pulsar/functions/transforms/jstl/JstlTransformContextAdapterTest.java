@@ -37,12 +37,12 @@ public class JstlTransformContextAdapterTest {
   void testAdapterForKeyValueRecord() {
     // given
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    /**
-     * Actual key: { "keyField1": "key1", "keyField2": "key2", "keyField3": "key3" }
-     *
-     * <p>Actual value: { "valueField1": "value1", "valueField2": "value2", "valueField3": "value3"
-     * }
-     */
+    /*
+     Actual key: { "keyField1": "key1", "keyField2": "key2", "keyField3": "key3" }
+
+     <p>Actual value: { "valueField1": "value1", "valueField2": "value2", "valueField3": "value3"
+     }
+    */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
@@ -52,14 +52,14 @@ public class JstlTransformContextAdapterTest {
 
     // then
     assertTrue(adapter.getKey() instanceof Map);
-    Map keyMap = (Map<String, Object>) adapter.getKey();
+    Map<String, Object> keyMap = (Map<String, Object>) adapter.getKey();
     assertEquals(keyMap.get("keyField1"), "key1");
     assertEquals(keyMap.get("keyField2"), "key2");
     assertEquals(keyMap.get("keyField3"), "key3");
     assertNull(keyMap.get("keyField4"));
 
     assertTrue(adapter.getValue() instanceof Map);
-    Map valueMap = (Map<String, Object>) adapter.getValue();
+    Map<String, Object> valueMap = (Map<String, Object>) adapter.getValue();
     assertEquals(valueMap.get("valueField1"), "value1");
     assertEquals(valueMap.get("valueField2"), "value2");
     assertEquals(valueMap.get("valueField3"), "value3");
@@ -101,7 +101,7 @@ public class JstlTransformContextAdapterTest {
             Schema.STRING,
             AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
             "header-key");
-    /** Actual key: "test-key" Actual value: "test-message" */
+    /* Actual key: "test-key" Actual value: "test-message" */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
@@ -121,14 +121,14 @@ public class JstlTransformContextAdapterTest {
   void testAdapterForNestedValueRecord() {
     // given
     Record<GenericObject> record = Utils.createNestedAvroRecord(4, "header-key");
-    /**
-     * Actual key: "header-key"
-     *
-     * <p>Actual value: "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
-     * "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
-     * "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
-     * "level4Union": "level4_2" } } } }
-     */
+    /*
+     Actual key: "header-key"
+
+     <p>Actual value: "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
+     "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
+     "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
+     "level4Union": "level4_2" } } } }
+    */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
@@ -140,7 +140,7 @@ public class JstlTransformContextAdapterTest {
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
     assertNull(adapter.getKey());
     assertTrue(adapter.getValue() instanceof Map);
-    Map valueMap = (Map<String, Object>) adapter.getValue();
+    Map<String, Object> valueMap = (Map<String, Object>) adapter.getValue();
     assertNestedRecord(valueMap);
   }
 
@@ -148,17 +148,17 @@ public class JstlTransformContextAdapterTest {
   void testAdapterForNestedKeyValueRecord() {
     // given
     Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(4);
-    /**
-     * Actual key: { "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
-     * "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
-     * "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
-     * "level4Union": "level4_2" } } } }
-     *
-     * <p>Actual value: "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
-     * "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
-     * "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
-     * "level4Union": "level4_2" } } } }
-     */
+    /*
+     Actual key: { "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
+     "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
+     "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
+     "level4Union": "level4_2" } } } }
+
+     <p>Actual value: "level1String": "level1_1", "level1Record": { "level2String": "level2_1",
+     "level2Record": { "level3String": "level3_1", "level3Record": { "level4String": "level4_1",
+     "level4Integer": 9, "level4Double": 8.8, "level4StringWithProps": "level4_WithProps",
+     "level4Union": "level4_2" } } } }
+    */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
         new TransformContext(context, record.getValue().getNativeObject());
@@ -206,23 +206,23 @@ public class JstlTransformContextAdapterTest {
     assertEquals(adapter.getHeader().get("destinationTopic"), "test-dest-topic");
     assertEquals(adapter.getHeader().get("eventTime"), 1662493532L);
     assertTrue(adapter.getHeader().get("properties") instanceof Map);
-    Map headerProps = (Map) adapter.getHeader().get("properties");
+    Map<String, Object> headerProps = (Map) adapter.getHeader().get("properties");
     assertEquals(headerProps.get("p1"), "v1");
     assertEquals(headerProps.get("p2"), "v2");
     assertNull(headerProps.get("p3"));
   }
 
-  void assertNestedRecord(Map root) {
+  void assertNestedRecord(Map<String, Object> root) {
     assertTrue(root.get("level1Record") instanceof Map);
-    Map l1Map = (Map) root.get("level1Record");
+    Map<String, Object> l1Map = (Map) root.get("level1Record");
     assertEquals(l1Map.get("level2String"), "level2_1");
 
     assertTrue(l1Map.get("level2Record") instanceof Map);
-    Map l2Map = (Map) l1Map.get("level2Record");
+    Map<String, Object> l2Map = (Map) l1Map.get("level2Record");
     assertEquals(l2Map.get("level3String"), "level3_1");
 
     assertTrue(l2Map.get("level3Record") instanceof Map);
-    Map l3Map = (Map) l2Map.get("level3Record");
+    Map<String, Object> l3Map = (Map) l2Map.get("level3Record");
     assertEquals(l3Map.get("level4String"), "level4_1");
     assertEquals(l3Map.get("level4Integer"), 9);
     assertEquals(l3Map.get("level4Double"), 8.8D);

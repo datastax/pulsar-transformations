@@ -20,9 +20,7 @@ import lombok.Getter;
 
 @Getter
 public class FlattenConfig extends StepConfig {
-  @JsonProperty(required = false)
-  private String delimiter;
+  @JsonProperty private String delimiter;
 
-  @JsonProperty(required = false)
-  private String part;
+  @JsonProperty private String part;
 }

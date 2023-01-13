@@ -213,7 +213,7 @@ public class ComputeStepTest {
     ComputeStep step =
         ComputeStep.builder()
             .fields(
-                Arrays.asList(
+                Collections.singletonList(
                     ComputeField.builder()
                         .scopedName("value.newLongField")
                         .expression("null")
@@ -411,7 +411,7 @@ public class ComputeStepTest {
     ComputeStep step =
         ComputeStep.builder()
             .fields(
-                Arrays.asList(
+                Collections.singletonList(
                     ComputeField.builder()
                         .scopedName("value.newField")
                         .expression("newValue")
@@ -496,7 +496,7 @@ public class ComputeStepTest {
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
 
     assertEquals(
-        outputRecord.getDestinationTopic().get(),
+        outputRecord.getDestinationTopic().orElseThrow(),
         topic.equals("targetTopic") ? "route" : "dont-route");
     assertEquals(read.get("firstName"), new Utf8("Jane"));
   }

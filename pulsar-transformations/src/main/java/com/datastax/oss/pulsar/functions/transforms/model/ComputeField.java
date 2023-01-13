@@ -46,7 +46,7 @@ public class ComputeField {
    */
   private String scope;
 
-  private JstlEvaluator evaluator;
+  private JstlEvaluator<?> evaluator;
   private final boolean optional;
   private static final Set<String> validComputeHeaders = Set.of("destinationTopic", "messageKey");
 
@@ -58,7 +58,11 @@ public class ComputeField {
   }
 
   private ComputeField(
-      String name, JstlEvaluator evaluator, ComputeFieldType type, String scope, boolean optional) {
+      String name,
+      JstlEvaluator<?> evaluator,
+      ComputeFieldType type,
+      String scope,
+      boolean optional) {
     this(name, type, optional);
     this.evaluator = evaluator;
     this.scope = scope;
@@ -67,7 +71,7 @@ public class ComputeField {
 
   public static class ComputeFieldBuilder {
     private String expression;
-    private JstlEvaluator<Object> evaluator;
+    private JstlEvaluator<?> evaluator;
     private String scope;
     private String name;
 

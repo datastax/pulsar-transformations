@@ -100,7 +100,8 @@ public class ComputeStep implements TransformStep {
               if (context.getKeySchema() != null
                   && context.getKeySchema().getSchemaInfo().getType().isPrimitive()) {
                 Object newKey = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
+                org.apache.pulsar.client.api.Schema<?> newSchema =
+                    getPrimitiveSchema(field.getType());
                 context.setKeyObject(newKey);
                 context.setKeySchema(newSchema);
               }
@@ -114,7 +115,8 @@ public class ComputeStep implements TransformStep {
             field -> {
               if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
                 Object newValue = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema newSchema = getPrimitiveSchema(field.getType());
+                org.apache.pulsar.client.api.Schema<?> newSchema =
+                    getPrimitiveSchema(field.getType());
                 context.setValueObject(newValue);
                 context.setValueSchema(newSchema);
               }
@@ -183,7 +185,7 @@ public class ComputeStep implements TransformStep {
         fields.stream().map(this::createAvroField).collect(Collectors.toList());
 
     Set<String> computedFieldNames =
-        computedFields.stream().map(f -> f.name()).collect(Collectors.toSet());
+        computedFields.stream().map(Schema.Field::name).collect(Collectors.toSet());
     // New fields are the intersection between existing fields and computed fields. Computed fields
     // take precedence.
     List<Schema.Field> newFields =
@@ -287,8 +289,8 @@ public class ComputeStep implements TransformStep {
         .orElse(null);
   }
 
-  void validateLogicalType(Object value, LogicalType logicalType, Class... expectedClasses) {
-    for (Class clazz : expectedClasses) {
+  void validateLogicalType(Object value, LogicalType logicalType, Class<?>... expectedClasses) {
+    for (Class<?> clazz : expectedClasses) {
       if ((value.getClass().equals(clazz))) {
         return;
       }
@@ -368,8 +370,8 @@ public class ComputeStep implements TransformStep {
         });
   }
 
-  private org.apache.pulsar.client.api.Schema getPrimitiveSchema(ComputeFieldType type) {
-    org.apache.pulsar.client.api.Schema schema;
+  private org.apache.pulsar.client.api.Schema<?> getPrimitiveSchema(ComputeFieldType type) {
+    org.apache.pulsar.client.api.Schema<?> schema;
     switch (type) {
       case STRING:
         schema = org.apache.pulsar.client.api.Schema.STRING;

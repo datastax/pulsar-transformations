@@ -329,10 +329,10 @@ public class TransformFunctionTest {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
     transformFunction.initialize(context);
-    Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
 
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -359,10 +359,10 @@ public class TransformFunctionTest {
     transformFunction.initialize(context);
     transformFunction.process(record.getValue(), context);
 
-    Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
 
-    KeyValueSchema messageSchema = (KeyValueSchema) outputRecord.getSchema();
-    KeyValue messageValue = (KeyValue) outputRecord.getValue();
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
@@ -391,7 +391,7 @@ public class TransformFunctionTest {
 
     Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
 
-    KeyValue<String, String> kv = (KeyValue<String, String>) outputRecord.getValue();
+    KeyValue<?, ?> kv = (KeyValue<?, ?>) outputRecord.getValue();
     assertEquals(kv.getKey(), "{\"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
     assertEquals(
         kv.getValue(),
