@@ -58,6 +58,10 @@ public class JstlEvaluator<T> {
         "fn", "concat", JstlFunctions.class.getMethod("concat", Object.class, Object.class));
     this.expressionContext.setFunction(
         "fn", "coalesce", JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
+    this.expressionContext.setFunction(
+        "fn",
+        "replace",
+        JstlFunctions.class.getMethod("replace", Object.class, Object.class, Object.class));
     this.expressionContext.setFunction("fn", "now", JstlFunctions.class.getMethod("now"));
     this.expressionContext.setFunction(
         "fn",

@@ -166,6 +166,7 @@ public class JstEvaluatorTest {
       {"fn:concat(value, '-suffix')", primitiveStringContext, "test-message-suffix"},
       {"fn:concat(value, null)", primitiveStringContext, "test-message"},
       {"fn:concat(null, '-suffix')", primitiveStringContext, "-suffix"},
+      {"fn:replace(value, '.*-', '')", primitiveStringContext, "message"},
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'years')",
         primitiveStringContext,
