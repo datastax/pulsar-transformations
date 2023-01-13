@@ -15,8 +15,10 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
-import de.odysseus.el.misc.LocalMessages;
-import de.odysseus.el.misc.TypeConverterImpl;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import jakarta.el.ELContext;
+import jakarta.el.ELException;
+import jakarta.el.TypeConverter;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -29,15 +31,16 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.Map;
-import javax.el.ELException;
 import org.apache.avro.util.Utf8;
+import org.apache.el.lang.ELSupport;
+import org.apache.el.util.MessageFactory;
 import org.apache.pulsar.client.api.Schema;
 
 /**
  * Overrides the default TypeConverter coerce to support null values & non-EL coercions (e.g.
  * date/time types) schemas.
  */
-public class CustomTypeConverter extends TypeConverterImpl {
+public class CustomTypeConverter extends TypeConverter {
 
   public static final CustomTypeConverter INSTANCE = new CustomTypeConverter();
 
@@ -45,15 +48,14 @@ public class CustomTypeConverter extends TypeConverterImpl {
     super();
   }
 
-  @Override
+  @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
   protected Boolean coerceToBoolean(Object value) {
     if (value instanceof byte[]) {
       return Schema.BOOL.decode((byte[]) value);
     }
-    return super.coerceToBoolean(value);
+    return null;
   }
 
-  @Override
   protected Double coerceToDouble(Object value) {
     if (value instanceof LocalTime) {
       return (double) ((LocalTime) value).toNanoOfDay() / 1_000_000;
@@ -75,18 +77,16 @@ public class CustomTypeConverter extends TypeConverterImpl {
       Instant instant = coerceToInstant(value);
       return (double) instant.getEpochSecond() * 1000 + (double) instant.getNano() / 1_000_000;
     }
-    return super.coerceToDouble(value);
+    return null;
   }
 
-  @Override
   protected Float coerceToFloat(Object value) {
     if (value instanceof byte[]) {
       return Schema.FLOAT.decode((byte[]) value);
     }
-    return super.coerceToFloat(value);
+    return null;
   }
 
-  @Override
   protected Long coerceToLong(Object value) {
     if (value instanceof LocalTime) {
       return ((LocalTime) value).toNanoOfDay() / 1_000_000;
@@ -103,10 +103,9 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof TemporalAccessor) {
       return coerceToInstant(value).toEpochMilli();
     }
-    return super.coerceToLong(value);
+    return null;
   }
 
-  @Override
   protected Integer coerceToInteger(Object value) {
     if (value instanceof LocalTime) {
       return (int) (((LocalTime) value).toNanoOfDay() / 1_000_000);
@@ -117,26 +116,23 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof byte[]) {
       return Schema.INT32.decode((byte[]) value);
     }
-    return super.coerceToInteger(value);
+    return null;
   }
 
-  @Override
   protected Short coerceToShort(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT16.decode((byte[]) value);
     }
-    return super.coerceToShort(value);
+    return null;
   }
 
-  @Override
   protected Byte coerceToByte(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT8.decode((byte[]) value);
     }
-    return super.coerceToByte(value);
+    return null;
   }
 
-  @Override
   protected String coerceToString(Object value) {
     if (value instanceof Time) {
       return DateTimeFormatter.ISO_LOCAL_TIME.format(((Time) value).toLocalTime());
@@ -147,16 +143,39 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof byte[]) {
       return Schema.STRING.decode((byte[]) value);
     }
-    return super.coerceToString(value);
+    return null;
   }
 
-  @Override
   protected Object coerceToType(Object value, Class<?> type) {
     if (value == null) {
       return null;
     }
     if (value instanceof Utf8) {
       return coerceToType(value.toString(), type);
+    }
+    if (type == Boolean.class) {
+      return coerceToBoolean(value);
+    }
+    if (type == Double.class) {
+      return coerceToDouble(value);
+    }
+    if (type == Float.class) {
+      return coerceToFloat(value);
+    }
+    if (type == Long.class) {
+      return coerceToLong(value);
+    }
+    if (type == Short.class) {
+      return coerceToShort(value);
+    }
+    if (type == Integer.class) {
+      return coerceToInteger(value);
+    }
+    if (type == Byte.class) {
+      return coerceToByte(value);
+    }
+    if (type == String.class) {
+      return coerceToString(value);
     }
     if (type == byte[].class) {
       return coerceToBytes(value);
@@ -185,7 +204,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (type == OffsetDateTime.class) {
       return coerceToOffsetDateTime(value);
     }
-    return super.coerceToType(value, type);
+    return null;
   }
 
   private static final Map<Class<?>, Schema<?>> SCHEMAS =
@@ -243,7 +262,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return Date.from(coerceToInstant(value));
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), Date.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), Date.class));
   }
 
   protected Timestamp coerceToTimestamp(Object value) {
@@ -266,7 +285,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return Timestamp.from(coerceToInstant(value));
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), Timestamp.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), Timestamp.class));
   }
 
   protected Time coerceToTime(Object value) {
@@ -292,7 +311,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return new Time(coerceToInstant(value).toEpochMilli());
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), Time.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), Time.class));
   }
 
   protected LocalTime coerceToLocalTime(Object value) {
@@ -315,7 +334,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return LocalTime.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), LocalTime.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalTime.class));
   }
 
   protected LocalDate coerceToLocalDate(Object value) {
@@ -338,7 +357,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return LocalDate.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), LocalDate.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalDate.class));
   }
 
   protected LocalDateTime coerceToLocalDateTime(Object value) {
@@ -361,7 +380,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return LocalDateTime.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), LocalDateTime.class));
+        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalDateTime.class));
   }
 
   protected Instant coerceToInstant(Object value) {
@@ -389,7 +408,7 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return coerceToOffsetDateTime(value).toInstant();
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), Instant.class));
+            MessageFactory.get("error.coerce.type", value, value.getClass(), Instant.class));
   }
 
   protected OffsetDateTime coerceToOffsetDateTime(Object value) {
@@ -420,6 +439,27 @@ public class CustomTypeConverter extends TypeConverterImpl {
       return coerceToInstant(value).atOffset(ZoneOffset.UTC);
     }
     throw new ELException(
-        LocalMessages.get("error.coerce.type", value, value.getClass(), OffsetDateTime.class));
+            MessageFactory.get("error.coerce.type", value, value.getClass(), OffsetDateTime.class));
+  }
+
+  public <T> T convert(Object value, Class<T> type) throws ELException {
+    if (value == null) {
+      return null;
+    }
+    Object coercedValue = coerceToType(value, type);
+    return coercedValue == null
+        ? ELSupport.coerceToType(null, value instanceof Utf8 ? value.toString() : value, type)
+        : (T) coercedValue;
+  }
+
+  @Override
+  public <T> T convertToType(ELContext elContext, Object value, Class<T> type) {
+    if (value == null) {
+      elContext.setPropertyResolved(true);
+      return null;
+    }
+    Object coercedValue = coerceToType(value, type);
+    elContext.setPropertyResolved(coercedValue != null);
+    return (T) coercedValue;
   }
 }

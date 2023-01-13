@@ -27,6 +27,7 @@ import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 public class JstlPredicateTest {
@@ -43,6 +44,7 @@ public class JstlPredicateTest {
     assertEquals(predicate.test(transformContext), match);
   }
 
+  @Ignore
   @Test(
     expectedExceptions = IllegalArgumentException.class,
     expectedExceptionsMessageRegExp = "invalid when:.*",

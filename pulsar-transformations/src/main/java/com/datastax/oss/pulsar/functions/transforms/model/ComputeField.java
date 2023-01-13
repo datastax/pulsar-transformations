@@ -16,6 +16,7 @@
 package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
+import jakarta.el.ELException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -24,7 +25,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Date;
 import java.util.Set;
-import javax.el.ELException;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -125,19 +125,19 @@ public class ComputeField {
         case STRING:
           return String.class;
         case INT8:
-          return byte.class;
+          return Byte.class;
         case INT16:
           return short.class;
         case INT32:
-          return int.class;
+          return Integer.class;
         case INT64:
-          return long.class;
+          return Long.class;
         case FLOAT:
-          return float.class;
+          return Float.class;
         case DOUBLE:
-          return double.class;
+          return Double.class;
         case BOOLEAN:
-          return boolean.class;
+          return Boolean.class;
         case DATE:
           return Date.class;
         case LOCAL_DATE:

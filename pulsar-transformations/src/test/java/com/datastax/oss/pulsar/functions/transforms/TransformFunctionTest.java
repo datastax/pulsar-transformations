@@ -85,10 +85,10 @@ public class TransformFunctionTest {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'int64', type: 'INT64'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'float', type: 'FLOAT'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.some-field', expression: 'f', type: 'FLOAT'}]}]}"
       },
       {
-        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'double', optional: true, type: 'DOUBLE'}]}]}"
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key.some-field', expression: 'd', optional: true, type: 'DOUBLE'}]}]}"
       },
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'destinationTopic', expression: 'string', optional: true, type: 'STRING'}]}]}"
