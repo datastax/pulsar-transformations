@@ -34,7 +34,7 @@ public class JstlTransformContextAdapter {
    * A key transformer backing the lazy key map. It transforms top level key fields to either a
    * value or another lazy map for nested evaluation.
    */
-  private Transformer<String, Object> keyTransformer =
+  private final Transformer<String, Object> keyTransformer =
       (fieldName) -> {
         if (this.transformContext.getKeyObject() instanceof GenericRecord) {
           GenericRecord genericRecord = (GenericRecord) this.transformContext.getKeyObject();
@@ -50,7 +50,7 @@ public class JstlTransformContextAdapter {
    * A value transformer backing the lazy value map. It transforms top level value fields to either
    * a value or another lazy map for nested evaluation.
    */
-  private Transformer<String, Object> valueTransformer =
+  private final Transformer<String, Object> valueTransformer =
       (fieldName) -> {
         if (this.transformContext.getValueObject() instanceof GenericRecord) {
           GenericRecord genericRecord = (GenericRecord) this.transformContext.getValueObject();
@@ -63,7 +63,7 @@ public class JstlTransformContextAdapter {
   private final Map<String, Object> lazyValue = LazyMap.lazyMap(new HashMap<>(), valueTransformer);
 
   /** A header transformer to return message headers the user is allowed to filter on. */
-  private Transformer<String, Object> headerTransformer =
+  private final Transformer<String, Object> headerTransformer =
       (fieldName) -> {
         Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
         // Allow list message headers in the expression

@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import static org.testng.AssertJUnit.assertEquals;
 import static org.testng.AssertJUnit.assertFalse;
+import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
 import java.time.Clock;
@@ -38,7 +39,7 @@ public class JstlFunctionsTest {
 
   @Test
   void testUpperCaseNull() {
-    assertEquals(null, JstlFunctions.uppercase(null));
+    assertNull(JstlFunctions.uppercase(null));
   }
 
   @Test
@@ -53,7 +54,7 @@ public class JstlFunctionsTest {
 
   @Test
   void testLowerCaseNull() {
-    assertEquals(null, JstlFunctions.uppercase(null));
+    assertNull(JstlFunctions.uppercase(null));
   }
 
   @Test

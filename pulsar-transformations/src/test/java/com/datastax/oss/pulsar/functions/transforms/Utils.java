@@ -18,6 +18,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 import static com.datastax.oss.pulsar.functions.transforms.FlattenStep.AVRO_READ_OFFSET_PROP;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -141,7 +142,7 @@ public class Utils {
   public static Record<GenericObject> createNestedAvroRecord(int levels, String key) {
     GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
-    Schema<?> pulsarValueSchema =
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
 
     return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
@@ -150,7 +151,7 @@ public class Utils {
   public static Record<GenericObject> createNestedJSONRecord(int levels, String key) {
     GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
-    Schema pulsarValueSchema =
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.JSON);
 
     return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
@@ -173,18 +174,14 @@ public class Utils {
           }
         };
 
-    Schema pulsarKeySchema =
+    Schema<org.apache.avro.generic.GenericRecord> pulsarKeySchema =
         new Utils.NativeSchemaWrapper(keyRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
-    Schema pulsarValueSchema =
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
         new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
 
-    Schema<
-            KeyValue<
-                org.apache.pulsar.client.api.schema.GenericRecord,
-                org.apache.pulsar.client.api.schema.GenericRecord>>
+    Schema<KeyValue<org.apache.avro.generic.GenericRecord, org.apache.avro.generic.GenericRecord>>
         keyValueSchema =
-            org.apache.pulsar.client.api.Schema.KeyValue(
-                pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
+            Schema.KeyValue(pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
     Map<String, String> props = new HashMap<>();
     props.put("p1", "v1");
     props.put("p2", "v2");
@@ -328,7 +325,7 @@ public class Utils {
     assertTrue(record.hasField(fieldName));
     org.apache.avro.Schema.Field field = record.getSchema().getField(fieldName);
     assertFalse(field.schema().isNullable());
-    assertEquals(field.defaultVal(), null);
+    assertNull(field.defaultVal());
     assertFalse(field.schema().isUnion());
     assertEquals(field.schema().getType(), expectedType);
     assertEquals(record.get(fieldName), expectedValue);

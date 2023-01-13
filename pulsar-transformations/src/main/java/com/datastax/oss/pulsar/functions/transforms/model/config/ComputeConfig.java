@@ -36,6 +36,6 @@ public class ComputeConfig extends StepConfig {
     @JsonProperty(required = true)
     private ComputeFieldType type;
 
-    private boolean optional = true;
+    @JsonProperty private boolean optional = true;
   }
 }

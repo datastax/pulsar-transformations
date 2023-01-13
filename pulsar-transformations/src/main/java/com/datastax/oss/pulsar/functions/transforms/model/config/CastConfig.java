@@ -23,6 +23,5 @@ public class CastConfig extends StepConfig {
   @JsonProperty(value = "schema-type", required = true)
   private String schemaType;
 
-  @JsonProperty(required = false)
-  private String part;
+  @JsonProperty private String part;
 }

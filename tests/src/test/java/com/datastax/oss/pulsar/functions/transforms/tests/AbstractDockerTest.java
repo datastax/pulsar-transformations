@@ -13,17 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * <p>http://www.apache.org/licenses/LICENSE-2.0
- *
- * <p>Unless required by applicable law or agreed to in writing, software distributed under the
- * License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
- * express or implied. See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.datastax.oss.pulsar.functions.transforms.tests;
 
 import static org.testng.Assert.assertEquals;
@@ -128,7 +117,7 @@ public abstract class AbstractDockerTest {
             new KeyValue<>("a", "b"),
             "test-key");
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
-    KeyValue<String, String> keyValue = (KeyValue<String, String>) value.getNativeObject();
+    KeyValue<?, ?> keyValue = (KeyValue<?, ?>) value.getNativeObject();
     assertEquals(keyValue.getKey(), "a");
     assertEquals(keyValue.getValue(), "b");
   }
@@ -144,7 +133,7 @@ public abstract class AbstractDockerTest {
             Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED),
             new KeyValue<>("a", "b"));
     assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
-    KeyValue<String, String> keyValue = (KeyValue<String, String>) value.getNativeObject();
+    KeyValue<?, ?> keyValue = (KeyValue<?, ?>) value.getNativeObject();
     assertEquals(keyValue.getKey(), "a");
     assertEquals(keyValue.getValue(), "b");
   }
@@ -298,37 +287,43 @@ public abstract class AbstractDockerTest {
             + "]}");
     userConfig = String.format(userConfig.replace("'", "\""), expression, when);
     deployFunction(userConfig, functionName, inputTopic, outputTopic);
-    Producer producer = client.newProducer(Schema.AVRO(Pojo1.class)).topic(inputTopic).create();
+    try (Producer<Pojo1> producer =
+        client.newProducer(Schema.AVRO(Pojo1.class)).topic(inputTopic).create()) {
 
-    // Register consumers on output and routing topics
-    Consumer<GenericRecord> outputTopicConsumer =
-        client
-            .newConsumer(Schema.AUTO_CONSUME())
-            .topic(outputTopic)
-            .subscriptionName(UUID.randomUUID().toString())
-            .subscribe();
+      // Register consumers on output and routing topics
+      try (Consumer<GenericRecord> outputTopicConsumer =
+          client
+              .newConsumer(Schema.AUTO_CONSUME())
+              .topic(outputTopic)
+              .subscriptionName(UUID.randomUUID().toString())
+              .subscribe()) {
 
-    Consumer<GenericRecord> routingTopicConsumer =
-        client
-            .newConsumer(Schema.AUTO_CONSUME())
-            .topic(routingTopic)
-            .subscriptionName(UUID.randomUUID().toString())
-            .subscribe();
+        try (Consumer<GenericRecord> routingTopicConsumer =
+            client
+                .newConsumer(Schema.AUTO_CONSUME())
+                .topic(routingTopic)
+                .subscriptionName(UUID.randomUUID().toString())
+                .subscribe()) {
 
-    // send first message, should go to outputTopic
-    producer.newMessage().value(new Pojo1("a", "b")).send();
+          // send first message, should go to outputTopic
+          producer.newMessage().value(new Pojo1("a", "b")).send();
 
-    // send second message, should go to routingTopic
-    producer.newMessage().value(new Pojo1("c", "d")).send();
+          // send second message, should go to routingTopic
+          producer.newMessage().value(new Pojo1("c", "d")).send();
 
-    Message<GenericRecord> pojo1 = outputTopicConsumer.receive(30, TimeUnit.SECONDS);
-    Message<GenericRecord> pojo2 = routingTopicConsumer.receive(30, TimeUnit.SECONDS);
+          Message<GenericRecord> pojo1 = outputTopicConsumer.receive(30, TimeUnit.SECONDS);
+          Message<GenericRecord> pojo2 = routingTopicConsumer.receive(30, TimeUnit.SECONDS);
 
-    assertNotNull(pojo1);
-    assertNotNull(pojo2);
+          assertNotNull(pojo1);
+          assertNotNull(pojo2);
 
-    assertEquals(pojo1.getValue().getNativeObject().toString(), "{\"a\": \"a\", \"b\": \"b\"}");
-    assertEquals(pojo2.getValue().getNativeObject().toString(), "{\"a\": \"c\", \"b\": \"d\"}");
+          assertEquals(
+              pojo1.getValue().getNativeObject().toString(), "{\"a\": \"a\", \"b\": \"b\"}");
+          assertEquals(
+              pojo2.getValue().getNativeObject().toString(), "{\"a\": \"c\", \"b\": \"d\"}");
+        }
+      }
+    }
   }
 
   @Test
@@ -361,35 +356,36 @@ public abstract class AbstractDockerTest {
     String functionName = "function-" + functionId;
     deployFunction(userConfig, functionName, inputTopic, outputTopic);
 
-    Consumer<GenericRecord> consumer =
+    try (Consumer<GenericRecord> consumer =
         client
             .newConsumer(Schema.AUTO_CONSUME())
             .topic(outputTopic)
             .subscriptionName(UUID.randomUUID().toString())
-            .subscribe();
+            .subscribe()) {
 
-    Producer producer = client.newProducer(schema).topic(inputTopic).create();
+      try (Producer<T> producer = client.newProducer(schema).topic(inputTopic).create()) {
+        TypedMessageBuilder<T> producerMessage =
+            producer.newMessage().value(value).property("prop-key", "prop-value");
+        if (key != null) {
+          producerMessage.key(key);
+        }
+        producerMessage.send();
+      }
+      Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
 
-    TypedMessageBuilder producerMessage =
-        producer.newMessage().value(value).property("prop-key", "prop-value");
-    if (key != null) {
-      producerMessage.key(key);
+      if (allowNullMessage && message == null) {
+        return null;
+      }
+      assertNotNull(message);
+      if (key != null) {
+        assertEquals(message.getKey(), key);
+      }
+      assertEquals(message.getProperty("prop-key"), "prop-value");
+
+      GenericRecord messageValue = message.getValue();
+      assertNotNull(messageValue);
+      return messageValue;
     }
-    producerMessage.send();
-
-    Message<GenericRecord> message = consumer.receive(30, TimeUnit.SECONDS);
-    if (allowNullMessage && message == null) {
-      return null;
-    }
-    assertNotNull(message);
-    if (key != null) {
-      assertEquals(message.getKey(), key);
-    }
-    assertEquals(message.getProperty("prop-key"), "prop-value");
-
-    GenericRecord messageValue = message.getValue();
-    assertNotNull(messageValue);
-    return messageValue;
   }
 
   private void deployFunction(
