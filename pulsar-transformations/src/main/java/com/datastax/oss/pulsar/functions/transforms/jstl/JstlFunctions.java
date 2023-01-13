@@ -53,6 +53,12 @@ public class JstlFunctions {
     return value == null ? valueIfNull : value;
   }
 
+  public static String replace(Object input, Object regex, Object replacement) {
+    return input == null
+        ? null
+        : input.toString().replaceAll(regex.toString(), replacement.toString());
+  }
+
   public static long now() {
     return clock.millis();
   }
