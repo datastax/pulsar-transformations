@@ -20,6 +20,7 @@ import static org.testng.AssertJUnit.assertEquals;
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
 import de.odysseus.el.tree.TreeBuilderException;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -137,104 +138,113 @@ public class JstEvaluatorTest {
   /** @return {"expression", "context", "expected value"} */
   @DataProvider(name = "functionExpressionProvider")
   public static Object[][] functionExpressionProvider() {
-    Record<GenericObject> primitiveStringRecord =
+    Record<GenericObject> primitiveBytesRecord =
         new Utils.TestRecord<>(
             Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
+            AutoConsumeSchema.wrapPrimitiveObject(
+                "Test-Message ".getBytes(StandardCharsets.UTF_8), SchemaType.BYTES, new byte[] {}),
             "header-key");
-    TransformContext primitiveStringContext =
+    TransformContext primitiveBytesContext =
         new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
+            new Utils.TestContext(primitiveBytesRecord, new HashMap<>()),
+            primitiveBytesRecord.getValue().getNativeObject());
     long millis = Instant.parse("2017-01-02T00:01:02Z").toEpochMilli();
     return new Object[][] {
-      {"fn:uppercase('test')", primitiveStringContext, "TEST"},
-      {"fn:uppercase(value) == 'TEST-MESSAGE'", primitiveStringContext, true},
-      {"fn:uppercase(null)", primitiveStringContext, null},
-      {"fn:lowercase('TEST')", primitiveStringContext, "test"},
-      {"fn:lowercase(value) == 'test-message'", primitiveStringContext, true},
-      {"fn:lowercase(fn:uppercase(value)) == 'test-message'", primitiveStringContext, true},
-      {"fn:lowercase(fn:coalesce(null, 'another-value'))", primitiveStringContext, "another-value"},
-      {"fn:lowercase(fn:coalesce('value', 'another-value'))", primitiveStringContext, "value"},
-      {"fn:lowercase(null)", primitiveStringContext, null},
-      {"fn:contains(value, 'test')", primitiveStringContext, true},
-      {"fn:contains(value, 'random')", primitiveStringContext, false},
-      {"fn:contains(null, 'random')", primitiveStringContext, false},
-      {"fn:contains(value, null)", primitiveStringContext, false},
-      {"fn:trim('    trimmed      ')", primitiveStringContext, "trimmed"},
-      {"fn:trim(null)", primitiveStringContext, null},
-      {"fn:concat(value, '-suffix')", primitiveStringContext, "test-message-suffix"},
-      {"fn:concat(value, null)", primitiveStringContext, "test-message"},
-      {"fn:concat(null, '-suffix')", primitiveStringContext, "-suffix"},
-      {"fn:replace(value, '.*-', '')", primitiveStringContext, "message"},
+      {"fn:uppercase('test')", primitiveBytesContext, "TEST"},
+      {"fn:uppercase(value) == 'TEST-MESSAGE '", primitiveBytesContext, true},
+      {"fn:uppercase(null)", primitiveBytesContext, null},
+      {"fn:lowercase('TEST')", primitiveBytesContext, "test"},
+      {"fn:lowercase(value) == 'test-message '", primitiveBytesContext, true},
+      {"fn:lowercase(null)", primitiveBytesContext, null},
+      {"fn:coalesce(null, 'another-value')", primitiveBytesContext, "another-value"},
+      {"fn:coalesce('value', 'another-value')", primitiveBytesContext, "value"},
+      {"fn:coalesce(fn:str(value), 'another-value')", primitiveBytesContext, "Test-Message "},
+      {"fn:contains(value, 'Test')", primitiveBytesContext, true},
+      {"fn:contains(value, 'random')", primitiveBytesContext, false},
+      {"fn:contains(null, 'random')", primitiveBytesContext, false},
+      {"fn:contains(value, null)", primitiveBytesContext, false},
+      {"fn:contains(value, null)", primitiveBytesContext, false},
+      {"fn:trim('    trimmed      ')", primitiveBytesContext, "trimmed"},
+      {"fn:trim(value)", primitiveBytesContext, "Test-Message"},
+      {"fn:trim(null)", primitiveBytesContext, null},
+      {"fn:concat(value, 'suffix')", primitiveBytesContext, "Test-Message suffix"},
+      {"fn:concat(value, null)", primitiveBytesContext, "Test-Message "},
+      {"fn:concat(null, 'suffix')", primitiveBytesContext, "suffix"},
+      {"fn:concat('prefix-', value)", primitiveBytesContext, "prefix-Test-Message "},
+      {"fn:replace(value, '.*-', '')", primitiveBytesContext, "Message "},
+      {"fn:replace('Test-Message test', value, '')", primitiveBytesContext, "test"},
+      {"fn:replace('Something test', '.* ', value)", primitiveBytesContext, "Test-Message test"},
+      {"fn:replace(null, '.* ', '')", primitiveBytesContext, null},
+      {"fn:replace('test', null, '')", primitiveBytesContext, "test"},
+      {"fn:replace('test', '.*', null)", primitiveBytesContext, "test"},
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'years')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'months')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'days')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'hours')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'minutes')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', -1, 'seconds')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
       },
       {
         "fn:dateadd('2017-01-02T00:01:02Z', 1, 'millis')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'years')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'months')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'days')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'hours')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'minutes')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", -1, 'seconds')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
       },
       {
         "fn:dateadd(" + millis + ", 1, 'millis')",
-        primitiveStringContext,
+        primitiveBytesContext,
         Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
     };

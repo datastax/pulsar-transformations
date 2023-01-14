@@ -263,6 +263,7 @@ Utility methods available under the `fn` namespace. For example, to calculate th
 * concat(input1, input2): Returns a string concatenation of `input1` and `input2`. If either input is `null`, it is treated as an empty string.
 * coalesce(value, valueIfNull): Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
 * replace(input, regex, replacement): Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
+* str(input): Converts `input` to a string.
 * now(): Returns the current epoch millis.
 * dateadd(input, delta, unit): Performs date/time arithmetic operations on the `input` date/time. 
   * `input` can be either epoch millis or an [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format like "2022-10-14T10:15:30+01:00"
