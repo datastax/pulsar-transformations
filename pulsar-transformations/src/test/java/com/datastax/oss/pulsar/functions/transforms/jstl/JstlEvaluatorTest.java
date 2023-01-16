@@ -19,19 +19,19 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
+import jakarta.el.MethodNotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.apache.pulsar.client.api.Schema;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 public class JstlEvaluatorTest {
-  @Ignore
-  @Test(dataProvider = "methodInvocationExpressionProvider"
-    // expectedExceptions = TreeBuilderException.class
+  @Test(
+    dataProvider = "methodInvocationExpressionProvider",
+    expectedExceptions = MethodNotFoundException.class
   )
   void testMethodInvocationsDisabled(String expression, TransformContext context) {
     new JstlEvaluator<>(String.format("${%s}", expression), String.class).evaluate(context);

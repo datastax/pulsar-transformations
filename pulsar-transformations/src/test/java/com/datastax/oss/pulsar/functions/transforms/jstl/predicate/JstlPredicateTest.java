@@ -27,7 +27,6 @@ import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
 public class JstlPredicateTest {
@@ -44,14 +43,12 @@ public class JstlPredicateTest {
     assertEquals(predicate.test(transformContext), match);
   }
 
-  @Ignore
   @Test(
     expectedExceptions = IllegalArgumentException.class,
-    expectedExceptionsMessageRegExp = "invalid when:.*",
-    dataProvider = "invalidWhenProvider"
+    expectedExceptionsMessageRegExp = "invalid when:.*"
   )
-  void testInvalidWhen(String when) {
-    JstlPredicate predicate = new JstlPredicate(when);
+  void testInvalidWhen() {
+    JstlPredicate predicate = new JstlPredicate("`invalid");
 
     Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(2);
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
@@ -253,29 +250,6 @@ public class JstlPredicateTest {
       {"topicName != 'topic-1'", false},
       {"properties.p2 == 'v3'", false},
       {"randomHeader == 'h1'", false}
-    };
-  }
-
-  /** @return {"expression"} */
-  @DataProvider(name = "invalidWhenProvider")
-  public static Object[][] invalidWhenProvider() {
-    return new Object[][] {
-      {"value.level1String.contains('level1')"},
-      {"value.level1Record.level2String.toUpperCase() == 'LEVEL2_1'"},
-      {"value.level1Record.level2Array.contains('level2_1')"},
-      {"value.level1String.contains('level2')"},
-      {"value.level1Record.level2String.toUpperCase() == 'LeVEL2_1'"},
-      {"value.level1Record.level2Array.contains('non_existing_item')"},
-      {"properties.p1.substring(0,1) == 'v1'"},
-      {
-        "properties.p1.toUpperCase() == 'V1' && messageKey == 'key1' && topicName == 'topic-1' && "
-            + "destinationTopic == 'dest-topic-1'"
-      },
-      {
-        "key.level1String == 'level1_1' || key.level1Record.level2String == 'random' || "
-            + " key.level1Record.level2Integer == 5 || key.level1Record.level2Double != 8.8 || "
-            + "value.level1String.contains('level1')"
-      }
     };
   }
 }
