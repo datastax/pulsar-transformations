@@ -27,26 +27,26 @@ public class JstlFunctions {
   @Setter private static Clock clock = Clock.systemUTC();
 
   public static String uppercase(Object input) {
-    return input == null ? null : input.toString().toUpperCase();
+    return input == null ? null : toString(input).toUpperCase();
   }
 
   public static String lowercase(Object input) {
-    return input == null ? null : input.toString().toLowerCase();
+    return input == null ? null : toString(input).toLowerCase();
   }
 
   public static boolean contains(Object input, Object value) {
     if (input == null || value == null) {
       return false;
     }
-    return input.toString().contains(value.toString());
+    return toString(input).contains(toString(value));
   }
 
   public static String trim(Object input) {
-    return input == null ? null : input.toString().trim();
+    return input == null ? null : toString(input).trim();
   }
 
   public static String concat(Object first, Object second) {
-    return (first == null ? "" : first.toString()) + (second == null ? "" : second.toString());
+    return toString(first) + toString(second);
   }
 
   public static Object coalesce(Object value, Object valueIfNull) {
@@ -60,7 +60,11 @@ public class JstlFunctions {
     if (regex == null || replacement == null) {
       return input.toString();
     }
-    return input.toString().replaceAll(regex.toString(), replacement.toString());
+    return toString(input).replaceAll(toString(regex), toString(replacement));
+  }
+
+  public static String toString(Object input) {
+    return CustomTypeConverter.INSTANCE.coerceToString(input);
   }
 
   public static long now() {
