@@ -16,8 +16,15 @@
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.avro.LogicalType;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
@@ -128,9 +135,30 @@ public class JstlTransformContextAdapter {
       Object value = null;
       if (genericRecord.hasField(key)) {
         value = genericRecord.get(key);
+        LogicalType logicalType = genericRecord.getSchema().getField(key).schema().getLogicalType();
+        if (LogicalTypes.date().equals(logicalType)) {
+          return LocalDate.ofEpochDay((int) value);
+        } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
+          return Instant.ofEpochMilli((long) value);
+        } else if (LogicalTypes.timestampMicros().equals(logicalType)) {
+          long micros = (long) value;
+          return Instant.ofEpochSecond(micros / 1_000_000, (micros % 1_000_000) * 1000);
+        } else if (LogicalTypes.timeMillis().equals(logicalType)) {
+          return LocalTime.ofNanoOfDay((int) value * 1_000_000L);
+        } else if (LogicalTypes.timeMicros().equals(logicalType)) {
+          return LocalTime.ofNanoOfDay((long) value * 1_000);
+        } else if (LogicalTypes.localTimestampMillis().equals(logicalType)) {
+          long millis = (long) value;
+          return LocalDateTime.ofEpochSecond(
+              millis / 1_000, (int) ((millis % 1_000) * 1_000_000), ZoneOffset.UTC);
+        } else if (LogicalTypes.localTimestampMicros().equals(logicalType)) {
+          long micros = (long) value;
+          return LocalDateTime.ofEpochSecond(
+              micros / 1_000_000, (int) ((micros % 1_000_000) * 1_000), ZoneOffset.UTC);
+        }
         if (value instanceof GenericRecord) {
-          value =
-              LazyMap.lazyMap(new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
+          return LazyMap.lazyMap(
+              new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
         }
       }
 
