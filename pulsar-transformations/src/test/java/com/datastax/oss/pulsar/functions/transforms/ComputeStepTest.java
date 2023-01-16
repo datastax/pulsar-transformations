@@ -88,6 +88,9 @@ public class ComputeStepTest {
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
     recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
     recordSchemaBuilder.field("age").type(SchemaType.INT32);
+    recordSchemaBuilder.field("date").type(SchemaType.DATE);
+    recordSchemaBuilder.field("timestamp").type(SchemaType.TIMESTAMP);
+    recordSchemaBuilder.field("time").type(SchemaType.TIME);
 
     SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
@@ -98,6 +101,9 @@ public class ComputeStepTest {
             .set("firstName", "Jane")
             .set("lastName", "Doe")
             .set("age", 42)
+            .set("date", (int) LocalDate.of(2023, 1, 2).toEpochDay())
+            .set("timestamp", Instant.parse("2023-01-02T23:04:05.006Z").toEpochMilli())
+            .set("time", (int) (LocalTime.parse("23:04:05.006").toNanoOfDay() / 1_000_000))
             .build();
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
@@ -109,6 +115,24 @@ public class ComputeStepTest {
             .expression("value.age + 1")
             .type(ComputeFieldType.STRING)
             .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.dateStr")
+            .expression("value.date")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.timestampStr")
+            .expression("value.timestamp")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.timeStr")
+            .expression("value.time")
+            .type(ComputeFieldType.STRING)
+            .build());
     ComputeStep step = ComputeStep.builder().fields(fields).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
@@ -116,6 +140,9 @@ public class ComputeStepTest {
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
     assertEquals(read.get("firstName"), new Utf8("Jane"));
+    assertEquals(read.get("dateStr"), new Utf8("2023-01-02"));
+    assertEquals(read.get("timestampStr"), new Utf8("2023-01-02T23:04:05.006Z"));
+    assertEquals(read.get("timeStr"), new Utf8("23:04:05.006"));
 
     assertTrue(read.hasField("newStringField"));
     assertEquals(read.getSchema().getField("newStringField").schema(), STRING_SCHEMA);
