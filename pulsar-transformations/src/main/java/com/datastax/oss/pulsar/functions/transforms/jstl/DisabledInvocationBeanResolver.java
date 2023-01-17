@@ -19,6 +19,19 @@ import jakarta.el.BeanELResolver;
 import jakarta.el.ELContext;
 import jakarta.el.MethodNotFoundException;
 
+/**
+ * The purpose of this BeanELResolver is to disable methods invocations. By default, the EL
+ * implementation allows for invoking JDK methods on beans like ${value.toString()}. We prefer to
+ * disable such invocation for two reasons:
+ *
+ * <ul>
+ *   <li>Have more controls over the transformations API and provide utility methods instead under
+ *       the "fn:" prefix. Otherwise, it hard to guarantee the availability of the API as the JDK
+ *       evolves.
+ *   <li>Security reasons as users may get access to internal methods that have unintended side
+ *       effects.
+ * </ul>
+ */
 public class DisabledInvocationBeanResolver extends BeanELResolver {
   @Override
   public Object invoke(

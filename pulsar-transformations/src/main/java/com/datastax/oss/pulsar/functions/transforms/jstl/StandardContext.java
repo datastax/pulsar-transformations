@@ -44,7 +44,7 @@ public class StandardContext extends ELContext {
   private final FunctionMapper functionMapper;
   private final CompositeELResolver standardResolver;
   private final CompositeELResolver customResolvers;
-  private final Map<String, Object> localBeans = new HashMap();
+  private final Map<String, Object> localBeans = new HashMap<>();
 
   public StandardContext(ExpressionFactory factory) {
     this.wrappedContext = null;
@@ -98,12 +98,8 @@ public class StandardContext extends ELContext {
     return this.variableMapper;
   }
 
-  Map<String, Object> getLocalBeans() {
-    return this.localBeans;
-  }
-
   private static class StandardFunctionMapper extends FunctionMapper {
-    private final Map<String, Method> methods = new HashMap();
+    private final Map<String, Method> methods = new HashMap<>();
 
     public StandardFunctionMapper(Map<String, Method> initFunctionMap) {
       if (initFunctionMap != null) {
@@ -113,7 +109,7 @@ public class StandardContext extends ELContext {
 
     public Method resolveFunction(String prefix, String localName) {
       String key = prefix + ":" + localName;
-      return (Method) this.methods.get(key);
+      return this.methods.get(key);
     }
 
     public void mapFunction(String prefix, String localName, Method method) {
@@ -160,17 +156,15 @@ public class StandardContext extends ELContext {
     private StandardVariableMapper() {}
 
     public ValueExpression resolveVariable(String variable) {
-      return this.vars == null ? null : (ValueExpression) this.vars.get(variable);
+      return this.vars == null ? null : this.vars.get(variable);
     }
 
     public ValueExpression setVariable(String variable, ValueExpression expression) {
       if (this.vars == null) {
-        this.vars = new HashMap();
+        this.vars = new HashMap<>();
       }
 
-      return expression == null
-          ? (ValueExpression) this.vars.remove(variable)
-          : (ValueExpression) this.vars.put(variable, expression);
+      return expression == null ? this.vars.remove(variable) : this.vars.put(variable, expression);
     }
   }
 }
