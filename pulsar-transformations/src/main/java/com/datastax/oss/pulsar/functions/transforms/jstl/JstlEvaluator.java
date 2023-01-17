@@ -62,7 +62,7 @@ public class JstlEvaluator<T> {
     this.expressionContext.setFunction(
         "fn",
         "dateadd",
-        JstlFunctions.class.getMethod("dateadd", Object.class, long.class, String.class));
+        JstlFunctions.class.getMethod("dateadd", Object.class, Object.class, Object.class));
   }
 
   public T evaluate(TransformContext transformContext) {

@@ -24,12 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
-import org.apache.pulsar.client.api.schema.GenericObject;
-import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
-import org.apache.pulsar.common.schema.SchemaType;
-import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -52,15 +47,8 @@ public class JstEvaluatorTest {
 
   @Test
   void testPrimitiveValue() {
-    Record<GenericObject> primitiveStringRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "");
     TransformContext primitiveStringContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "");
 
     String value = new JstlEvaluator<>("${value}", String.class).evaluate(primitiveStringContext);
 
@@ -69,15 +57,8 @@ public class JstEvaluatorTest {
 
   @Test
   void testNowFunction() {
-    Record<GenericObject> primitiveStringRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "header-key");
     TransformContext primitiveStringContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "");
 
     long expectedMillis = 123L;
     Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
@@ -91,15 +72,8 @@ public class JstEvaluatorTest {
 
   @Test
   void testDateAddFunctionsNow() {
-    Record<GenericObject> primitiveStringRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "header-key");
     TransformContext primitiveStringContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "");
 
     long nowMillis = 5000L;
     long millisToAdd = -3333L * 1000L;
@@ -115,15 +89,8 @@ public class JstEvaluatorTest {
   /** @return {"expression", "transform context"} */
   @DataProvider(name = "methodInvocationExpressionProvider")
   public static Object[][] methodInvocationExpressionProvider() {
-    Record<GenericObject> primitiveStringRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "header-key");
     TransformContext primitiveStringContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "header-key");
 
     return new Object[][] {
       {"value.contains('test')", primitiveStringContext},
@@ -137,16 +104,15 @@ public class JstEvaluatorTest {
   /** @return {"expression", "context", "expected value"} */
   @DataProvider(name = "functionExpressionProvider")
   public static Object[][] functionExpressionProvider() {
-    Record<GenericObject> primitiveBytesRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject(
-                "Test-Message ".getBytes(StandardCharsets.UTF_8), SchemaType.BYTES, new byte[] {}),
-            "header-key");
     TransformContext primitiveBytesContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveBytesRecord, new HashMap<>()),
-            primitiveBytesRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(
+            Schema.BYTES, "Test-Message ".getBytes(StandardCharsets.UTF_8), "");
+    TransformContext primitiveInstantContext =
+        Utils.createContextWithPrimitiveRecord(
+            Schema.INSTANT, Instant.parse("2017-01-02T00:01:02Z"), "");
+    TransformContext chronoUnitBytesContext =
+        Utils.createContextWithPrimitiveRecord(
+            Schema.BYTES, "millis".getBytes(StandardCharsets.UTF_8), "");
     long millis = Instant.parse("2017-01-02T00:01:02Z").toEpochMilli();
     return new Object[][] {
       {"fn:uppercase('test')", primitiveBytesContext, "TEST"},
@@ -212,6 +178,11 @@ public class JstEvaluatorTest {
         Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
       {
+        "fn:dateadd('2017-01-02T00:01:02Z', 1000000, 'nanos')",
+        primitiveBytesContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
+      {
         "fn:dateadd(" + millis + ", 1, 'years')",
         primitiveBytesContext,
         Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
@@ -244,6 +215,21 @@ public class JstEvaluatorTest {
       {
         "fn:dateadd(" + millis + ", 1, 'millis')",
         primitiveBytesContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(" + millis + ", 1000000, 'nanos')",
+        primitiveBytesContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd(value, '1', 'millis')",
+        primitiveInstantContext,
+        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+      },
+      {
+        "fn:dateadd('2017-01-02T00:01:02Z', 1, value)",
+        chronoUnitBytesContext,
         Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
       },
     };

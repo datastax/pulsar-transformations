@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -54,6 +55,7 @@ public class CustomTypeConverterTest {
     assertNull(converter.convert(null, LocalDate.class));
     assertNull(converter.convert(null, LocalTime.class));
     assertNull(converter.convert(null, Instant.class));
+    assertNull(converter.convert(null, OffsetDateTime.class));
   }
 
   @DataProvider(name = "conversions")
@@ -72,6 +74,7 @@ public class CustomTypeConverterTest {
     Date date = new Date(dateTimeMillis);
     Instant instant = Instant.ofEpochSecond(1672700645, 6);
     Timestamp timestamp = Timestamp.from(instant);
+    OffsetDateTime offsetDateTime = OffsetDateTime.of(2023, 1, 2, 23, 4, 5, 6, ZoneOffset.UTC);
     LocalDateTime localDateTime = LocalDateTime.of(2023, 1, 2, 23, 4, 5, 6);
     LocalDate localDate = LocalDate.of(2023, 1, 2);
     LocalTime localTime = LocalTime.of(23, 4, 5, 6);
@@ -94,6 +97,7 @@ public class CustomTypeConverterTest {
       {time, byte[].class, Schema.TIME.encode(time)},
       {localDateTime, byte[].class, Schema.LOCAL_DATE_TIME.encode(localDateTime)},
       {instant, byte[].class, Schema.INSTANT.encode(instant)},
+      {offsetDateTime, byte[].class, Schema.INSTANT.encode(instant)},
       {localDate, byte[].class, Schema.LOCAL_DATE.encode(localDate)},
       {localTime, byte[].class, Schema.LOCAL_TIME.encode(localTime)},
 
@@ -112,6 +116,7 @@ public class CustomTypeConverterTest {
       {time, String.class, "23:04:05"},
       {localDateTime, String.class, "2023-01-02T23:04:05.000000006"},
       {instant, String.class, "2023-01-02T23:04:05.000000006Z"},
+      {offsetDateTime, String.class, "2023-01-02T23:04:05.000000006Z"},
       {localDate, String.class, "2023-01-02"},
       {localTime, String.class, "23:04:05.000000006"},
 
@@ -168,6 +173,7 @@ public class CustomTypeConverterTest {
       {time, Long.class, timeMillis},
       {localDateTime, Long.class, dateTimeMillis},
       {instant, Long.class, dateTimeMillis},
+      {offsetDateTime, Long.class, dateTimeMillis},
       {localTime, Long.class, timeMillis},
       {localDate, Long.class, midnightMillis},
 
@@ -195,6 +201,7 @@ public class CustomTypeConverterTest {
       {time, Double.class, (double) timeMillis},
       {localDateTime, Double.class, (double) dateTimeMillis},
       {instant, Double.class, (double) dateTimeMillis},
+      {offsetDateTime, Double.class, (double) dateTimeMillis},
       {localTime, Double.class, timeMillisWithNanos},
       {localDate, Double.class, (double) midnightMillis},
 
@@ -207,6 +214,7 @@ public class CustomTypeConverterTest {
       {timestamp, Date.class, date},
       {localDateTime, Date.class, date},
       {instant, Date.class, date},
+      {offsetDateTime, Date.class, date},
       {localDate, Date.class, new Date(midnightMillis)},
 
       // Timestamp
@@ -218,6 +226,8 @@ public class CustomTypeConverterTest {
       {timestamp, Timestamp.class, timestamp},
       {localDateTime, Timestamp.class, timestamp},
       {instant, Timestamp.class, timestamp},
+      {offsetDateTime, Timestamp.class, timestamp},
+      {offsetDateTime, Timestamp.class, timestamp},
       {localDate, Timestamp.class, new Timestamp(midnightMillis)},
 
       // Time
@@ -229,6 +239,7 @@ public class CustomTypeConverterTest {
       {timestamp, Time.class, time},
       {localDateTime, Time.class, time},
       {instant, Time.class, time},
+      {offsetDateTime, Time.class, time},
       {localDate, Time.class, new Time(midnightMillis)},
       {time, Time.class, time},
       {localTime, Time.class, time},
@@ -242,6 +253,7 @@ public class CustomTypeConverterTest {
       {timestamp, LocalTime.class, localTime},
       {localDateTime, LocalTime.class, localTime},
       {instant, LocalTime.class, localTime},
+      {offsetDateTime, LocalTime.class, localTime},
       {localDate, LocalTime.class, LocalTime.ofSecondOfDay(0)},
       {time, LocalTime.class, LocalTime.of(23, 4, 5)},
       {localTime, LocalTime.class, localTime},
@@ -255,6 +267,7 @@ public class CustomTypeConverterTest {
       {timestamp, LocalDate.class, localDate},
       {localDateTime, LocalDate.class, localDate},
       {instant, LocalDate.class, localDate},
+      {offsetDateTime, LocalDate.class, localDate},
       {localDate, LocalDate.class, localDate},
 
       // LocalDateTime
@@ -265,6 +278,7 @@ public class CustomTypeConverterTest {
       {timestamp, LocalDateTime.class, localDateTime},
       {localDateTime, LocalDateTime.class, localDateTime},
       {instant, LocalDateTime.class, localDateTime},
+      {offsetDateTime, LocalDateTime.class, localDateTime},
       {localDate, LocalDateTime.class, LocalDateTime.of(localDate, LocalTime.MIDNIGHT)},
 
       // Instant
@@ -277,7 +291,33 @@ public class CustomTypeConverterTest {
       {timestamp, Instant.class, instant},
       {localDateTime, Instant.class, instant},
       {instant, Instant.class, instant},
+      {offsetDateTime, Instant.class, instant},
       {localDate, Instant.class, instant.truncatedTo(ChronoUnit.DAYS)},
+
+      // OffsetDateTime
+      {Schema.INSTANT.encode(instant), OffsetDateTime.class, offsetDateTime},
+      {"2023-01-02T23:04:05.000000006Z", OffsetDateTime.class, offsetDateTime},
+      {
+        "2023-01-02",
+        OffsetDateTime.class,
+        localDate.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime()
+      },
+      {
+        dateTimeMillis,
+        OffsetDateTime.class,
+        OffsetDateTime.of(localDateTimeWithoutNanos, ZoneOffset.UTC)
+      },
+      {
+        (double) dateTimeMillis,
+        OffsetDateTime.class,
+        OffsetDateTime.of(localDateTimeWithoutNanos, ZoneOffset.UTC)
+      },
+      {date, OffsetDateTime.class, OffsetDateTime.of(localDateTimeWithoutNanos, ZoneOffset.UTC)},
+      {timestamp, OffsetDateTime.class, offsetDateTime},
+      {localDateTime, OffsetDateTime.class, offsetDateTime},
+      {offsetDateTime, OffsetDateTime.class, offsetDateTime},
+      {localDate, OffsetDateTime.class, offsetDateTime.truncatedTo(ChronoUnit.DAYS)},
+      {instant, OffsetDateTime.class, offsetDateTime},
     };
   }
 

@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -181,6 +182,9 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (type == Instant.class) {
       return coerceToInstant(value);
     }
+    if (type == OffsetDateTime.class) {
+      return coerceToOffsetDateTime(value);
+    }
     return super.coerceToType(value, type);
   }
 
@@ -208,6 +212,9 @@ public class CustomTypeConverter extends TypeConverterImpl {
     }
     if (value instanceof byte[]) {
       return (byte[]) value;
+    }
+    if (value instanceof OffsetDateTime) {
+      return coerceToBytes(((OffsetDateTime) value).toInstant());
     }
     if (SCHEMAS.containsKey(value.getClass())) {
       return ((Schema<Object>) SCHEMAS.get(value.getClass())).encode(value);
@@ -364,12 +371,6 @@ public class CustomTypeConverter extends TypeConverterImpl {
     if (value instanceof Instant) {
       return (Instant) value;
     }
-    if (value instanceof LocalDate) {
-      return ((LocalDate) value).atStartOfDay().toInstant(ZoneOffset.UTC);
-    }
-    if (value instanceof LocalDateTime) {
-      return ((LocalDateTime) value).toInstant(ZoneOffset.UTC);
-    }
     if (value instanceof Date && !(value instanceof Time)) {
       return ((Date) value).toInstant();
     }
@@ -381,17 +382,44 @@ public class CustomTypeConverter extends TypeConverterImpl {
       long nanos = Math.round(((double) value - seconds * 1000) * 1_000_000);
       return Instant.ofEpochSecond(seconds, nanos);
     }
+    if (value instanceof byte[]) {
+      return Schema.INSTANT.decode((byte[]) value);
+    }
+    if (value instanceof TemporalAccessor || value instanceof CharSequence) {
+      return coerceToOffsetDateTime(value).toInstant();
+    }
+    throw new ELException(
+        LocalMessages.get("error.coerce.type", value, value.getClass(), Instant.class));
+  }
+
+  protected OffsetDateTime coerceToOffsetDateTime(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof OffsetDateTime) {
+      return (OffsetDateTime) value;
+    }
+    if (value instanceof LocalDate) {
+      return ((LocalDate) value).atStartOfDay().atOffset(ZoneOffset.UTC);
+    }
+    if (value instanceof LocalDateTime) {
+      return ((LocalDateTime) value).atOffset(ZoneOffset.UTC);
+    }
+    if (value instanceof Instant) {
+      return ((Instant) value).atOffset(ZoneOffset.UTC);
+    }
     if (value instanceof CharSequence) {
       if (((CharSequence) value).length() == 10) {
         LocalDate localDate =
             DateTimeFormatter.ISO_LOCAL_DATE.parse((CharSequence) value, LocalDate::from);
-        return localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        return localDate.atStartOfDay(ZoneOffset.UTC).toOffsetDateTime();
       }
-      return DateTimeFormatter.ISO_DATE_TIME.parse((CharSequence) value, Instant::from);
+      return DateTimeFormatter.ISO_DATE_TIME.parse((CharSequence) value, OffsetDateTime::from);
     }
-    if (value instanceof byte[]) {
-      return Schema.INSTANT.decode((byte[]) value);
+    if (value instanceof Number || value instanceof Date || value instanceof byte[]) {
+      return coerceToInstant(value).atOffset(ZoneOffset.UTC);
     }
-    throw new IllegalArgumentException("Cannot convert type " + value.getClass() + " to Instant");
+    throw new ELException(
+        LocalMessages.get("error.coerce.type", value, value.getClass(), OffsetDateTime.class));
   }
 }

@@ -56,6 +56,7 @@ import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
+import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
@@ -298,6 +299,18 @@ public class Utils {
     List<Field> pulsarFields =
         fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
+  }
+
+  public static TransformContext createContextWithPrimitiveRecord(
+      Schema<?> schema, Object value, String key) {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                value, schema.getSchemaInfo().getType(), new byte[] {}),
+            key);
+    return new TransformContext(
+        new Utils.TestContext(record, new HashMap<>()), record.getValue().getNativeObject());
   }
 
   static void assertOptionalField(

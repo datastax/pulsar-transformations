@@ -20,9 +20,11 @@ import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -130,12 +132,27 @@ public class JstlFunctionsTest {
     assertEquals(expected, JstlFunctions.dateadd(input, delta, unit));
   }
 
+  @Test
+  void testAddDateDeltaConversion() {
+    assertEquals(
+        Instant.parse("2022-10-02T02:02:03Z").toEpochMilli(),
+        JstlFunctions.dateadd("2022-10-02T01:02:03Z", LocalTime.of(1, 0, 0), "millis"));
+  }
+
+  @Test
+  void testAddDateUnitConversion() {
+    assertEquals(
+        Instant.parse("2022-10-02T02:02:03Z").toEpochMilli(),
+        JstlFunctions.dateadd("2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
+  }
+
   @Test(
-    expectedExceptions = IllegalArgumentException.class,
-    expectedExceptionsMessageRegExp = "Invalid input type: Double\\..*"
+    expectedExceptions = javax.el.ELException.class,
+    expectedExceptionsMessageRegExp =
+        "Cannot coerce '7' of class java.lang.Byte to class java.time.Instant \\(incompatible type\\)"
   )
   void testInvalidAddDate() {
-    JstlFunctions.dateadd(7D, 0, "days");
+    JstlFunctions.dateadd((byte) 7, 0, "days");
   }
 
   /** @return {"input date in epoch millis", "delta", "unit", "expected value (in epoch millis)"} */
@@ -165,6 +182,9 @@ public class JstlFunctionsTest {
       {millis, 0, "millis", instant.toEpochMilli()},
       {millis, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
       {millis, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
+      {millis, 0, "nanos", instant.toEpochMilli()},
+      {millis, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
+      {millis, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
     };
   }
 
@@ -195,6 +215,9 @@ public class JstlFunctionsTest {
       {utcDateTime, 0, "millis", instant.toEpochMilli()},
       {utcDateTime, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
       {utcDateTime, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
+      {utcDateTime, 0, "nanos", instant.toEpochMilli()},
+      {utcDateTime, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
+      {utcDateTime, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
     };
   }
 
@@ -294,6 +317,19 @@ public class JstlFunctionsTest {
         nonUtcDateTime,
         -3,
         "millis",
+        Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli() - twoHoursMillis
+      },
+      {nonUtcDateTime, 0, "nanos", instant.toEpochMilli() - twoHoursMillis},
+      {
+        nonUtcDateTime,
+        5_000_000,
+        "nanos",
+        Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli() - twoHoursMillis
+      },
+      {
+        nonUtcDateTime,
+        -3_000_000,
+        "nanos",
         Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli() - twoHoursMillis
       },
     };
