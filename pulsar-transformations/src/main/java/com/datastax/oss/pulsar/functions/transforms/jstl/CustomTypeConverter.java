@@ -56,6 +56,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Double coerceToDouble(Object value) {
     if (value instanceof LocalTime) {
       return (double) ((LocalTime) value).toNanoOfDay() / 1_000_000;
@@ -80,6 +81,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Float coerceToFloat(Object value) {
     if (value instanceof byte[]) {
       return Schema.FLOAT.decode((byte[]) value);
@@ -87,6 +89,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Long coerceToLong(Object value) {
     if (value instanceof LocalTime) {
       return ((LocalTime) value).toNanoOfDay() / 1_000_000;
@@ -106,6 +109,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Integer coerceToInteger(Object value) {
     if (value instanceof LocalTime) {
       return (int) (((LocalTime) value).toNanoOfDay() / 1_000_000);
@@ -119,6 +123,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Short coerceToShort(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT16.decode((byte[]) value);
@@ -126,6 +131,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected Byte coerceToByte(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT8.decode((byte[]) value);
@@ -133,6 +139,7 @@ public class CustomTypeConverter extends TypeConverter {
     return null;
   }
 
+  @Override
   protected String coerceToString(Object value) {
     if (value instanceof Time) {
       return DateTimeFormatter.ISO_LOCAL_TIME.format(((Time) value).toLocalTime());
