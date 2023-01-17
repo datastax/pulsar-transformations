@@ -22,7 +22,6 @@ import com.datastax.oss.pulsar.functions.transforms.Utils;
 import java.util.HashMap;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
-import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -86,16 +85,8 @@ public class JstlPredicateTest {
 
     KeyValue<String, Integer> keyValue = new KeyValue<>("key", 42);
 
-    Record<GenericObject> primitiveKVRecord =
-        new Utils.TestRecord<>(
-            keyValueSchema,
-            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
-            null);
-
     TransformContext primitiveKVContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveKVRecord, new HashMap<>()),
-            primitiveKVRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(keyValueSchema, keyValue, "");
 
     return new Object[][] {
       // match
@@ -108,41 +99,16 @@ public class JstlPredicateTest {
   /** @return {"expression", "transform context" "expected match boolean"} */
   @DataProvider(name = "primitivePredicates")
   public static Object[][] primitivePredicates() {
-    Record<GenericObject> primitiveStringRecord =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "header-key");
-    TransformContext primitiveStringContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveStringRecord, new HashMap<>()),
-            primitiveStringRecord.getValue().getNativeObject());
-
-    Record<GenericObject> primitiveIntRecord =
-        new Utils.TestRecord<>(
-            Schema.INT32,
-            AutoConsumeSchema.wrapPrimitiveObject(33, SchemaType.INT32, new byte[] {}),
-            "header-key");
-    TransformContext primitiveIntContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveIntRecord, new HashMap<>()),
-            primitiveIntRecord.getValue().getNativeObject());
-
     Schema<KeyValue<String, Integer>> keyValueSchema =
         Schema.KeyValue(Schema.STRING, Schema.INT32, KeyValueEncodingType.SEPARATED);
-
     KeyValue<String, Integer> keyValue = new KeyValue<>("key", 42);
 
-    Record<GenericObject> primitiveKVRecord =
-        new Utils.TestRecord<>(
-            keyValueSchema,
-            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
-            "header-key");
-
+    TransformContext primitiveStringContext =
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "header-key");
+    TransformContext primitiveIntContext =
+        Utils.createContextWithPrimitiveRecord(Schema.INT32, 33, "header-key");
     TransformContext primitiveKVContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveKVRecord, new HashMap<>()),
-            primitiveKVRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(keyValueSchema, keyValue, "header-key");
 
     return new Object[][] {
       // match

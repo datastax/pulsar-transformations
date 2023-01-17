@@ -15,11 +15,10 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+import de.odysseus.el.misc.LocalMessages;
 import java.time.Clock;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import javax.el.ELException;
 import lombok.Setter;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
@@ -71,33 +70,13 @@ public class JstlFunctions {
     return clock.millis();
   }
 
-  public static long dateadd(Object input, long delta, String unit) {
-    if (input instanceof String) {
-      return dateadd((String) input, delta, unit);
-    } else if (input instanceof Long) {
-      return dateadd((long) input, delta, unit);
+  public static long dateadd(Object input, Object delta, Object unit) {
+    if (input == null || unit == null) {
+      throw new ELException(LocalMessages.get("error.method.notypes"));
     }
 
-    throw new IllegalArgumentException(
-        "Invalid input type: "
-            + input.getClass().getSimpleName()
-            + ". Should either be an RFC3339 datetime string like '2007-12-01T12:30:00Z' or epoch millis");
-  }
-
-  private static long dateadd(String input, long delta, String unit) {
-    OffsetDateTime offsetDateTime = OffsetDateTime.parse(input);
-    return dateadd(offsetDateTime, delta, unit);
-  }
-
-  private static long dateadd(long epochMillis, long delta, String unit) {
-    Instant instant = Instant.ofEpochMilli(epochMillis);
-    OffsetDateTime localDateTime = OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
-    return dateadd(localDateTime, delta, unit);
-  }
-
-  private static long dateadd(OffsetDateTime offsetDateTime, long delta, String unit) {
-    final ChronoUnit chronoUnit;
-    switch (unit) {
+    ChronoUnit chronoUnit;
+    switch (CustomTypeConverter.INSTANCE.coerceToString(unit)) {
       case "years":
         chronoUnit = ChronoUnit.YEARS;
         break;
@@ -119,13 +98,25 @@ public class JstlFunctions {
       case "millis":
         chronoUnit = ChronoUnit.MILLIS;
         break;
+      case "nanos":
+        chronoUnit = ChronoUnit.NANOS;
+        break;
       default:
         throw new IllegalArgumentException(
             "Invalid unit: "
                 + unit
                 + ". Should be one of [years, months, days, hours, minutes, seconds, millis]");
     }
-
-    return offsetDateTime.plus(delta, chronoUnit).toInstant().toEpochMilli();
+    if (chronoUnit == ChronoUnit.MONTHS || chronoUnit == ChronoUnit.YEARS) {
+      return CustomTypeConverter.INSTANCE
+          .coerceToOffsetDateTime(input)
+          .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
+          .toInstant()
+          .toEpochMilli();
+    }
+    return CustomTypeConverter.INSTANCE
+        .coerceToInstant(input)
+        .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
+        .toEpochMilli();
   }
 }

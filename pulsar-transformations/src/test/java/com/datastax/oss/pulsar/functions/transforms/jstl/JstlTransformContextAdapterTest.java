@@ -74,16 +74,9 @@ public class JstlTransformContextAdapterTest {
     Schema<KeyValue<String, Integer>> keyValueSchema =
         Schema.KeyValue(Schema.STRING, Schema.INT32, KeyValueEncodingType.SEPARATED);
     KeyValue<String, Integer> keyValue = new KeyValue<>("key", 42);
-    Record<GenericObject> primitiveKVRecord =
-        new Utils.TestRecord<>(
-            keyValueSchema,
-            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
-            "header-key");
 
     TransformContext transformContext =
-        new TransformContext(
-            new Utils.TestContext(primitiveKVRecord, new HashMap<>()),
-            primitiveKVRecord.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(keyValueSchema, keyValue, "header-key");
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
@@ -96,15 +89,8 @@ public class JstlTransformContextAdapterTest {
   @Test
   void testAdapterForPrimitiveRecord() {
     // given
-    Record<GenericObject> record =
-        new Utils.TestRecord<>(
-            Schema.STRING,
-            AutoConsumeSchema.wrapPrimitiveObject("test-message", SchemaType.STRING, new byte[] {}),
-            "header-key");
-    /* Actual key: "test-key" Actual value: "test-message" */
-    Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "header-key");
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
