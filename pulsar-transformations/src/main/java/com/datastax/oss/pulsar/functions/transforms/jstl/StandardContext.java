@@ -19,18 +19,14 @@ import jakarta.el.ArrayELResolver;
 import jakarta.el.BeanNameELResolver;
 import jakarta.el.BeanNameResolver;
 import jakarta.el.CompositeELResolver;
-import jakarta.el.ELContext;
 import jakarta.el.ELResolver;
 import jakarta.el.ExpressionFactory;
-import jakarta.el.FunctionMapper;
 import jakarta.el.ListELResolver;
 import jakarta.el.MapELResolver;
 import jakarta.el.PropertyNotWritableException;
 import jakarta.el.ResourceBundleELResolver;
+import jakarta.el.StandardELContext;
 import jakarta.el.StaticFieldELResolver;
-import jakarta.el.ValueExpression;
-import jakarta.el.VariableMapper;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,27 +34,18 @@ import java.util.Map;
  * A standard context that mirrors {@link jakarta.el.StandardELContext} with the exception that it
  * registers a custom beans resolver that disables invocations.
  */
-public class StandardContext extends ELContext {
-  private final ELContext wrappedContext;
-  private final VariableMapper variableMapper;
-  private final FunctionMapper functionMapper;
+public class StandardContext extends StandardELContext {
   private final CompositeELResolver standardResolver;
-  private final CompositeELResolver customResolvers;
-  private final Map<String, Object> localBeans = new HashMap<>();
 
   public StandardContext(ExpressionFactory factory) {
-    this.wrappedContext = null;
-    this.variableMapper = new StandardVariableMapper();
-    this.functionMapper = new StandardFunctionMapper(factory.getInitFunctionMap());
+    super(factory);
     this.standardResolver = new CompositeELResolver();
-    this.customResolvers = new CompositeELResolver();
     ELResolver streamResolver = factory.getStreamELResolver();
-    this.standardResolver.add(
-        new BeanNameELResolver(new StandardBeanNameResolver(this.localBeans)));
-    this.standardResolver.add(this.customResolvers);
+    this.standardResolver.add(new BeanNameELResolver(new StandardBeanNameResolver()));
     if (streamResolver != null) {
       this.standardResolver.add(streamResolver);
     }
+    this.standardResolver.add(JstlTypeConverter.INSTANCE);
 
     this.standardResolver.add(new StaticFieldELResolver());
     this.standardResolver.add(new MapELResolver());
@@ -68,66 +55,12 @@ public class StandardContext extends ELContext {
     this.standardResolver.add(new DisabledInvocationBeanResolver());
   }
 
-  public void putContext(Class<?> key, Object contextObject) {
-    if (this.wrappedContext == null) {
-      super.putContext(key, contextObject);
-    } else {
-      this.wrappedContext.putContext(key, contextObject);
-    }
-  }
-
-  public Object getContext(Class<?> key) {
-    return this.wrappedContext == null
-        ? super.getContext(key)
-        : this.wrappedContext.getContext(key);
-  }
-
   public ELResolver getELResolver() {
     return this.standardResolver;
   }
 
-  public void addELResolver(ELResolver resolver) {
-    this.customResolvers.add(resolver);
-  }
-
-  public FunctionMapper getFunctionMapper() {
-    return this.functionMapper;
-  }
-
-  public VariableMapper getVariableMapper() {
-    return this.variableMapper;
-  }
-
-  private static class StandardFunctionMapper extends FunctionMapper {
-    private final Map<String, Method> methods = new HashMap<>();
-
-    public StandardFunctionMapper(Map<String, Method> initFunctionMap) {
-      if (initFunctionMap != null) {
-        this.methods.putAll(initFunctionMap);
-      }
-    }
-
-    public Method resolveFunction(String prefix, String localName) {
-      String key = prefix + ":" + localName;
-      return this.methods.get(key);
-    }
-
-    public void mapFunction(String prefix, String localName, Method method) {
-      String key = prefix + ":" + localName;
-      if (method == null) {
-        this.methods.remove(key);
-      } else {
-        this.methods.put(key, method);
-      }
-    }
-  }
-
   private static class StandardBeanNameResolver extends BeanNameResolver {
-    private final Map<String, Object> beans;
-
-    public StandardBeanNameResolver(Map<String, Object> beans) {
-      this.beans = beans;
-    }
+    private final Map<String, Object> beans = new HashMap<>();
 
     public boolean isNameResolved(String beanName) {
       return this.beans.containsKey(beanName);
@@ -147,24 +80,6 @@ public class StandardContext extends ELContext {
 
     public boolean canCreateBean(String beanName) {
       return true;
-    }
-  }
-
-  private static class StandardVariableMapper extends VariableMapper {
-    private Map<String, ValueExpression> vars;
-
-    private StandardVariableMapper() {}
-
-    public ValueExpression resolveVariable(String variable) {
-      return this.vars == null ? null : this.vars.get(variable);
-    }
-
-    public ValueExpression setVariable(String variable, ValueExpression expression) {
-      if (this.vars == null) {
-        this.vars = new HashMap<>();
-      }
-
-      return expression == null ? this.vars.remove(variable) : this.vars.put(variable, expression);
     }
   }
 }

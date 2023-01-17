@@ -64,7 +64,7 @@ public class JstlEvaluatorTest {
     JstlFunctions.setClock(clock);
 
     long actualMillis =
-        new JstlEvaluator<>("${fn:now()}", long.class).evaluate(primitiveStringContext);
+        new JstlEvaluator<>("${fn:now()}", Long.class).evaluate(primitiveStringContext);
 
     assertEquals(expectedMillis, actualMillis);
   }
@@ -79,7 +79,7 @@ public class JstlEvaluatorTest {
     Clock clock = Clock.fixed(Instant.ofEpochMilli(nowMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
     long actualMillis =
-        new JstlEvaluator<>("${fn:timestampAdd(fn:now(), -3333, 'seconds')}", long.class)
+        new JstlEvaluator<>("${fn:timestampAdd(fn:now(), -3333, 'seconds')}", Long.class)
             .evaluate(primitiveStringContext);
 
     assertEquals(nowMillis + millisToAdd, actualMillis);

@@ -18,7 +18,6 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import jakarta.el.ELContext;
 import jakarta.el.ExpressionFactory;
-import jakarta.el.StandardELContext;
 import jakarta.el.ValueExpression;
 import java.util.Map;
 import lombok.SneakyThrows;
@@ -30,45 +29,63 @@ public class JstlEvaluator<T> {
   private final ValueExpression valueExpression;
   private final ELContext expressionContext;
 
-  private final Class<?> type;
-
-  public JstlEvaluator(String expression, Class<?> type) {
-    this.type = type;
-    final StandardELContext standardContext = new StandardELContext(FACTORY);
-    standardContext.addELResolver(CustomTypeConverter.INSTANCE);
-    this.expressionContext = standardContext;
+  public JstlEvaluator(String expression, Class<? extends T> type) {
+    this.expressionContext = new StandardContext(FACTORY);
     registerFunctions();
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
   }
 
   @SneakyThrows
   private void registerFunctions() {
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "uppercase", JstlFunctions.class.getMethod("uppercase", Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "lowercase", JstlFunctions.class.getMethod("lowercase", Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "contains", JstlFunctions.class.getMethod("contains", Object.class, Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "trim", JstlFunctions.class.getMethod("trim", Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "uppercase", JstlFunctions.class.getMethod("uppercase", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "lowercase", JstlFunctions.class.getMethod("lowercase", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
+            "fn",
+            "contains",
+            JstlFunctions.class.getMethod("contains", Object.class, Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "trim", JstlFunctions.class.getMethod("trim", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
             "fn", "concat", JstlFunctions.class.getMethod("concat", Object.class, Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "coalesce", JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
-            "fn", "str", JstlFunctions.class.getMethod("toString", Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction(
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
+            "fn",
+            "coalesce",
+            JstlFunctions.class.getMethod("coalesce", Object.class, Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "str", JstlFunctions.class.getMethod("toString", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
             "fn",
             "replace",
             JstlFunctions.class.getMethod("replace", Object.class, Object.class, Object.class));
-    this.expressionContext.getFunctionMapper().mapFunction("fn", "now", JstlFunctions.class.getMethod("now"));
-    this.expressionContext.getFunctionMapper().mapFunction(
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "now", JstlFunctions.class.getMethod("now"));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
             "fn",
             "timestampAdd",
-            JstlFunctions.class.getMethod("timestampAdd", Object.class, Object.class, Object.class));
+            JstlFunctions.class.getMethod(
+                "timestampAdd", Object.class, Object.class, Object.class));
 
     // Deprecated
-    this.expressionContext.getFunctionMapper().mapFunction(
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
             "fn",
             "dateadd",
             JstlFunctions.class.getMethod("dateadd", Object.class, Object.class, Object.class));

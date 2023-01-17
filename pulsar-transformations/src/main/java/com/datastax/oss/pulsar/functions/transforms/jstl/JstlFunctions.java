@@ -15,12 +15,12 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
-import de.odysseus.el.misc.LocalMessages;
+import jakarta.el.ELException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import javax.el.ELException;
 import lombok.Setter;
+import org.apache.el.util.MessageFactory;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 public class JstlFunctions {
@@ -73,7 +73,7 @@ public class JstlFunctions {
 
   public static Instant timestampAdd(Object input, Object delta, Object unit) {
     if (input == null || unit == null) {
-      throw new ELException(LocalMessages.get("error.method.notypes"));
+      throw new ELException(MessageFactory.get("error.method.notypes"));
     }
 
     ChronoUnit chronoUnit;

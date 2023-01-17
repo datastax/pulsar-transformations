@@ -148,13 +148,9 @@ public class JstlFunctionsTest {
             "2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
   }
 
-  @Test(
-    expectedExceptions = javax.el.ELException.class,
-    expectedExceptionsMessageRegExp =
-        "Cannot coerce '7' of class java.lang.Byte to class java.time.Instant \\(incompatible type\\)"
-  )
+  @Test(expectedExceptions = jakarta.el.ELException.class)
   void testInvalidAddDate() {
-    JstlFunctions.timestampAdd((byte) 7, 0, "days");
+    JstlFunctions.dateadd((byte) 7, 0, "days");
   }
 
   /** @return {"input date in epoch millis", "delta", "unit", "expected value (in epoch millis)"} */
