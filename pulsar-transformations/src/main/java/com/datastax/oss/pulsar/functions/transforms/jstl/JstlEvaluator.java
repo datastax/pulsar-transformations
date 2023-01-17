@@ -61,6 +61,12 @@ public class JstlEvaluator<T> {
     this.expressionContext.setFunction("fn", "now", JstlFunctions.class.getMethod("now"));
     this.expressionContext.setFunction(
         "fn",
+        "timestampAdd",
+        JstlFunctions.class.getMethod("timestampAdd", Object.class, Object.class, Object.class));
+
+    // Deprecated
+    this.expressionContext.setFunction(
+        "fn",
         "dateadd",
         JstlFunctions.class.getMethod("dateadd", Object.class, Object.class, Object.class));
   }

@@ -71,7 +71,7 @@ public class JstEvaluatorTest {
   }
 
   @Test
-  void testDateAddFunctionsNow() {
+  void testTimestampAddFunctionsNow() {
     TransformContext primitiveStringContext =
         Utils.createContextWithPrimitiveRecord(Schema.STRING, "test-message", "");
 
@@ -80,7 +80,7 @@ public class JstEvaluatorTest {
     Clock clock = Clock.fixed(Instant.ofEpochMilli(nowMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
     long actualMillis =
-        new JstlEvaluator<>("${fn:dateadd(fn:now(), -3333, 'seconds')}", long.class)
+        new JstlEvaluator<>("${fn:timestampAdd(fn:now(), -3333, 'seconds')}", long.class)
             .evaluate(primitiveStringContext);
 
     assertEquals(nowMillis + millisToAdd, actualMillis);
@@ -143,94 +143,94 @@ public class JstEvaluatorTest {
       {"fn:replace('test', null, '')", primitiveBytesContext, "test"},
       {"fn:replace('test', '.*', null)", primitiveBytesContext, "test"},
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1, 'years')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1, 'years')",
         primitiveBytesContext,
-        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+        Instant.parse("2018-01-02T00:01:02Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', -1, 'months')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', -1, 'months')",
         primitiveBytesContext,
-        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+        Instant.parse("2016-12-02T00:01:02Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1, 'days')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1, 'days')",
         primitiveBytesContext,
-        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+        Instant.parse("2017-01-03T00:01:02Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', -1, 'hours')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', -1, 'hours')",
         primitiveBytesContext,
-        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+        Instant.parse("2017-01-01T23:01:02Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1, 'minutes')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1, 'minutes')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:02:02Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', -1, 'seconds')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', -1, 'seconds')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:01Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1, 'millis')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1, 'millis')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1000000, 'nanos')",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1000000, 'nanos')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
       {
-        "fn:dateadd(" + millis + ", 1, 'years')",
+        "fn:timestampAdd(" + millis + ", 1, 'years')",
         primitiveBytesContext,
-        Instant.parse("2018-01-02T00:01:02Z").toEpochMilli()
+        Instant.parse("2018-01-02T00:01:02Z")
       },
       {
-        "fn:dateadd(" + millis + ", -1, 'months')",
+        "fn:timestampAdd(" + millis + ", -1, 'months')",
         primitiveBytesContext,
-        Instant.parse("2016-12-02T00:01:02Z").toEpochMilli()
+        Instant.parse("2016-12-02T00:01:02Z")
       },
       {
-        "fn:dateadd(" + millis + ", 1, 'days')",
+        "fn:timestampAdd(" + millis + ", 1, 'days')",
         primitiveBytesContext,
-        Instant.parse("2017-01-03T00:01:02Z").toEpochMilli()
+        Instant.parse("2017-01-03T00:01:02Z")
       },
       {
-        "fn:dateadd(" + millis + ", -1, 'hours')",
+        "fn:timestampAdd(" + millis + ", -1, 'hours')",
         primitiveBytesContext,
-        Instant.parse("2017-01-01T23:01:02Z").toEpochMilli()
+        Instant.parse("2017-01-01T23:01:02Z")
       },
       {
-        "fn:dateadd(" + millis + ", 1, 'minutes')",
+        "fn:timestampAdd(" + millis + ", 1, 'minutes')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:02:02Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:02:02Z")
       },
       {
-        "fn:dateadd(" + millis + ", -1, 'seconds')",
+        "fn:timestampAdd(" + millis + ", -1, 'seconds')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:01Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:01Z")
       },
       {
-        "fn:dateadd(" + millis + ", 1, 'millis')",
+        "fn:timestampAdd(" + millis + ", 1, 'millis')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
       {
-        "fn:dateadd(" + millis + ", 1000000, 'nanos')",
+        "fn:timestampAdd(" + millis + ", 1000000, 'nanos')",
         primitiveBytesContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
       {
-        "fn:dateadd(value, '1', 'millis')",
+        "fn:timestampAdd(value, '1', 'millis')",
         primitiveInstantContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
       {
-        "fn:dateadd('2017-01-02T00:01:02Z', 1, value)",
+        "fn:timestampAdd('2017-01-02T00:01:02Z', 1, value)",
         chronoUnitBytesContext,
-        Instant.parse("2017-01-02T00:01:02.001Z").toEpochMilli()
+        Instant.parse("2017-01-02T00:01:02.001Z")
       },
     };
   }
