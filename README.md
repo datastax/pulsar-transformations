@@ -67,17 +67,21 @@ This example config applied on a `KeyValue<AVRO, AVRO>` input record with value 
 {"keyField3": "key3", "valueField1": "value1", "valueField2": "value2", "valueField3": "value3"} (STRING)
 ```
 
+## Type conversions
+
+Some step operations like `cast` or `compute` involve conversions from a type to another.
+When this happens the rules are:
+* timestamp, date and time related object conversions assume UTC time zone if it is not explicit.
+* date and time related object conversions to/from STRING use the RFC3339 format.
+* timestamp and date related object conversions to/from LONG and DOUBLE are done using the number of milliseconds since EPOCH (1970-01-01T00:00:00Z).
+* time related object conversions to/from LONG and DOUBLE are done using the number of milliseconds since midnight.
+
 ## Available steps
 
 ### Cast
 
 Transforms the data to a target compatible schema.
-
-Conversion rules:
-* date and time related objects assume UTC time zone if it is not explicit.
-* date and time related objects to/from STRING use the RFC3339 format.
-* date related objects to/from LONG and DOUBLE are done using the number of milliseconds since EPOCH (1970-01-01T00:00:00Z).
-* time related objects to/from LONG and DOUBLE are done using the number of milliseconds since midnight.
+Conversion are done using the rules described in [Type conversions](#Type conversions)
 
 Step name: `cast`
 
@@ -205,12 +209,12 @@ Parameters:
 |--------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | fields | an array of JSON objects describing how to calculate the field values. The JSON object represents a `field` as described in the next table |
 
-| Name (field)             | Description                                                                                                                                                                                                                                                                                                                                                                                                         |
-|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| name                     | the name of the field to be computed. Prefix with `key.` or `value.` to compute the fields in the key or value parts of the message. In addition, you can compute values on the following message headers [`destinationTopic`, `messageKey`, `properties.`]. Please note that properties is a map of key/value pairs that are referenced by the dot notation, for example `properties.key0`                         |
-| expression               | supports the [Expression Language](#expression-language) syntax. It is evaluated at runtime and the result of the evaluation is assigned to the field.                                                                                                                                                                                                                                                              |
-| type                     | the type of the computed field. This will translate to the schema type of the new field in the transformed message. The following types are currently supported [`STRING`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `DATE`, `TIME`, `DATETIME`]. For more details about each type, please check the next table. It is not required for the message headers [`destinationTopic`, `messageKey`, `properties.`] |
-| optional (default: true) | if true, it marks the field as optional in the schema of the transformed message. This is useful when `null` is a possible value of the compute expression.                                                                                                                                                                                                                                                         |
+| Name (field)             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name                     | the name of the field to be computed. Prefix with `key.` or `value.` to compute the fields in the key or value parts of the message. In addition, you can compute values on the following message headers [`destinationTopic`, `messageKey`, `properties.`]. Please note that properties is a map of key/value pairs that are referenced by the dot notation, for example `properties.key0`                                                                                                                                                          |
+| expression               | supports the [Expression Language](#expression-language) syntax. It is evaluated at runtime and the result of the evaluation is assigned to the field.                                                                                                                                                                                                                                                                                                                                                                                               |
+| type                     | the type of the computed field. This will translate to the schema type of the new field in the transformed message. The following types are currently supported [`STRING`, `INT32`, `INT64`, `FLOAT`, `DOUBLE`, `BOOLEAN`, `DATE`, `TIME`, `DATETIME`]. For more details about each type, please check the next table. conversion are done using the rules described in [Type conversions](#Type conversions). The `type` field is not required for the message headers [`destinationTopic`, `messageKey`, `properties.`] and `STRING` will be used. |
+| optional (default: true) | if true, it marks the field as optional in the schema of the transformed message. This is useful when `null` is a possible value of the compute expression.                                                                                                                                                                                                                                                                                                                                                                                          |
 
 | Name (field.type) | Description                                                                                         | Expression Examples                                                                                    |
 |-------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
@@ -247,7 +251,9 @@ Input: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>),
 Output: `{key={keyField: key}, value={valueField: value}} (KeyValue<AVRO, AVRO>), headers=destinationTopic:routed, propertes: {k1:overwritten, k2:new}`
 
 ### Expression Language
-In order to support [Condition Steps](#conditional-steps) and the [Compute](#compute) Transform, an expression language is required to evaluate the conditional step `when` or the compute step `expression`. The syntax is([EL](https://javaee.github.io/tutorial/jsf-el001.html#BNAHQ)) like that uses the dot notation to access field properties or map keys. It supports the following operators and functions:
+In order to support [Condition Steps](#conditional-steps) and the [Compute](#compute) Transform, an expression language is required to evaluate the conditional step `when` or the compute step `expression`.
+The syntax is ([EL](https://javaee.github.io/tutorial/jsf-el001.html#BNAHQ)) like that uses the dot notation to access field properties or map keys.
+It supports the following operators and functions:
 
 #### Operators
 The Expression Language supports the following operators:
@@ -256,19 +262,27 @@ The Expression Language supports the following operators:
 * Relational: ==, eq, !=, ne, <, lt, >, gt, <=, ge, >=, le.
 
 #### Functions
-Utility methods available under the `fn` namespace. For example, to calculate the current date, use 'fn:now()'. The Expression Language supports the following Functions:
-* uppercase(input): , lowercase(input): Changes the capitalization of a string. If `input` is not a string, it attempts a string conversion. If the input is `null`, it returns `null`. 
-* contains(input, value): Returns true if `value` exists in `input`. It attempts string conversion on both `input` and `value` if either is not a string. If `input` or `value` is `null`, ir returns false. 
-* trim(input): Returns the `input` string with all leading and trailing spaces removed. If the `input` is not a string, it attempts a string conversion.
+Utility methods available under the `fn` namespace.
+For example, to get the current timestamp, use 'fn:now()'.
+The Expression Language supports the following functions:
+* uppercase(input): Returns the string `input` uppercased, If the input is `null`, it returns `null`.
+* lowercase(input): Returns the string `input` lowercased, If the input is `null`, it returns `null`.
+* contains(input, value): Returns the boolean `true` if `value` exists in `input`. If `input` or `value` is `null`, it returns `false`. 
+* trim(input): Returns the `input` string with all leading and trailing spaces removed.
 * concat(input1, input2): Returns a string concatenation of `input1` and `input2`. If either input is `null`, it is treated as an empty string.
 * coalesce(value, valueIfNull): Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
-* replace(input, regex, replacement): Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
+* replace(input, regex, replacement): Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java's replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
 * str(input): Converts `input` to a string.
-* now(): Returns the current epoch millis.
-* dateadd(input, delta, unit): Performs date/time arithmetic operations on the `input` date/time. 
-  * `input` can be either epoch millis or an [RFC3339](https://www.rfc-editor.org/rfc/rfc3339) format like "2022-10-14T10:15:30+01:00"
-  * `delta` is the amount of `unit` to add to `input`. Can be a negative value to perform subtraction.
-  * `unit` the unit of time to add or subtract. Can be one of [`years`, `months`, `days`, `hours`, `minutes`, `seconds`, `millis`]
+* now(): Returns the current timestamp.
+* timestamAdd(input, delta, unit): Returns a timestamp formed by adding `delta` in `unit` to the `input` timestamp. 
+  * `input` a timestamp to add to.
+  * `delta` a `long` amount of `unit` to add to `input`. Can be a negative value to perform subtraction.
+  * `unit` the string unit of time to add or subtract. Can be one of [`years`, `months`, `days`, `hours`, `minutes`, `seconds`, `millis`].
+
+For all methods, if a parameter is not in the right type, a conversion will be done using the rules described in [Type conversions](#Type conversions).
+For instance, you can do `fn:timestampAdd('2022-10-02T01:02:03Z', '42', 'hours'.bytes)`
+
+When a function returns a timestamp, its type is `INSTANT`.
 
 #### Conditional Steps
 
@@ -304,11 +318,11 @@ You can use the `.` operator to access top level or nested properties on a schem
   }}
 ```
 
-| when                                                        | Evaluates to |
-|-------------------------------------------------------------|--------------|
-| `"key.compund.uuid == 'uudValue'"`                          | True         |
-| `"key.compund.timestamp <= 10"`                             | False        |
-| `"value.first == 'f1' && value.last.toUpperCase() == 'L1'`  | True         |
+| when                                                         | Evaluates to |
+|--------------------------------------------------------------|--------------|
+| `"key.compound.uuid == 'uudValue'"`                          | True         |
+| `"key.compound.timestamp <= 10"`                             | False        |
+| `"value.first == 'f1' && value.last.toUpperCase() == 'L1'`   | True         |
 | `"value.rank <= 1 && value.address.substring(0, 3) == 'abc'` | True         |
 
 #### Example 2: (Primitive string schema with metadata)

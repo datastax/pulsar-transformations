@@ -112,38 +112,40 @@ public class JstlFunctionsTest {
   @Test
   void testNow() {
     long expectedMillis = 99L;
-    Clock clock = Clock.fixed(Instant.ofEpochMilli(expectedMillis), ZoneOffset.UTC);
+    Instant fixedInstant = Instant.now();
+    Clock clock = Clock.fixed(fixedInstant, ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
-    assertEquals(expectedMillis, JstlFunctions.now());
+    assertEquals(fixedInstant, JstlFunctions.now());
   }
 
-  @Test(dataProvider = "millisDateAddProvider")
-  void testAddDateMillis(long input, int delta, String unit, long expected) {
-    assertEquals(expected, JstlFunctions.dateadd(input, delta, unit));
+  @Test(dataProvider = "millisTimestampAddProvider")
+  void testAddDateMillis(long input, int delta, String unit, Instant expected) {
+    assertEquals(expected, JstlFunctions.timestampAdd(input, delta, unit));
   }
 
-  @Test(dataProvider = "utcDateAddProvider")
-  void testAddDateUTC(String input, int delta, String unit, long expected) {
-    assertEquals(expected, JstlFunctions.dateadd(input, delta, unit));
+  @Test(dataProvider = "utcTimestampAddProvider")
+  void testAddDateUTC(String input, int delta, String unit, Instant expected) {
+    assertEquals(expected, JstlFunctions.timestampAdd(input, delta, unit));
   }
 
-  @Test(dataProvider = "nonUtcDateAddProvider")
-  void testAddDateNonUTC(String input, int delta, String unit, long expected) {
-    assertEquals(expected, JstlFunctions.dateadd(input, delta, unit));
+  @Test(dataProvider = "nonUtcTimestampAddProvider")
+  void testAddDateNonUTC(String input, int delta, String unit, Instant expected) {
+    assertEquals(expected, JstlFunctions.timestampAdd(input, delta, unit));
   }
 
   @Test
   void testAddDateDeltaConversion() {
     assertEquals(
-        Instant.parse("2022-10-02T02:02:03Z").toEpochMilli(),
-        JstlFunctions.dateadd("2022-10-02T01:02:03Z", LocalTime.of(1, 0, 0), "millis"));
+        Instant.parse("2022-10-02T02:02:03Z"),
+        JstlFunctions.timestampAdd("2022-10-02T01:02:03Z", LocalTime.of(1, 0, 0), "millis"));
   }
 
   @Test
   void testAddDateUnitConversion() {
     assertEquals(
-        Instant.parse("2022-10-02T02:02:03Z").toEpochMilli(),
-        JstlFunctions.dateadd("2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
+        Instant.parse("2022-10-02T02:02:03Z"),
+        JstlFunctions.timestampAdd(
+            "2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test(
@@ -152,185 +154,182 @@ public class JstlFunctionsTest {
         "Cannot coerce '7' of class java.lang.Byte to class java.time.Instant \\(incompatible type\\)"
   )
   void testInvalidAddDate() {
-    JstlFunctions.dateadd((byte) 7, 0, "days");
+    JstlFunctions.timestampAdd((byte) 7, 0, "days");
   }
 
   /** @return {"input date in epoch millis", "delta", "unit", "expected value (in epoch millis)"} */
-  @DataProvider(name = "millisDateAddProvider")
-  public static Object[][] millisDateAddProvider() {
+  @DataProvider(name = "millisTimestampAddProvider")
+  public static Object[][] millisTimestampAddProvider() {
     Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     long millis = instant.toEpochMilli();
     return new Object[][] {
-      {millis, 0, "years", instant.toEpochMilli()},
-      {millis, 5, "years", Instant.parse("2027-10-02T01:02:03Z").toEpochMilli()},
-      {millis, -3, "years", Instant.parse("2019-10-02T01:02:03Z").toEpochMilli()},
-      {millis, 0, "months", instant.toEpochMilli()},
-      {millis, 5, "months", Instant.parse("2023-03-02T01:02:03Z").toEpochMilli()},
-      {millis, -3, "months", Instant.parse("2022-07-02T01:02:03Z").toEpochMilli()},
-      {millis, 0, "days", instant.toEpochMilli()},
-      {millis, 5, "days", Instant.parse("2022-10-07T01:02:03Z").toEpochMilli()},
-      {millis, -3, "days", Instant.parse("2022-09-29T01:02:03Z").toEpochMilli()},
-      {millis, 0, "hours", instant.toEpochMilli()},
-      {millis, 5, "hours", Instant.parse("2022-10-02T06:02:03Z").toEpochMilli()},
-      {millis, -3, "hours", Instant.parse("2022-10-01T22:02:03Z").toEpochMilli()},
-      {millis, 0, "minutes", instant.toEpochMilli()},
-      {millis, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z").toEpochMilli()},
-      {millis, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z").toEpochMilli()},
-      {millis, 0, "seconds", instant.toEpochMilli()},
-      {millis, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z").toEpochMilli()},
-      {millis, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z").toEpochMilli()},
-      {millis, 0, "millis", instant.toEpochMilli()},
-      {millis, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
-      {millis, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
-      {millis, 0, "nanos", instant.toEpochMilli()},
-      {millis, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
-      {millis, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
+      {millis, 0, "years", instant},
+      {millis, 5, "years", Instant.parse("2027-10-02T01:02:03Z")},
+      {millis, -3, "years", Instant.parse("2019-10-02T01:02:03Z")},
+      {millis, 0, "months", instant},
+      {millis, 5, "months", Instant.parse("2023-03-02T01:02:03Z")},
+      {millis, -3, "months", Instant.parse("2022-07-02T01:02:03Z")},
+      {millis, 0, "days", instant},
+      {millis, 5, "days", Instant.parse("2022-10-07T01:02:03Z")},
+      {millis, -3, "days", Instant.parse("2022-09-29T01:02:03Z")},
+      {millis, 0, "hours", instant},
+      {millis, 5, "hours", Instant.parse("2022-10-02T06:02:03Z")},
+      {millis, -3, "hours", Instant.parse("2022-10-01T22:02:03Z")},
+      {millis, 0, "minutes", instant},
+      {millis, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z")},
+      {millis, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z")},
+      {millis, 0, "seconds", instant},
+      {millis, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z")},
+      {millis, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z")},
+      {millis, 0, "millis", instant},
+      {millis, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z")},
+      {millis, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z")},
+      {millis, 0, "nanos", instant},
+      {millis, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z")},
+      {millis, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z")},
     };
   }
 
-  /** @return {"input date", "delta", "unit", "expected value (in epoch millis)"} */
-  @DataProvider(name = "utcDateAddProvider")
-  public static Object[][] utcDateAddProvider() {
+  /** @return {"input date", "delta", "unit", "expected value"} */
+  @DataProvider(name = "utcTimestampAddProvider")
+  public static Object[][] utcTimestampAddProvider() {
     String utcDateTime = "2022-10-02T01:02:03Z";
     Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     return new Object[][] {
-      {utcDateTime, 0, "years", instant.toEpochMilli()},
-      {utcDateTime, 5, "years", Instant.parse("2027-10-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, -3, "years", Instant.parse("2019-10-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "months", instant.toEpochMilli()},
-      {utcDateTime, 5, "months", Instant.parse("2023-03-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, -3, "months", Instant.parse("2022-07-02T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "days", instant.toEpochMilli()},
-      {utcDateTime, 5, "days", Instant.parse("2022-10-07T01:02:03Z").toEpochMilli()},
-      {utcDateTime, -3, "days", Instant.parse("2022-09-29T01:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "hours", instant.toEpochMilli()},
-      {utcDateTime, 5, "hours", Instant.parse("2022-10-02T06:02:03Z").toEpochMilli()},
-      {utcDateTime, -3, "hours", Instant.parse("2022-10-01T22:02:03Z").toEpochMilli()},
-      {utcDateTime, 0, "minutes", instant.toEpochMilli()},
-      {utcDateTime, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z").toEpochMilli()},
-      {utcDateTime, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z").toEpochMilli()},
-      {utcDateTime, 0, "seconds", instant.toEpochMilli()},
-      {utcDateTime, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z").toEpochMilli()},
-      {utcDateTime, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z").toEpochMilli()},
-      {utcDateTime, 0, "millis", instant.toEpochMilli()},
-      {utcDateTime, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
-      {utcDateTime, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
-      {utcDateTime, 0, "nanos", instant.toEpochMilli()},
-      {utcDateTime, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli()},
-      {utcDateTime, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli()},
+      {utcDateTime, 0, "years", instant},
+      {utcDateTime, 5, "years", Instant.parse("2027-10-02T01:02:03Z")},
+      {utcDateTime, -3, "years", Instant.parse("2019-10-02T01:02:03Z")},
+      {utcDateTime, 0, "months", instant},
+      {utcDateTime, 5, "months", Instant.parse("2023-03-02T01:02:03Z")},
+      {utcDateTime, -3, "months", Instant.parse("2022-07-02T01:02:03Z")},
+      {utcDateTime, 0, "days", instant},
+      {utcDateTime, 5, "days", Instant.parse("2022-10-07T01:02:03Z")},
+      {utcDateTime, -3, "days", Instant.parse("2022-09-29T01:02:03Z")},
+      {utcDateTime, 0, "hours", instant},
+      {utcDateTime, 5, "hours", Instant.parse("2022-10-02T06:02:03Z")},
+      {utcDateTime, -3, "hours", Instant.parse("2022-10-01T22:02:03Z")},
+      {utcDateTime, 0, "minutes", instant},
+      {utcDateTime, 5, "minutes", Instant.parse("2022-10-02T01:07:03Z")},
+      {utcDateTime, -3, "minutes", Instant.parse("2022-10-02T00:59:03Z")},
+      {utcDateTime, 0, "seconds", instant},
+      {utcDateTime, 5, "seconds", Instant.parse("2022-10-02T01:02:08Z")},
+      {utcDateTime, -3, "seconds", Instant.parse("2022-10-02T01:02:00Z")},
+      {utcDateTime, 0, "millis", instant},
+      {utcDateTime, 5, "millis", Instant.parse("2022-10-02T01:02:03.005Z")},
+      {utcDateTime, -3, "millis", Instant.parse("2022-10-02T01:02:02.997Z")},
+      {utcDateTime, 0, "nanos", instant},
+      {utcDateTime, 5_000_000, "nanos", Instant.parse("2022-10-02T01:02:03.005Z")},
+      {utcDateTime, -3_000_000, "nanos", Instant.parse("2022-10-02T01:02:02.997Z")},
     };
   }
 
   /** @return {"input date", "delta", "unit", "expected value (in epoch millis)"} */
-  @DataProvider(name = "nonUtcDateAddProvider")
-  public static Object[][] nonUtcDateAddProvider() {
+  @DataProvider(name = "nonUtcTimestampAddProvider")
+  public static Object[][] nonUtcTimestampAddProvider() {
     String nonUtcDateTime = "2022-10-02T01:02:03+02:00";
     long twoHoursMillis = Duration.ofHours(2).toMillis();
     Instant instant = Instant.parse("2022-10-02T01:02:03Z");
     return new Object[][] {
-      {nonUtcDateTime, 0, "years", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "years", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "years",
-        Instant.parse("2027-10-02T01:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2027-10-02T01:02:03Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "years",
-        Instant.parse("2019-10-02T01:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2019-10-02T01:02:03Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "months", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "months", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "months",
-        Instant.parse("2023-03-02T01:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2023-03-02T01:02:03Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "months",
-        Instant.parse("2022-07-02T01:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-07-02T01:02:03Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "days", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "days", instant.minusMillis(twoHoursMillis)},
       {
-        nonUtcDateTime,
-        5,
-        "days",
-        Instant.parse("2022-10-07T01:02:03Z").toEpochMilli() - twoHoursMillis
+        nonUtcDateTime, 5, "days", Instant.parse("2022-10-07T01:02:03Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "days",
-        Instant.parse("2022-09-29T01:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-09-29T01:02:03Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "hours", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "hours", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "hours",
-        Instant.parse("2022-10-02T06:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T06:02:03Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "hours",
-        Instant.parse("2022-10-01T22:02:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-01T22:02:03Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "minutes", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "minutes", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "minutes",
-        Instant.parse("2022-10-02T01:07:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:07:03Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "minutes",
-        Instant.parse("2022-10-02T00:59:03Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T00:59:03Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "seconds", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "seconds", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "seconds",
-        Instant.parse("2022-10-02T01:02:08Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:08Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "seconds",
-        Instant.parse("2022-10-02T01:02:00Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:00Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "millis", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "millis", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5,
         "millis",
-        Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:03.005Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3,
         "millis",
-        Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:02.997Z").minusMillis(twoHoursMillis)
       },
-      {nonUtcDateTime, 0, "nanos", instant.toEpochMilli() - twoHoursMillis},
+      {nonUtcDateTime, 0, "nanos", instant.minusMillis(twoHoursMillis)},
       {
         nonUtcDateTime,
         5_000_000,
         "nanos",
-        Instant.parse("2022-10-02T01:02:03.005Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:03.005Z").minusMillis(twoHoursMillis)
       },
       {
         nonUtcDateTime,
         -3_000_000,
         "nanos",
-        Instant.parse("2022-10-02T01:02:02.997Z").toEpochMilli() - twoHoursMillis
+        Instant.parse("2022-10-02T01:02:02.997Z").minusMillis(twoHoursMillis)
       },
     };
   }
@@ -341,6 +340,6 @@ public class JstlFunctionsTest {
         "Invalid unit: lightyear. Should be one of \\[years, months, days, hours, minutes, seconds, millis\\]"
   )
   void testAddDateInvalidUnit() {
-    JstlFunctions.dateadd(0L, 0, "lightyear");
+    JstlFunctions.timestampAdd(0L, 0, "lightyear");
   }
 }

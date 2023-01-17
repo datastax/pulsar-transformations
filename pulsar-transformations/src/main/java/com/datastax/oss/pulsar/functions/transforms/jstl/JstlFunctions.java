@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import de.odysseus.el.misc.LocalMessages;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import javax.el.ELException;
 import lombok.Setter;
@@ -66,11 +67,11 @@ public class JstlFunctions {
     return CustomTypeConverter.INSTANCE.coerceToString(input);
   }
 
-  public static long now() {
-    return clock.millis();
+  public static Instant now() {
+    return Instant.now(clock);
   }
 
-  public static long dateadd(Object input, Object delta, Object unit) {
+  public static Instant timestampAdd(Object input, Object delta, Object unit) {
     if (input == null || unit == null) {
       throw new ELException(LocalMessages.get("error.method.notypes"));
     }
@@ -111,12 +112,15 @@ public class JstlFunctions {
       return CustomTypeConverter.INSTANCE
           .coerceToOffsetDateTime(input)
           .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
-          .toInstant()
-          .toEpochMilli();
+          .toInstant();
     }
     return CustomTypeConverter.INSTANCE
         .coerceToInstant(input)
-        .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
-        .toEpochMilli();
+        .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit);
+  }
+
+  @Deprecated
+  public static long dateadd(Object input, Object delta, Object unit) {
+    return timestampAdd(input, delta, unit).toEpochMilli();
   }
 }
