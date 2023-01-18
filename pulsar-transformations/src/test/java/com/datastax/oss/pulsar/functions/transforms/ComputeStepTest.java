@@ -348,6 +348,24 @@ public class ComputeStepTest {
     Utils.process(record, step);
   }
 
+  @Test(expectedExceptions = UnsupportedOperationException.class)
+  void testAvroNullInferredType() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    List<ComputeField> fields = new ArrayList<>();
+    fields.add(
+        ComputeField.builder().scopedName("value.newStringField").expression("null").build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+    Utils.process(record, step);
+  }
+
   @Test
   void testAvroWithNonNullOptionalFields() throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
@@ -510,6 +528,24 @@ public class ComputeStepTest {
 
     assertEquals(outputRecord.getSchema(), expectedSchema);
     assertEquals(outputRecord.getValue(), expectedValue);
+  }
+
+  @Test(expectedExceptions = UnsupportedOperationException.class)
+  void testNullInferredSchemaType() throws Exception {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("input", SchemaType.STRING, new byte[] {}),
+            "");
+
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                Collections.singletonList(
+                    ComputeField.builder().scopedName("value").expression("null").build()))
+            .build();
+
+    Utils.process(record, step);
   }
 
   @Test

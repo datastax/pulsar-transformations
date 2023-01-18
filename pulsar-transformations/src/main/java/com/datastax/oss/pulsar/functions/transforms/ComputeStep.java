@@ -457,6 +457,9 @@ public class ComputeStep implements TransformStep {
   }
 
   private org.apache.pulsar.client.api.Schema<?> getPrimitiveSchema(Object value) {
+    if (value == null) {
+      throw new UnsupportedOperationException("Cannot get schema from null value");
+    }
     if (value.getClass().equals(String.class)) {
       return org.apache.pulsar.client.api.Schema.STRING;
     }
@@ -505,10 +508,13 @@ public class ComputeStep implements TransformStep {
     if (value.getClass().equals(Instant.class)) {
       return org.apache.pulsar.client.api.Schema.INSTANT;
     }
-    throw new UnsupportedOperationException("Got an unsupported type. This should never happen !");
+    throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }
 
   private ComputeFieldType getFieldType(Object value) {
+    if (value == null) {
+      throw new UnsupportedOperationException("Cannot get field type from null value");
+    }
     if (value instanceof CharSequence) {
       return ComputeFieldType.STRING;
     }
@@ -557,6 +563,6 @@ public class ComputeStep implements TransformStep {
     if (value.getClass().equals(Instant.class)) {
       return ComputeFieldType.INSTANT;
     }
-    throw new UnsupportedOperationException("Got an unsupported type. This should never happen !");
+    throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }
 }
