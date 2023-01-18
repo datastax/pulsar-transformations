@@ -69,6 +69,7 @@ public class CustomTypeConverterTest {
     double doubleValue = 42.8D;
     long dateTimeMillis = 1672700645000L;
     long midnightMillis = 1672617600000L;
+    long numberOfDays = 19359L;
     long timeMillis = 83045000L;
     double timeMillisWithNanos = 83045000.000006D;
     Date date = new Date(dateTimeMillis);
@@ -158,6 +159,7 @@ public class CustomTypeConverterTest {
       {longValue, Integer.class, intValue},
       {floatValue, Integer.class, intValue},
       {doubleValue, Integer.class, intValue},
+      {localDate, Integer.class, (int) numberOfDays},
 
       // Long
       {Schema.INT64.encode(longValue), Long.class, longValue},
@@ -175,7 +177,7 @@ public class CustomTypeConverterTest {
       {instant, Long.class, dateTimeMillis},
       {offsetDateTime, Long.class, dateTimeMillis},
       {localTime, Long.class, timeMillis},
-      {localDate, Long.class, midnightMillis},
+      {localDate, Long.class, numberOfDays},
 
       // Float
       {Schema.FLOAT.encode(floatValue), Float.class, floatValue},
@@ -186,6 +188,7 @@ public class CustomTypeConverterTest {
       {longValue, Float.class, 42F},
       {floatValue, Float.class, floatValue},
       {doubleValue, Float.class, floatValue},
+      {localDate, Float.class, (float) numberOfDays},
 
       // Double
       {Schema.DOUBLE.encode(doubleValue), Double.class, doubleValue},
@@ -203,7 +206,7 @@ public class CustomTypeConverterTest {
       {instant, Double.class, (double) dateTimeMillis},
       {offsetDateTime, Double.class, (double) dateTimeMillis},
       {localTime, Double.class, timeMillisWithNanos},
-      {localDate, Double.class, (double) midnightMillis},
+      {localDate, Double.class, (double) numberOfDays},
 
       // Date
       {Schema.DATE.encode(date), Date.class, date},
@@ -261,8 +264,10 @@ public class CustomTypeConverterTest {
       // LocalDate
       {Schema.LOCAL_DATE.encode(localDate), LocalDate.class, localDate},
       {"2023-01-02", LocalDate.class, localDate},
-      {dateTimeMillis, LocalDate.class, localDate},
-      {(double) dateTimeMillis, LocalDate.class, localDate},
+      {(int) numberOfDays, LocalDate.class, localDate},
+      {numberOfDays, LocalDate.class, localDate},
+      {(float) numberOfDays, LocalDate.class, localDate},
+      {(double) numberOfDays, LocalDate.class, localDate},
       {date, LocalDate.class, localDate},
       {timestamp, LocalDate.class, localDate},
       {localDateTime, LocalDate.class, localDate},

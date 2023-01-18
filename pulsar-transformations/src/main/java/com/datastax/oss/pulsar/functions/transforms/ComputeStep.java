@@ -293,8 +293,8 @@ public class ComputeStep implements TransformStep {
   private Integer getAvroDate(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Date.class, LocalDate.class);
     return (value instanceof LocalDate)
-        ? (int) ((LocalDate) value).toEpochDay()
-        : (int) (((Date) value).getTime() / MILLIS_PER_DAY);
+        ? Math.toIntExact(((LocalDate) value).toEpochDay())
+        : Math.toIntExact((((Date) value).getTime() / MILLIS_PER_DAY));
   }
 
   private Integer getAvroTimeMillis(Object value, LogicalType logicalType) {
