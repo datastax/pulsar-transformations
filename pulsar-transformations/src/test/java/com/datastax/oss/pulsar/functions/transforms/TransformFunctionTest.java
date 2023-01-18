@@ -111,6 +111,9 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: 'key', type: 'STRING'}]}]}"
       },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: '1234', type: 'DATE'}]}]}"
+      }
     };
   }
 
@@ -191,6 +194,12 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: 'true', type: 'BOOLEAN'}, {'name': 'value', expression: 'true', type: 'STRING'}]}]}"
       },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value', expression: '1234', type: 'DATE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: '1234', type: 'DATE'}]}]}"
+      }
     };
   }
 

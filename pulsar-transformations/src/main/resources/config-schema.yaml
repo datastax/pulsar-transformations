@@ -186,7 +186,9 @@ components:
                     description: An EL-like expression to compute the field value. It can refer to other attributes in the record.
                     minLength: 1
                   type:
-                    type: string
+                    type:
+                      - string
+                      - 'null'
                     description: The data type of the computed fields. It should match with the output of the expression.
                     enum:
                       - STRING
@@ -206,6 +208,7 @@ components:
                       - LOCAL_DATE_TIME
                       - DATETIME
                       - BYTES
+                      - null
                   optional:
                     type: boolean
                     description: If true, the generated schema for the computed field will allow for null values.

@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericData;
@@ -85,6 +86,7 @@ public class ComputeStepTest {
 
   @Test
   void testAvro() throws Exception {
+    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
     recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
@@ -186,37 +188,61 @@ public class ComputeStepTest {
     assertEquals(read.getSchema().getField("newDateField").schema(), DATE_SCHEMA);
     assertEquals(read.get("newDateField"), 13850); // 13850 days since 1970-01-01
 
+    assertTrue(read.hasField("newDateField2"));
+    assertEquals(read.getSchema().getField("newDateField2").schema(), DATE_SCHEMA);
+    assertEquals(read.get("newDateField2"), 13850); // 13850 days since 1970-01-01
+
     assertTrue(read.hasField("newLocalDateField"));
     assertEquals(read.getSchema().getField("newLocalDateField").schema(), DATE_SCHEMA);
     assertEquals(read.get("newLocalDateField"), 13850); // 13850 days since 1970-01-01
+
+    assertTrue(read.hasField("newLocalDateField2"));
+    assertEquals(read.getSchema().getField("newLocalDateField2").schema(), DATE_SCHEMA);
+    assertEquals(read.get("newLocalDateField2"), 13850); // 13850 days since 1970-01-01
 
     assertTrue(read.hasField("newTimeField"));
     assertEquals(read.getSchema().getField("newTimeField").schema(), TIME_SCHEMA);
     assertEquals(read.get("newTimeField"), 36930000); // 36930000 ms since 00:00:00
 
+    assertTrue(read.hasField("newTimeField2"));
+    assertEquals(read.getSchema().getField("newTimeField2").schema(), TIME_SCHEMA);
+    assertEquals(read.get("newTimeField2"), 36930000); // 36930000 ms since 00:00:00
+
     assertTrue(read.hasField("newLocalTimeField"));
     assertEquals(read.getSchema().getField("newLocalTimeField").schema(), TIME_SCHEMA);
     assertEquals(read.get("newLocalTimeField"), 36930000); // 36930000 ms since 00:00:00
 
+    assertTrue(read.hasField("newLocalTimeField2"));
+    assertEquals(read.getSchema().getField("newLocalTimeField2").schema(), TIME_SCHEMA);
+    assertEquals(read.get("newLocalTimeField2"), 36930000); // 36930000 ms since 00:00:00
+
     assertTrue(read.hasField("newDateTimeField"));
     assertEquals(read.getSchema().getField("newDateTimeField").schema(), TIMESTAMP_SCHEMA);
-    assertEquals(
-        read.get("newDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+    assertEquals(read.get("newDateTimeField"), 1196676930000L);
 
     assertTrue(read.hasField("newInstantField"));
     assertEquals(read.getSchema().getField("newInstantField").schema(), TIMESTAMP_SCHEMA);
-    assertEquals(
-        read.get("newInstantField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+    assertEquals(read.get("newInstantField"), 1196676930000L);
+
+    assertTrue(read.hasField("newInstantField2"));
+    assertEquals(read.getSchema().getField("newInstantField2").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(read.get("newInstantField2"), 1196676930000L);
 
     assertTrue(read.hasField("newTimestampField"));
     assertEquals(read.getSchema().getField("newTimestampField").schema(), TIMESTAMP_SCHEMA);
-    assertEquals(
-        read.get("newTimestampField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+    assertEquals(read.get("newTimestampField"), 1196676930000L);
+
+    assertTrue(read.hasField("newTimestampField2"));
+    assertEquals(read.getSchema().getField("newTimestampField2").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(read.get("newTimestampField2"), 1196676930000L);
 
     assertTrue(read.hasField("newLocalDateTimeField"));
     assertEquals(read.getSchema().getField("newLocalDateTimeField").schema(), TIMESTAMP_SCHEMA);
-    assertEquals(
-        read.get("newLocalDateTimeField"), Instant.parse("2007-12-03T10:15:30.00Z").toEpochMilli());
+    assertEquals(read.get("newLocalDateTimeField"), 1196676930000L);
+
+    assertTrue(read.hasField("newLocalDateTimeField2"));
+    assertEquals(read.getSchema().getField("newLocalDateTimeField2").schema(), TIMESTAMP_SCHEMA);
+    assertEquals(read.get("newLocalDateTimeField2"), 1196676930000L);
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
@@ -782,12 +808,7 @@ public class ComputeStepTest {
       {"'3.2'", ComputeFieldType.FLOAT, 3.2F, Schema.FLOAT},
       {"'3.2'", ComputeFieldType.DOUBLE, 3.2D, Schema.DOUBLE},
       {"true", ComputeFieldType.BOOLEAN, true, Schema.BOOL},
-      {
-        "'2008-02-07'",
-        ComputeFieldType.DATE,
-        Date.from(Instant.parse("2008-02-07T00:00:00Z")),
-        Schema.DATE
-      },
+      {"'2008-02-07'", ComputeFieldType.DATE, LocalDate.parse("2008-02-07"), Schema.DATE},
       {
         "'2008-02-07'",
         ComputeFieldType.LOCAL_DATE,
@@ -930,7 +951,14 @@ public class ComputeStepTest {
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateField")
-            .expression(nullify ? "null" : "'2007-12-03T00:00:00Z'")
+            .expression(nullify ? "null" : "'2007-12-03'")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.DATE)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newDateField2")
+            .expression(nullify ? "null" : "13850")
             .optional(optional)
             .type(inferType ? null : ComputeFieldType.DATE)
             .build());
@@ -943,8 +971,22 @@ public class ComputeStepTest {
             .build());
     fields.add(
         ComputeField.builder()
+            .scopedName(scope + "." + "newLocalDateField2")
+            .expression(nullify ? "null" : "13850")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.DATE)
+            .build());
+    fields.add(
+        ComputeField.builder()
             .scopedName(scope + "." + "newTimeField")
             .expression(nullify ? "null" : "'10:15:30'")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newTimeField2")
+            .expression(nullify ? "null" : "36930000")
             .optional(optional)
             .type(inferType ? null : ComputeFieldType.TIME)
             .build());
@@ -957,8 +999,22 @@ public class ComputeStepTest {
             .build());
     fields.add(
         ComputeField.builder()
+            .scopedName(scope + "." + "newLocalTimeField2")
+            .expression(nullify ? "null" : "36930000")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
             .scopedName(scope + "." + "newTimestampField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.INSTANT)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newTimestampField2")
+            .expression(nullify ? "null" : "1196676930000")
             .optional(optional)
             .type(inferType ? null : ComputeFieldType.INSTANT)
             .build());
@@ -971,10 +1027,24 @@ public class ComputeStepTest {
             .build());
     fields.add(
         ComputeField.builder()
+            .scopedName(scope + "." + "newInstantField2")
+            .expression(nullify ? "null" : "1196676930000")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.INSTANT)
+            .build());
+    fields.add(
+        ComputeField.builder()
             .scopedName(scope + "." + "newLocalDateTimeField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
             .optional(optional)
             .type(inferType ? null : ComputeFieldType.LOCAL_DATE_TIME)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName(scope + "." + "newLocalDateTimeField2")
+            .expression(nullify ? "null" : "1196676930000")
+            .optional(optional)
+            .type(inferType ? null : ComputeFieldType.INSTANT)
             .build());
     fields.add(
         ComputeField.builder()

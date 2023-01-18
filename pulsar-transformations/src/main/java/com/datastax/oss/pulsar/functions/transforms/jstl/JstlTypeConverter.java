@@ -267,8 +267,7 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof TemporalAccessor || value instanceof CharSequence) {
       return Date.from(coerceToInstant(value));
     }
-    throw new ELException(
-        MessageFactory.get("error.convert", value, value.getClass(), Date.class));
+    throw new ELException(MessageFactory.get("error.convert", value, value.getClass(), Date.class));
   }
 
   protected Timestamp coerceToTimestamp(Object value) {
@@ -316,8 +315,7 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof TemporalAccessor || value instanceof Date) {
       return new Time(coerceToInstant(value).toEpochMilli());
     }
-    throw new ELException(
-        MessageFactory.get("error.convert", value, value.getClass(), Time.class));
+    throw new ELException(MessageFactory.get("error.convert", value, value.getClass(), Time.class));
   }
 
   protected LocalTime coerceToLocalTime(Object value) {

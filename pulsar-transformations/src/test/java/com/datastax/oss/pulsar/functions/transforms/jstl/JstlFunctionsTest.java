@@ -148,9 +148,9 @@ public class JstlFunctionsTest {
   }
 
   @Test(
-          expectedExceptions = jakarta.el.ELException.class,
-          expectedExceptionsMessageRegExp =
-                  "Cannot convert \\[7\\] of type \\[class java.lang.Byte\\] to \\[class java.time.Instant\\]"
+    expectedExceptions = jakarta.el.ELException.class,
+    expectedExceptionsMessageRegExp =
+        "Cannot convert \\[7\\] of type \\[class java.lang.Byte\\] to \\[class java.time.Instant\\]"
   )
   void testInvalidAddDate() {
     JstlFunctions.dateadd((byte) 7, 0, "days");
