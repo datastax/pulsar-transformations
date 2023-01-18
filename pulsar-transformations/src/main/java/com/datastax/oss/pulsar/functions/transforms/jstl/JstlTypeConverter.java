@@ -67,6 +67,9 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof byte[]) {
       return Schema.DOUBLE.decode((byte[]) value);
     }
+    if (value instanceof LocalDate) {
+      return (double) (((LocalDate) value).toEpochDay());
+    }
     if (value instanceof TemporalAccessor) {
       Instant instant = coerceToInstant(value);
       return (double) instant.getEpochSecond() * 1000 + (double) instant.getNano() / 1_000_000;
@@ -77,6 +80,9 @@ public class JstlTypeConverter extends TypeConverter {
   protected Float coerceToFloat(Object value) {
     if (value instanceof byte[]) {
       return Schema.FLOAT.decode((byte[]) value);
+    }
+    if (value instanceof LocalDate) {
+      return (float) (((LocalDate) value).toEpochDay());
     }
     return null;
   }
@@ -94,6 +100,9 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof byte[]) {
       return Schema.INT64.decode((byte[]) value);
     }
+    if (value instanceof LocalDate) {
+      return ((LocalDate) value).toEpochDay();
+    }
     if (value instanceof TemporalAccessor) {
       return coerceToInstant(value).toEpochMilli();
     }
@@ -109,6 +118,9 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (value instanceof byte[]) {
       return Schema.INT32.decode((byte[]) value);
+    }
+    if (value instanceof LocalDate) {
+      return Math.toIntExact(((LocalDate) value).toEpochDay());
     }
     return null;
   }
@@ -347,7 +359,10 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof CharSequence) {
       return LocalDate.parse((CharSequence) value);
     }
-    if (value instanceof TemporalAccessor || value instanceof Number || value instanceof Date) {
+    if (value instanceof Number) {
+      return LocalDate.ofEpochDay(((Number) value).longValue());
+    }
+    if (value instanceof TemporalAccessor || value instanceof Date) {
       return LocalDate.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(

@@ -111,7 +111,6 @@ public class JstlFunctionsTest {
 
   @Test
   void testNow() {
-    long expectedMillis = 99L;
     Instant fixedInstant = Instant.now();
     Clock clock = Clock.fixed(fixedInstant, ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
