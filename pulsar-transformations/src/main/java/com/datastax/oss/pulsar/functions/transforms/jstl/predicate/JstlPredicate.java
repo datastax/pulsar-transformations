@@ -17,8 +17,8 @@ package com.datastax.oss.pulsar.functions.transforms.jstl.predicate;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
-import javax.el.ELException;
-import javax.el.PropertyNotFoundException;
+import jakarta.el.ELException;
+import jakarta.el.PropertyNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 /** A {@link TransformPredicate} implementation based on the Uniform Transform Language. */

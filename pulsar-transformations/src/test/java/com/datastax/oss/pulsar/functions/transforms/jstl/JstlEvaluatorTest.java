@@ -19,7 +19,7 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
-import de.odysseus.el.tree.TreeBuilderException;
+import jakarta.el.MethodNotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -28,11 +28,10 @@ import org.apache.pulsar.client.api.Schema;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class JstEvaluatorTest {
-
+public class JstlEvaluatorTest {
   @Test(
     dataProvider = "methodInvocationExpressionProvider",
-    expectedExceptions = TreeBuilderException.class
+    expectedExceptions = MethodNotFoundException.class
   )
   void testMethodInvocationsDisabled(String expression, TransformContext context) {
     new JstlEvaluator<>(String.format("${%s}", expression), String.class).evaluate(context);
@@ -65,7 +64,7 @@ public class JstEvaluatorTest {
     JstlFunctions.setClock(clock);
 
     long actualMillis =
-        new JstlEvaluator<>("${fn:now()}", long.class).evaluate(primitiveStringContext);
+        new JstlEvaluator<>("${fn:now()}", Long.class).evaluate(primitiveStringContext);
 
     assertEquals(expectedMillis, actualMillis);
   }
@@ -80,7 +79,7 @@ public class JstEvaluatorTest {
     Clock clock = Clock.fixed(Instant.ofEpochMilli(nowMillis), ZoneOffset.UTC);
     JstlFunctions.setClock(clock);
     long actualMillis =
-        new JstlEvaluator<>("${fn:timestampAdd(fn:now(), -3333, 'seconds')}", long.class)
+        new JstlEvaluator<>("${fn:timestampAdd(fn:now(), -3333, 'seconds')}", Long.class)
             .evaluate(primitiveStringContext);
 
     assertEquals(nowMillis + millisToAdd, actualMillis);
