@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.avro.util.Utf8;
 import org.apache.el.util.MessageFactory;
 import org.apache.pulsar.client.api.Schema;
@@ -41,6 +42,7 @@ import org.apache.pulsar.client.api.Schema;
  */
 public class JstlTypeConverter extends TypeConverter {
   public static final JstlTypeConverter INSTANCE = new JstlTypeConverter();
+  public static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
 
   @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
   protected Boolean coerceToBoolean(Object value) {
@@ -88,8 +90,14 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof Time) {
       return ((Time) value).toLocalTime().toNanoOfDay() / 1_000_000;
     }
+    if (value instanceof Timestamp) {
+      return ((Timestamp) value).getTime();
+    }
     if (value instanceof Date) {
-      return ((Date) value).getTime();
+      return ((Date) value).getTime() / MILLIS_PER_DAY;
+    }
+    if (value instanceof LocalDate) {
+      return ((LocalDate) value).toEpochDay();
     }
     if (value instanceof byte[]) {
       return Schema.INT64.decode((byte[]) value);
@@ -106,6 +114,12 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (value instanceof Time) {
       return (int) (((Time) value).toLocalTime().toNanoOfDay() / 1_000_000);
+    }
+    if (value instanceof Date) {
+      return (int) (((Date) value).getTime() / MILLIS_PER_DAY);
+    }
+    if (value instanceof LocalDate) {
+      return (int) ((LocalDate) value).toEpochDay();
     }
     if (value instanceof byte[]) {
       return Schema.INT32.decode((byte[]) value);

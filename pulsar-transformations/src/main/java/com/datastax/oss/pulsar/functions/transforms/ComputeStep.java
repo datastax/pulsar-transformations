@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.avro.LogicalType;
@@ -49,7 +48,6 @@ import org.apache.avro.generic.GenericRecordBuilder;
 @Builder
 public class ComputeStep implements TransformStep {
 
-  public static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
   @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
       new ConcurrentHashMap<>();
@@ -292,9 +290,7 @@ public class ComputeStep implements TransformStep {
 
   private Integer getAvroDate(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Date.class, LocalDate.class);
-    return (value instanceof LocalDate)
-        ? (int) ((LocalDate) value).toEpochDay()
-        : (int) (((Date) value).getTime() / MILLIS_PER_DAY);
+    return CustomTypeConverter.INSTANCE.convert(value, Integer.class);
   }
 
   private Integer getAvroTimeMillis(Object value, LogicalType logicalType) {

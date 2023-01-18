@@ -71,6 +71,7 @@ public class CustomTypeConverterTest {
     long midnightMillis = 1672617600000L;
     long timeMillis = 83045000L;
     double timeMillisWithNanos = 83045000.000006D;
+    long epochDays = 19359L;
     Date date = new Date(dateTimeMillis);
     Instant instant = Instant.ofEpochSecond(1672700645, 6);
     Timestamp timestamp = Timestamp.from(instant);
@@ -168,14 +169,14 @@ public class CustomTypeConverterTest {
       {longValue, Long.class, longValue},
       {floatValue, Long.class, longValue},
       {doubleValue, Long.class, longValue},
-      {date, Long.class, dateTimeMillis},
+      {date, Long.class, epochDays},
       {timestamp, Long.class, dateTimeMillis},
       {time, Long.class, timeMillis},
       {localDateTime, Long.class, dateTimeMillis},
       {instant, Long.class, dateTimeMillis},
       {offsetDateTime, Long.class, dateTimeMillis},
       {localTime, Long.class, timeMillis},
-      {localDate, Long.class, midnightMillis},
+      {localDate, Long.class, epochDays},
 
       // Float
       {Schema.FLOAT.encode(floatValue), Float.class, floatValue},
