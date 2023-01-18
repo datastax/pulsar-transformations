@@ -121,6 +121,9 @@ public class ComputeField {
     }
 
     private Class<?> getJavaType() {
+      if (this.type == null) {
+        return Object.class;
+      }
       switch (this.type) {
         case STRING:
           return String.class;

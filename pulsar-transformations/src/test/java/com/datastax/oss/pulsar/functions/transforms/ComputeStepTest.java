@@ -37,6 +37,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,7 +109,7 @@ public class ComputeStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    List<ComputeField> fields = buildComputeFields("value", false, false);
+    List<ComputeField> fields = buildComputeFields("value", false, false, false);
     fields.add(
         ComputeField.builder()
             .scopedName("value.age")
@@ -155,10 +156,6 @@ public class ComputeStepTest {
     assertTrue(read.hasField("newInt16Field"));
     assertEquals(read.getSchema().getField("newInt16Field").schema(), INT_SCHEMA);
     assertEquals(read.get("newInt16Field"), 32767);
-
-    assertTrue(read.hasField("newInt32Field"));
-    assertEquals(read.getSchema().getField("newInt32Field").schema(), INT_SCHEMA);
-    assertEquals(read.get("newInt32Field"), 2147483647);
 
     assertTrue(read.hasField("newInt32Field"));
     assertEquals(read.getSchema().getField("newInt32Field").schema(), INT_SCHEMA);
@@ -225,6 +222,106 @@ public class ComputeStepTest {
     assertEquals(read.get("age"), new Utf8("43"));
   }
 
+  @Test
+  void testAvroInferredType() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("age").type(SchemaType.INT32);
+    recordSchemaBuilder.field("size").type(SchemaType.FLOAT);
+    recordSchemaBuilder.field("date").type(SchemaType.DATE);
+    recordSchemaBuilder.field("timestamp").type(SchemaType.TIMESTAMP);
+    recordSchemaBuilder.field("time").type(SchemaType.TIME);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    int date = (int) LocalDate.of(2023, 1, 2).toEpochDay();
+    long timestampMillis = Instant.parse("2023-01-02T23:04:05.006Z").toEpochMilli();
+    int timeMillis = (int) (LocalTime.parse("23:04:05.006").toNanoOfDay() / 1_000_000);
+    GenericRecord genericRecord =
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "Doe")
+            .set("age", 42)
+            .set("size", 5.6F)
+            .set("date", date)
+            .set("timestamp", timestampMillis)
+            .set("time", timeMillis)
+            .build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    List<ComputeField> fields = buildComputeFields("value", false, false, true);
+    fields.add(
+        ComputeField.builder().scopedName("value.newSizeField").expression("value.size").build());
+    fields.add(ComputeField.builder().scopedName("value.newDate").expression("value.date").build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.newTimestamp")
+            .expression("value.timestamp")
+            .build());
+    fields.add(ComputeField.builder().scopedName("value.newTime").expression("value.time").build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    assertEquals(outputRecord.getKey().orElse(null), "test-key");
+
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+    org.apache.avro.Schema avroSchema =
+        (org.apache.avro.Schema) outputRecord.getSchema().getNativeSchema().orElseThrow();
+
+    assertEquals(read.get("firstName"), new Utf8("Jane"));
+    assertEquals(read.get("newSizeField"), 5.6F);
+    assertEquals(avroSchema.getField("newDate").schema().getLogicalType(), LogicalTypes.date());
+    assertEquals(read.get("newDate"), date);
+    assertEquals(
+        avroSchema.getField("newTimestamp").schema().getLogicalType(),
+        LogicalTypes.timestampMillis());
+    assertEquals(read.get("newTimestamp"), timestampMillis);
+    assertEquals(
+        avroSchema.getField("newTime").schema().getLogicalType(), LogicalTypes.timeMillis());
+    assertEquals(read.get("newTime"), timeMillis);
+
+    assertTrue(read.hasField("newStringField"));
+    assertEquals(read.getSchema().getField("newStringField").schema(), STRING_SCHEMA);
+    assertEquals(read.get("newStringField"), new Utf8("Hotaru"));
+
+    assertTrue(read.hasField("newInt8Field"));
+    assertEquals(read.getSchema().getField("newInt8Field").schema(), LONG_SCHEMA);
+    assertEquals(read.get("newInt8Field"), 127L);
+
+    assertTrue(read.hasField("newInt16Field"));
+    assertEquals(read.getSchema().getField("newInt16Field").schema(), LONG_SCHEMA);
+    assertEquals(read.get("newInt16Field"), 32767L);
+
+    assertTrue(read.hasField("newInt32Field"));
+    assertEquals(read.getSchema().getField("newInt32Field").schema(), LONG_SCHEMA);
+    assertEquals(read.get("newInt32Field"), 2147483647L);
+
+    assertTrue(read.hasField("newInt64Field"));
+    assertEquals(read.getSchema().getField("newInt64Field").schema(), LONG_SCHEMA);
+    assertEquals(read.get("newInt64Field"), 9223372036854775807L);
+
+    assertTrue(read.hasField("newFloatField"));
+    assertEquals(read.getSchema().getField("newFloatField").schema(), DOUBLE_SCHEMA);
+    assertEquals(read.get("newFloatField"), 340282346638528859999999999999999999999.999999D);
+
+    assertTrue(read.hasField("newDoubleField"));
+    assertEquals(read.getSchema().getField("newDoubleField").schema(), DOUBLE_SCHEMA);
+    assertEquals(read.get("newDoubleField"), 1.79769313486231570e+308D);
+
+    assertTrue(read.hasField("newBooleanField"));
+    assertEquals(read.getSchema().getField("newBooleanField").schema(), BOOLEAN_SCHEMA);
+    assertTrue((Boolean) read.get("newBooleanField"));
+
+    assertTrue(read.hasField("newBytesField"));
+    assertEquals(read.getSchema().getField("newBytesField").schema(), BYTES_SCHEMA);
+    assertEquals(
+        read.get("newBytesField"), ByteBuffer.wrap("Hotaru".getBytes(StandardCharsets.UTF_8)));
+  }
+
   @Test(expectedExceptions = AvroRuntimeException.class)
   void testAvroNullsNotAllowed() throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
@@ -251,6 +348,24 @@ public class ComputeStepTest {
     Utils.process(record, step);
   }
 
+  @Test(expectedExceptions = UnsupportedOperationException.class)
+  void testAvroNullInferredType() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord = genericSchema.newRecordBuilder().build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    List<ComputeField> fields = new ArrayList<>();
+    fields.add(
+        ComputeField.builder().scopedName("value.newStringField").expression("null").build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+    Utils.process(record, step);
+  }
+
   @Test
   void testAvroWithNonNullOptionalFields() throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
@@ -264,7 +379,7 @@ public class ComputeStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     ComputeStep step =
-        ComputeStep.builder().fields(buildComputeFields("value", true, false)).build();
+        ComputeStep.builder().fields(buildComputeFields("value", true, false, false)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -295,7 +410,7 @@ public class ComputeStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     ComputeStep step =
-        ComputeStep.builder().fields(buildComputeFields("value", true, true)).build();
+        ComputeStep.builder().fields(buildComputeFields("value", true, true, false)).build();
     Record<?> outputRecord = Utils.process(record, step);
     assertEquals(outputRecord.getKey().orElse(null), "test-key");
 
@@ -385,6 +500,52 @@ public class ComputeStepTest {
 
     assertEquals(outputRecord.getSchema(), expectedSchema);
     assertEquals(outputRecord.getValue(), expectedValue);
+  }
+
+  @Test(dataProvider = "primitiveInferredSchemaTypesProvider")
+  void testPrimitiveInferredSchemaTypes(
+      Object input,
+      Schema<?> inputSchema,
+      String expression,
+      Object expectedValue,
+      Schema<?> expectedSchema)
+      throws Exception {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            inputSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                input, inputSchema.getSchemaInfo().getType(), new byte[] {}),
+            "");
+
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                Collections.singletonList(
+                    ComputeField.builder().scopedName("value").expression(expression).build()))
+            .build();
+
+    Record<GenericObject> outputRecord = Utils.process(record, step);
+
+    assertEquals(outputRecord.getSchema(), expectedSchema);
+    assertEquals(outputRecord.getValue(), expectedValue);
+  }
+
+  @Test(expectedExceptions = UnsupportedOperationException.class)
+  void testNullInferredSchemaType() throws Exception {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject("input", SchemaType.STRING, new byte[] {}),
+            "");
+
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                Collections.singletonList(
+                    ComputeField.builder().scopedName("value").expression("null").build()))
+            .build();
+
+    Utils.process(record, step);
   }
 
   @Test
@@ -510,7 +671,7 @@ public class ComputeStepTest {
             .destinationTopic(topic)
             .build();
 
-    List<ComputeField> fields = buildComputeFields("value", false, false);
+    List<ComputeField> fields = buildComputeFields("value", false, false, false);
     fields.add(
         ComputeField.builder()
             .scopedName("destinationTopic")
@@ -545,7 +706,7 @@ public class ComputeStepTest {
             .key("old")
             .build();
 
-    List<ComputeField> fields = buildComputeFields("value", false, false);
+    List<ComputeField> fields = buildComputeFields("value", false, false, false);
     fields.add(
         ComputeField.builder()
             .scopedName("messageKey")
@@ -668,131 +829,166 @@ public class ComputeStepTest {
     };
   }
 
+  @DataProvider(name = "primitiveInferredSchemaTypesProvider")
+  public static Object[][] primitiveInferredSchemaTypesProvider() {
+    LocalDateTime now = LocalDateTime.now();
+    return new Object[][] {
+      {"", Schema.STRING, "'newValue'", "newValue", Schema.STRING},
+      {"", Schema.STRING, "42", 42L, Schema.INT64},
+      {"", Schema.STRING, "42.0", 42.0D, Schema.DOUBLE},
+      {"", Schema.STRING, "true", true, Schema.BOOL},
+      {
+        "",
+        Schema.STRING,
+        "'newValue'.bytes",
+        "newValue".getBytes(StandardCharsets.UTF_8),
+        Schema.BYTES
+      },
+      {(byte) 42, Schema.INT8, "value", (byte) 42, Schema.INT8},
+      {(short) 42, Schema.INT16, "value", (short) 42, Schema.INT16},
+      {42, Schema.INT32, "value", 42, Schema.INT32},
+      {new Date(42), Schema.DATE, "value", new Date(42), Schema.DATE},
+      {new Timestamp(42), Schema.TIMESTAMP, "value", new Timestamp(42), Schema.TIMESTAMP},
+      {new Time(42), Schema.TIME, "value", new Time(42), Schema.TIME},
+      {now, Schema.LOCAL_DATE_TIME, "value", now, Schema.LOCAL_DATE_TIME},
+      {now.toLocalDate(), Schema.LOCAL_DATE, "value", now.toLocalDate(), Schema.LOCAL_DATE},
+      {now.toLocalTime(), Schema.LOCAL_TIME, "value", now.toLocalTime(), Schema.LOCAL_TIME},
+      {
+        now.toInstant(ZoneOffset.UTC),
+        Schema.INSTANT,
+        "value",
+        now.toInstant(ZoneOffset.UTC),
+        Schema.INSTANT
+      },
+    };
+  }
+
   private void assertOptionalFieldNull(
       GenericData.Record record, String fieldName, org.apache.avro.Schema.Type expectedType) {
     assertOptionalField(record, fieldName, expectedType, null);
   }
 
-  private List<ComputeField> buildComputeFields(String scope, boolean optional, boolean nullify) {
+  private List<ComputeField> buildComputeFields(
+      String scope, boolean optional, boolean nullify, boolean inferType) {
     List<ComputeField> fields = new ArrayList<>();
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newStringField")
             .expression(nullify ? "null" : "'Hotaru'")
             .optional(optional)
-            .type(ComputeFieldType.STRING)
+            .type(inferType ? null : ComputeFieldType.STRING)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newInt8Field")
             .expression(nullify ? "null" : "127")
             .optional(optional)
-            .type(ComputeFieldType.INT8)
+            .type(inferType ? null : ComputeFieldType.INT8)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newInt16Field")
             .expression(nullify ? "null" : "32767")
             .optional(optional)
-            .type(ComputeFieldType.INT16)
+            .type(inferType ? null : ComputeFieldType.INT16)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newInt32Field")
             .expression(nullify ? "null" : "2147483647")
             .optional(optional)
-            .type(ComputeFieldType.INT32)
+            .type(inferType ? null : ComputeFieldType.INT32)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newInt64Field")
             .expression(nullify ? "null" : "9223372036854775807")
             .optional(optional)
-            .type(ComputeFieldType.INT64)
+            .type(inferType ? null : ComputeFieldType.INT64)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newFloatField")
             .expression(nullify ? "null" : "340282346638528859999999999999999999999.999999")
             .optional(optional)
-            .type(ComputeFieldType.FLOAT)
+            .type(inferType ? null : ComputeFieldType.FLOAT)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDoubleField")
             .expression(nullify ? "null" : "1.79769313486231570e+308")
             .optional(optional)
-            .type(ComputeFieldType.DOUBLE)
+            .type(inferType ? null : ComputeFieldType.DOUBLE)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newBooleanField")
             .expression(nullify ? "null" : "1 == 1")
             .optional(optional)
-            .type(ComputeFieldType.BOOLEAN)
+            .type(inferType ? null : ComputeFieldType.BOOLEAN)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateField")
             .expression(nullify ? "null" : "'2007-12-03T00:00:00Z'")
             .optional(optional)
-            .type(ComputeFieldType.DATE)
+            .type(inferType ? null : ComputeFieldType.DATE)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newLocalDateField")
             .expression(nullify ? "null" : "'2007-12-03'")
             .optional(optional)
-            .type(ComputeFieldType.LOCAL_DATE)
+            .type(inferType ? null : ComputeFieldType.LOCAL_DATE)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newTimeField")
             .expression(nullify ? "null" : "'10:15:30'")
             .optional(optional)
-            .type(ComputeFieldType.TIME)
+            .type(inferType ? null : ComputeFieldType.TIME)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newLocalTimeField")
             .expression(nullify ? "null" : "'10:15:30'")
             .optional(optional)
-            .type(ComputeFieldType.LOCAL_TIME)
+            .type(inferType ? null : ComputeFieldType.LOCAL_TIME)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newTimestampField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
             .optional(optional)
-            .type(ComputeFieldType.INSTANT)
+            .type(inferType ? null : ComputeFieldType.INSTANT)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newInstantField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
             .optional(optional)
-            .type(ComputeFieldType.TIMESTAMP)
+            .type(inferType ? null : ComputeFieldType.TIMESTAMP)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newLocalDateTimeField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30'")
             .optional(optional)
-            .type(ComputeFieldType.LOCAL_DATE_TIME)
+            .type(inferType ? null : ComputeFieldType.LOCAL_DATE_TIME)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newDateTimeField")
             .expression(nullify ? "null" : "'2007-12-03T10:15:30+00:00'")
             .optional(optional)
-            .type(ComputeFieldType.DATETIME)
+            .type(inferType ? null : ComputeFieldType.DATETIME)
             .build());
     fields.add(
         ComputeField.builder()
             .scopedName(scope + "." + "newBytesField")
             .expression(nullify ? "null" : "'Hotaru'.bytes")
             .optional(optional)
-            .type(ComputeFieldType.BYTES)
+            .type(inferType ? null : ComputeFieldType.BYTES)
             .build());
 
     return fields;

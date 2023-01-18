@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,8 +101,12 @@ public class ComputeStep implements TransformStep {
               if (context.getKeySchema() != null
                   && context.getKeySchema().getSchemaInfo().getType().isPrimitive()) {
                 Object newKey = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema<?> newSchema =
-                    getPrimitiveSchema(field.getType());
+                org.apache.pulsar.client.api.Schema<?> newSchema;
+                if (field.getType() != null) {
+                  newSchema = getPrimitiveSchema(field.getType());
+                } else {
+                  newSchema = getPrimitiveSchema(newKey);
+                }
                 context.setKeyObject(newKey);
                 context.setKeySchema(newSchema);
               }
@@ -115,8 +120,12 @@ public class ComputeStep implements TransformStep {
             field -> {
               if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
                 Object newValue = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema<?> newSchema =
-                    getPrimitiveSchema(field.getType());
+                org.apache.pulsar.client.api.Schema<?> newSchema;
+                if (field.getType() != null) {
+                  newSchema = getPrimitiveSchema(field.getType());
+                } else {
+                  newSchema = getPrimitiveSchema(newValue);
+                }
                 context.setValueObject(newValue);
                 context.setValueSchema(newSchema);
               }
@@ -181,8 +190,24 @@ public class ComputeStep implements TransformStep {
       TransformContext context) {
     org.apache.avro.Schema avroSchema = record.getSchema();
 
+    Map<String, Object> inferredFields = new HashMap<>();
+    fields
+        .stream()
+        .filter(field -> field.getType() == null)
+        .forEach(
+            field -> inferredFields.put(field.getName(), field.getEvaluator().evaluate(context)));
+
     List<Schema.Field> computedFields =
-        fields.stream().map(this::createAvroField).collect(Collectors.toList());
+        fields
+            .stream()
+            .map(
+                field ->
+                    createAvroField(
+                        field,
+                        field.getType() != null
+                            ? field.getType()
+                            : getFieldType(inferredFields.get(field.getName()))))
+            .collect(Collectors.toList());
 
     Set<String> computedFieldNames =
         computedFields.stream().map(Schema.Field::name).collect(Collectors.toSet());
@@ -221,7 +246,9 @@ public class ComputeStep implements TransformStep {
           field.getName(),
           getAvroValue(
               newSchema.getField(field.getName()).schema(),
-              field.getEvaluator().evaluate(context)));
+              field.getType() != null
+                  ? field.getEvaluator().evaluate(context)
+                  : inferredFields.get(field.getName())));
     }
     return newRecordBuilder.build();
   }
@@ -299,8 +326,8 @@ public class ComputeStep implements TransformStep {
         String.format("Invalid java type %s for logical type %s", value.getClass(), logicalType));
   }
 
-  private Schema.Field createAvroField(ComputeField field) {
-    Schema avroSchema = getAvroSchema(field.getType());
+  private Schema.Field createAvroField(ComputeField field, ComputeFieldType type) {
+    Schema avroSchema = getAvroSchema(type);
     Object defaultValue = null;
     if (field.isOptional()) {
       avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
@@ -427,5 +454,115 @@ public class ComputeStep implements TransformStep {
     }
 
     return schema;
+  }
+
+  private org.apache.pulsar.client.api.Schema<?> getPrimitiveSchema(Object value) {
+    if (value == null) {
+      throw new UnsupportedOperationException("Cannot get schema from null value");
+    }
+    if (value.getClass().equals(String.class)) {
+      return org.apache.pulsar.client.api.Schema.STRING;
+    }
+    if (value.getClass().equals(byte[].class)) {
+      return org.apache.pulsar.client.api.Schema.BYTES;
+    }
+    if (value.getClass().equals(Boolean.class)) {
+      return org.apache.pulsar.client.api.Schema.BOOL;
+    }
+    if (value.getClass().equals(Byte.class)) {
+      return org.apache.pulsar.client.api.Schema.INT8;
+    }
+    if (value.getClass().equals(Short.class)) {
+      return org.apache.pulsar.client.api.Schema.INT16;
+    }
+    if (value.getClass().equals(Integer.class)) {
+      return org.apache.pulsar.client.api.Schema.INT32;
+    }
+    if (value.getClass().equals(Long.class)) {
+      return org.apache.pulsar.client.api.Schema.INT64;
+    }
+    if (value.getClass().equals(Float.class)) {
+      return org.apache.pulsar.client.api.Schema.FLOAT;
+    }
+    if (value.getClass().equals(Double.class)) {
+      return org.apache.pulsar.client.api.Schema.DOUBLE;
+    }
+    if (value.getClass().equals(Date.class)) {
+      return org.apache.pulsar.client.api.Schema.DATE;
+    }
+    if (value.getClass().equals(Timestamp.class)) {
+      return org.apache.pulsar.client.api.Schema.TIMESTAMP;
+    }
+    if (value.getClass().equals(Time.class)) {
+      return org.apache.pulsar.client.api.Schema.TIME;
+    }
+    if (value.getClass().equals(LocalDateTime.class)) {
+      return org.apache.pulsar.client.api.Schema.LOCAL_DATE_TIME;
+    }
+    if (value.getClass().equals(LocalDate.class)) {
+      return org.apache.pulsar.client.api.Schema.LOCAL_DATE;
+    }
+    if (value.getClass().equals(LocalTime.class)) {
+      return org.apache.pulsar.client.api.Schema.LOCAL_TIME;
+    }
+    if (value.getClass().equals(Instant.class)) {
+      return org.apache.pulsar.client.api.Schema.INSTANT;
+    }
+    throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
+  }
+
+  private ComputeFieldType getFieldType(Object value) {
+    if (value == null) {
+      throw new UnsupportedOperationException("Cannot get field type from null value");
+    }
+    if (value instanceof CharSequence) {
+      return ComputeFieldType.STRING;
+    }
+    if (value instanceof ByteBuffer || value.getClass().equals(byte[].class)) {
+      return ComputeFieldType.BYTES;
+    }
+    if (value.getClass().equals(Boolean.class)) {
+      return ComputeFieldType.BOOLEAN;
+    }
+    if (value.getClass().equals(Byte.class)) {
+      return ComputeFieldType.INT8;
+    }
+    if (value.getClass().equals(Short.class)) {
+      return ComputeFieldType.INT16;
+    }
+    if (value.getClass().equals(Integer.class)) {
+      return ComputeFieldType.INT32;
+    }
+    if (value.getClass().equals(Long.class)) {
+      return ComputeFieldType.INT64;
+    }
+    if (value.getClass().equals(Float.class)) {
+      return ComputeFieldType.FLOAT;
+    }
+    if (value.getClass().equals(Double.class)) {
+      return ComputeFieldType.DOUBLE;
+    }
+    if (value.getClass().equals(Date.class)) {
+      return ComputeFieldType.DATE;
+    }
+    if (value.getClass().equals(Timestamp.class)) {
+      return ComputeFieldType.TIMESTAMP;
+    }
+    if (value.getClass().equals(Time.class)) {
+      return ComputeFieldType.TIME;
+    }
+    if (value.getClass().equals(LocalDateTime.class)) {
+      return ComputeFieldType.LOCAL_DATE_TIME;
+    }
+    if (value.getClass().equals(LocalDate.class)) {
+      return ComputeFieldType.LOCAL_DATE;
+    }
+    if (value.getClass().equals(LocalTime.class)) {
+      return ComputeFieldType.LOCAL_TIME;
+    }
+    if (value.getClass().equals(Instant.class)) {
+      return ComputeFieldType.INSTANT;
+    }
+    throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }
 }
