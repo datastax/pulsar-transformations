@@ -147,7 +147,11 @@ public class JstlFunctionsTest {
             "2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
   }
 
-  @Test(expectedExceptions = jakarta.el.ELException.class)
+  @Test(
+          expectedExceptions = jakarta.el.ELException.class,
+          expectedExceptionsMessageRegExp =
+                  "Cannot convert \\[7\\] of type \\[class java.lang.Byte\\] to \\[class java.time.Instant\\]"
+  )
   void testInvalidAddDate() {
     JstlFunctions.dateadd((byte) 7, 0, "days");
   }

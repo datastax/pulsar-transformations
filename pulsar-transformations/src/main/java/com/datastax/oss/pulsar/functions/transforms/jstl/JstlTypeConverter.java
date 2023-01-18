@@ -268,7 +268,7 @@ public class JstlTypeConverter extends TypeConverter {
       return Date.from(coerceToInstant(value));
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), Date.class));
+        MessageFactory.get("error.convert", value, value.getClass(), Date.class));
   }
 
   protected Timestamp coerceToTimestamp(Object value) {
@@ -291,7 +291,7 @@ public class JstlTypeConverter extends TypeConverter {
       return Timestamp.from(coerceToInstant(value));
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), Timestamp.class));
+        MessageFactory.get("error.convert", value, value.getClass(), Timestamp.class));
   }
 
   protected Time coerceToTime(Object value) {
@@ -317,7 +317,7 @@ public class JstlTypeConverter extends TypeConverter {
       return new Time(coerceToInstant(value).toEpochMilli());
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), Time.class));
+        MessageFactory.get("error.convert", value, value.getClass(), Time.class));
   }
 
   protected LocalTime coerceToLocalTime(Object value) {
@@ -340,7 +340,7 @@ public class JstlTypeConverter extends TypeConverter {
       return LocalTime.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalTime.class));
+        MessageFactory.get("error.convert", value, value.getClass(), LocalTime.class));
   }
 
   protected LocalDate coerceToLocalDate(Object value) {
@@ -366,7 +366,7 @@ public class JstlTypeConverter extends TypeConverter {
       return LocalDate.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalDate.class));
+        MessageFactory.get("error.convert", value, value.getClass(), LocalDate.class));
   }
 
   protected LocalDateTime coerceToLocalDateTime(Object value) {
@@ -389,7 +389,7 @@ public class JstlTypeConverter extends TypeConverter {
       return LocalDateTime.ofInstant(coerceToInstant(value), ZoneOffset.UTC);
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), LocalDateTime.class));
+        MessageFactory.get("error.convert", value, value.getClass(), LocalDateTime.class));
   }
 
   protected Instant coerceToInstant(Object value) {
@@ -417,7 +417,7 @@ public class JstlTypeConverter extends TypeConverter {
       return coerceToOffsetDateTime(value).toInstant();
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), Instant.class));
+        MessageFactory.get("error.convert", value, value.getClass(), Instant.class));
   }
 
   protected OffsetDateTime coerceToOffsetDateTime(Object value) {
@@ -448,7 +448,7 @@ public class JstlTypeConverter extends TypeConverter {
       return coerceToInstant(value).atOffset(ZoneOffset.UTC);
     }
     throw new ELException(
-        MessageFactory.get("error.coerce.type", value, value.getClass(), OffsetDateTime.class));
+        MessageFactory.get("error.convert", value, value.getClass(), OffsetDateTime.class));
   }
 
   @Override
