@@ -319,6 +319,13 @@ public class TransformFunction
                 throw new IllegalArgumentException(
                     "Duplicate compute field name detected: " + field.getName());
               }
+              if (field.getType() == ComputeFieldType.DATE
+                  && ("value".equals(field.getName()) || "key".equals(field.getName()))) {
+                throw new IllegalArgumentException(
+                    "The compute operation cannot apply the type DATE to the message value or key. "
+                        + "Please consider using the types TIMESTAMP or INSTANT instead and follow with a 'cast' "
+                        + "to SchemaType.DATE operation.");
+              }
               seen.add(field.getName());
               ComputeFieldType type =
                   "destinationTopic".equals(field.getName())

@@ -23,7 +23,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -142,7 +141,6 @@ public class ComputeField {
         case BOOLEAN:
           return Boolean.class;
         case DATE:
-          return Date.class;
         case LOCAL_DATE:
           return LocalDate.class;
         case TIME:
