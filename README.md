@@ -16,7 +16,7 @@ Currently available transformations are:
 * [unwrap-key-value](#unwrap-key-value): if the record is a KeyValue, extract the KeyValue's key or value and make it the record value.
 * [flatten](#flatten): flattens structured data.
 * [drop](#drop): drops a record from further processing.
-* [compute](#compute): computes new field values on the fly or replaces existing ones.
+* [compute](#compute): computes new properties, values or field values on the fly or replaces existing ones.
 
 Pulsar Transformations requires Pulsar 2.11+ or Luna Streaming 2.10+ to run.
 
@@ -204,7 +204,7 @@ Output: `{field1_field11: value11, field1_field12: value12} (AVRO)`
 
 ### Compute
 
-Computes new field values based on an `expression` evaluated at runtime. If the field already exists, it will be overwritten.
+Computes new properties, values or field values based on an `expression` evaluated at runtime. If the field already exists, it will be overwritten.
 
 Step name: `compute`
 
