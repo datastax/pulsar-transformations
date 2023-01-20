@@ -3,7 +3,8 @@ name: Build and test
 on: [push, pull_request]
 
 jobs:
-  unit-tests:
+  build:
+    name: Build and unit tests
     runs-on: ubuntu-latest
 
     steps:
@@ -34,7 +35,8 @@ jobs:
       - name: Unit tests
         run: mvn -B test -DfailIfNoTests=false -pl pulsar-transformations
 
-  integration-tests-luna-streaming:
+  tests-ls:
+    name: Integration tests on Luna Streaming
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -59,7 +61,8 @@ jobs:
       - name: Integration tests on Luna Streaming 2.10
         run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$LunaStreaming210Test
 
-  integration-tests-pulsar:
+  tests-pulsar:
+    name: Integration tests on Pulsar
     runs-on: ubuntu-latest
     needs: build
     steps:
