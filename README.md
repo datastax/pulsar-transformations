@@ -278,16 +278,16 @@ The Expression Language supports the following operators:
 Utility methods available under the `fn` namespace.
 For example, to get the current timestamp, use 'fn:now()'.
 The Expression Language supports the following functions:
-* uppercase(input): Returns the string `input` uppercased, If the input is `null`, it returns `null`.
-* lowercase(input): Returns the string `input` lowercased, If the input is `null`, it returns `null`.
-* contains(input, value): Returns the boolean `true` if `value` exists in `input`. If `input` or `value` is `null`, it returns `false`. 
-* trim(input): Returns the `input` string with all leading and trailing spaces removed.
-* concat(input1, input2): Returns a string concatenation of `input1` and `input2`. If either input is `null`, it is treated as an empty string.
-* coalesce(value, valueIfNull): Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
-* replace(input, regex, replacement): Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java's replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
-* str(input): Converts `input` to a string.
-* now(): Returns the current timestamp.
-* timestamAdd(input, delta, unit): Returns a timestamp formed by adding `delta` in `unit` to the `input` timestamp. 
+* `uppercase(input)`: Returns the string `input` uppercased, If the input is `null`, it returns `null`.
+* `lowercase(input)`: Returns the string `input` lowercased, If the input is `null`, it returns `null`.
+* `contains(input, value)`: Returns the boolean `true` if `value` exists in `input`. If `input` or `value` is `null`, it returns `false`. 
+* `trim(input)`: Returns the `input` string with all leading and trailing spaces removed.
+* `concat(input1, input2)`: Returns a string concatenation of `input1` and `input2`. If either input is `null`, it is treated as an empty string.
+* `coalesce(value, valueIfNull)`: Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
+* `replace(input, regex, replacement)`: Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java's replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
+* `str(input)`: Converts `input` to a string.
+* `now()`: Returns the current timestamp.
+* `timestampAdd(input, delta, unit)`: Returns a timestamp formed by adding `delta` in `unit` to the `input` timestamp. 
   * `input` a timestamp to add to.
   * `delta` a `long` amount of `unit` to add to `input`. Can be a negative value to perform subtraction.
   * `unit` the string unit of time to add or subtract. Can be one of [`years`, `months`, `days`, `hours`, `minutes`, `seconds`, `millis`].
