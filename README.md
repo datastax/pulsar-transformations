@@ -18,6 +18,8 @@ Currently available transformations are:
 * [drop](#drop): drops a record from further processing.
 * [compute](#compute): computes new field values on the fly or replaces existing ones.
 
+Pulsar Transformations requires Pulsar 2.11+ or Luna Streaming 2.10+ to run.
+
 ## Configuration
 
 The `TransformFunction` reads its configuration as `JSON` from the Function `userConfig` parameter in the format:
