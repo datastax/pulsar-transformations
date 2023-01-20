@@ -32,7 +32,7 @@
   <dependencies>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
+      <artifactId>pulsar</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -65,7 +65,7 @@
             <configuration>
               <tasks>
                 <echo>copy proxy protocol handler</echo>
-                <copy file="${basedir}/../pulsar-transformations/target/pulsar-transformations-${project.version}.nar" tofile="${project.build.outputDirectory}/pulsar-transformations.nar" />
+                <copy file="${basedir}/../pulsar-transformations/target/pulsar-transformations-${project.version}.nar" tofile="${project.build.outputDirectory}/pulsar-transformations.nar"/>
               </tasks>
             </configuration>
           </execution>

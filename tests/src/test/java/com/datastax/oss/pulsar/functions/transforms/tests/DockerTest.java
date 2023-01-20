@@ -26,9 +26,9 @@ public class DockerTest {
     }
   }
 
-  //  public static class Pulsar211 extends AbstractDockerTest {
-  //    Pulsar211() {
-  //      super(IMAGE_PULSAR211);
-  //    }
-  //  }
+  public static class Pulsar211Test extends AbstractDockerTest {
+    Pulsar211Test() {
+      super(IMAGE_PULSAR211);
+    }
+  }
 }
