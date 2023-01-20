@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitAllStrategy;
 import org.testcontainers.utility.DockerImageName;
 
 public class PulsarContainer implements AutoCloseable {
@@ -48,6 +50,10 @@ public class PulsarContainer implements AutoCloseable {
                 PULSAR_TRANSFORMATIONS_NAR,
                 "/pulsar/functions" + PULSAR_TRANSFORMATIONS_NAR,
                 BindMode.READ_ONLY)
+            .waitingFor(
+                (new WaitAllStrategy())
+                    .withStrategy(Wait.defaultWaitStrategy())
+                    .withStrategy(Wait.forLogMessage(".*Created namespace public/default.*", 1)))
             .withLogConsumer(
                 (f) -> {
                   String text = f.getUtf8String().trim();
