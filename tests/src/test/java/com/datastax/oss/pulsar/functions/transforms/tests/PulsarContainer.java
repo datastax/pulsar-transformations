@@ -15,18 +15,12 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.tests;
 
-import static org.testng.AssertJUnit.assertTrue;
-
-import java.net.URL;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.utility.MountableFile;
+import org.testcontainers.utility.DockerImageName;
 
 public class PulsarContainer implements AutoCloseable {
 
@@ -43,31 +37,23 @@ public class PulsarContainer implements AutoCloseable {
     this.image = image;
   }
 
-  public void start() throws Exception {
-    CountDownLatch pulsarReady = new CountDownLatch(1);
+  public void start() {
     pulsarContainer =
-        new GenericContainer<>(image)
+        new org.testcontainers.containers.PulsarContainer(
+                DockerImageName.parse(image).asCompatibleSubstituteFor("apachepulsar/pulsar"))
             .withNetwork(network)
             .withNetworkAliases("pulsar")
-            .withExposedPorts(8080, 6650) // ensure that the ports are listening
-            .withCopyFileToContainer(
-                MountableFile.forHostPath(getProtocolHandlerPath()),
-                "/pulsar/functions/pulsar-transformations.nar")
-            .withCopyFileToContainer(
-                MountableFile.forClasspathResource("standalone_with_transforms.conf"),
-                "/pulsar/conf/standalone.conf")
-            .withCommand("bin/pulsar", "standalone", "-nss")
+            .withFunctionsWorker()
+            .withClasspathResourceMapping(
+                PULSAR_TRANSFORMATIONS_NAR,
+                "/pulsar/functions" + PULSAR_TRANSFORMATIONS_NAR,
+                BindMode.READ_ONLY)
             .withLogConsumer(
                 (f) -> {
                   String text = f.getUtf8String().trim();
-                  if (text.contains(
-                      "Successfully updated the policies on namespace public/default")) {
-                    pulsarReady.countDown();
-                  }
                   log.info(text);
                 });
     pulsarContainer.start();
-    assertTrue(pulsarReady.await(1, TimeUnit.MINUTES));
   }
 
   @Override
@@ -75,23 +61,6 @@ public class PulsarContainer implements AutoCloseable {
     if (pulsarContainer != null) {
       pulsarContainer.stop();
     }
-  }
-
-  protected Path getProtocolHandlerPath() {
-    URL testHandlerUrl = this.getClass().getResource(PULSAR_TRANSFORMATIONS_NAR);
-    Path handlerPath;
-    try {
-      if (testHandlerUrl == null) {
-        throw new RuntimeException("Cannot find " + PULSAR_TRANSFORMATIONS_NAR);
-      }
-      handlerPath = Paths.get(testHandlerUrl.toURI());
-    } catch (Exception e) {
-      log.error("failed to get handler Path, handlerUrl: {}. Exception: ", testHandlerUrl, e);
-      throw new RuntimeException(e);
-    }
-    Path res = handlerPath.toFile().toPath();
-    log.info("Loading NAR file from {}", res.toAbsolutePath());
-    return res;
   }
 
   public GenericContainer<?> getPulsarContainer() {
