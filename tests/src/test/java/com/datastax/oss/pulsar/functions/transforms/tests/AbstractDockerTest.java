@@ -336,6 +336,20 @@ public abstract class AbstractDockerTest {
     assertEquals(value.getNativeObject(), "hello!");
   }
 
+  @Test
+  public void testComputeUtf8ToInteger() throws Exception {
+    String userConfig =
+        ("{\"steps\": [{\"type\": \"compute\", \"fields\": [{\"name\": \"value.b\", \"expression\": \"value.a\", \"type\": \"INT32\"}]}]}");
+
+    GenericRecord value =
+        testTransformFunction(userConfig, Schema.AVRO(Pojo1.class), new Pojo1("13360", "13360"));
+
+    assertEquals(value.getSchemaType(), SchemaType.AVRO);
+    org.apache.avro.generic.GenericRecord genericRecord =
+        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
+    assertEquals(genericRecord.toString(), "{\"a\": \"13360\", \"b\": 13360}");
+  }
+
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
       throws PulsarAdminException, InterruptedException, PulsarClientException {
     return testTransformFunction(userConfig, schema, value, null);

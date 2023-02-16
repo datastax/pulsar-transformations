@@ -64,7 +64,7 @@ public class JstlFunctions {
   }
 
   public static String toString(Object input) {
-    return CustomTypeConverter.INSTANCE.coerceToString(input);
+    return JstlTypeConverter.INSTANCE.coerceToString(input);
   }
 
   public static Instant now() {
@@ -77,7 +77,7 @@ public class JstlFunctions {
     }
 
     ChronoUnit chronoUnit;
-    switch (CustomTypeConverter.INSTANCE.coerceToString(unit)) {
+    switch (JstlTypeConverter.INSTANCE.coerceToString(unit)) {
       case "years":
         chronoUnit = ChronoUnit.YEARS;
         break;
@@ -109,14 +109,14 @@ public class JstlFunctions {
                 + ". Should be one of [years, months, days, hours, minutes, seconds, millis]");
     }
     if (chronoUnit == ChronoUnit.MONTHS || chronoUnit == ChronoUnit.YEARS) {
-      return CustomTypeConverter.INSTANCE
+      return JstlTypeConverter.INSTANCE
           .coerceToOffsetDateTime(input)
-          .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
+          .plus(JstlTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit)
           .toInstant();
     }
-    return CustomTypeConverter.INSTANCE
+    return JstlTypeConverter.INSTANCE
         .coerceToInstant(input)
-        .plus(CustomTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit);
+        .plus(JstlTypeConverter.INSTANCE.coerceToLong(delta), chronoUnit);
   }
 
   @Deprecated

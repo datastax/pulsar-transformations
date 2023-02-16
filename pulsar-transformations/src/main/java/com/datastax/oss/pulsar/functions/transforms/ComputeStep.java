@@ -17,7 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
-import com.datastax.oss.pulsar.functions.transforms.jstl.CustomTypeConverter;
+import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import java.nio.ByteBuffer;
@@ -287,7 +287,7 @@ public class ComputeStep implements TransformStep {
 
   private Long getAvroTimestampMillis(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Instant.class, Timestamp.class, LocalDateTime.class);
-    return CustomTypeConverter.INSTANCE.convert(value, Long.class);
+    return JstlTypeConverter.INSTANCE.coerceToType(value, Long.class);
   }
 
   private Integer getAvroDate(Object value, LogicalType logicalType) {
@@ -299,7 +299,7 @@ public class ComputeStep implements TransformStep {
 
   private Integer getAvroTimeMillis(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Time.class, LocalTime.class);
-    return CustomTypeConverter.INSTANCE.convert(value, Integer.class);
+    return JstlTypeConverter.INSTANCE.coerceToType(value, Integer.class);
   }
 
   private LogicalType getLogicalType(Schema schema) {
