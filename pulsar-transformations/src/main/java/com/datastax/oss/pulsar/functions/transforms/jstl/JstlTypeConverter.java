@@ -32,6 +32,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.Map;
 import org.apache.avro.util.Utf8;
+import org.apache.el.lang.ELSupport;
 import org.apache.el.util.MessageFactory;
 import org.apache.pulsar.client.api.Schema;
 
@@ -47,7 +48,7 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof byte[]) {
       return Schema.BOOL.decode((byte[]) value);
     }
-    return null;
+    return ELSupport.coerceToBoolean(null, value, false);
   }
 
   protected Double coerceToDouble(Object value) {
@@ -74,7 +75,7 @@ public class JstlTypeConverter extends TypeConverter {
       Instant instant = coerceToInstant(value);
       return (double) instant.getEpochSecond() * 1000 + (double) instant.getNano() / 1_000_000;
     }
-    return null;
+    return ELSupport.coerceToNumber(null, value, Double.class).doubleValue();
   }
 
   protected Float coerceToFloat(Object value) {
@@ -84,7 +85,7 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof LocalDate) {
       return (float) (((LocalDate) value).toEpochDay());
     }
-    return null;
+    return ELSupport.coerceToNumber(null, value, Double.class).floatValue();
   }
 
   protected Long coerceToLong(Object value) {
@@ -106,7 +107,7 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof TemporalAccessor) {
       return coerceToInstant(value).toEpochMilli();
     }
-    return null;
+    return ELSupport.coerceToNumber(null, value, Double.class).longValue();
   }
 
   protected Integer coerceToInteger(Object value) {
@@ -122,21 +123,21 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof LocalDate) {
       return Math.toIntExact(((LocalDate) value).toEpochDay());
     }
-    return null;
+    return ELSupport.coerceToNumber(null, value, Double.class).intValue();
   }
 
   protected Short coerceToShort(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT16.decode((byte[]) value);
     }
-    return null;
+    return ELSupport.coerceToNumber(null, value, Double.class).shortValue();
   }
 
   protected Byte coerceToByte(Object value) {
     if (value instanceof byte[]) {
       return Schema.INT8.decode((byte[]) value);
     }
-    return null;
+    return ELSupport.coerceToType(null, value, Byte.class);
   }
 
   protected String coerceToString(Object value) {
@@ -149,10 +150,10 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof byte[]) {
       return Schema.STRING.decode((byte[]) value);
     }
-    return null;
+    return ELSupport.coerceToString(null, value);
   }
 
-  protected Object coerceToType(Object value, Class<?> type) {
+  public <T> T coerceToType(Object value, Class<T> type) {
     if (value == null) {
       return null;
     }
@@ -160,55 +161,55 @@ public class JstlTypeConverter extends TypeConverter {
       return coerceToType(value.toString(), type);
     }
     if (type == Boolean.class) {
-      return coerceToBoolean(value);
+      return (T) coerceToBoolean(value);
     }
     if (type == Double.class) {
-      return coerceToDouble(value);
+      return (T) coerceToDouble(value);
     }
     if (type == Float.class) {
-      return coerceToFloat(value);
+      return (T) coerceToFloat(value);
     }
     if (type == Long.class) {
-      return coerceToLong(value);
+      return (T) coerceToLong(value);
     }
     if (type == Short.class) {
-      return coerceToShort(value);
+      return (T) coerceToShort(value);
     }
     if (type == Integer.class) {
-      return coerceToInteger(value);
+      return (T) coerceToInteger(value);
     }
     if (type == Byte.class) {
-      return coerceToByte(value);
+      return (T) coerceToByte(value);
     }
     if (type == String.class) {
-      return coerceToString(value);
+      return (T) coerceToString(value);
     }
     if (type == byte[].class) {
-      return coerceToBytes(value);
+      return (T) coerceToBytes(value);
     }
     if (type == Timestamp.class) {
-      return coerceToTimestamp(value);
+      return (T) coerceToTimestamp(value);
     }
     if (type == Time.class) {
-      return coerceToTime(value);
+      return (T) coerceToTime(value);
     }
     if (type == Date.class) {
-      return coerceToDate(value);
+      return (T) coerceToDate(value);
     }
     if (type == LocalDateTime.class) {
-      return coerceToLocalDateTime(value);
+      return (T) coerceToLocalDateTime(value);
     }
     if (type == LocalDate.class) {
-      return coerceToLocalDate(value);
+      return (T) coerceToLocalDate(value);
     }
     if (type == LocalTime.class) {
-      return coerceToLocalTime(value);
+      return (T) coerceToLocalTime(value);
     }
     if (type == Instant.class) {
-      return coerceToInstant(value);
+      return (T) coerceToInstant(value);
     }
     if (type == OffsetDateTime.class) {
-      return coerceToOffsetDateTime(value);
+      return (T) coerceToOffsetDateTime(value);
     }
     return null;
   }
@@ -455,7 +456,7 @@ public class JstlTypeConverter extends TypeConverter {
       elContext.setPropertyResolved(true);
       return null;
     }
-    Object coercedValue = coerceToType(value, type);
+    T coercedValue = coerceToType(value, type);
     elContext.setPropertyResolved(coercedValue != null);
     return (T) coercedValue;
   }

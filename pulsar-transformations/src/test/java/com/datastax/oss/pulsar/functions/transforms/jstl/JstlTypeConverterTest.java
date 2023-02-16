@@ -35,27 +35,27 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class CustomTypeConverterTest {
+public class JstlTypeConverterTest {
 
-  private static final CustomTypeConverter converter = CustomTypeConverter.INSTANCE;
+  private static final JstlTypeConverter converter = JstlTypeConverter.INSTANCE;
 
   @Test
   void testNullConversion() {
-    assertNull(converter.convert(null, byte[].class));
-    assertNull(converter.convert(null, String.class));
-    assertNull(converter.convert(null, int.class));
-    assertNull(converter.convert(null, long.class));
-    assertNull(converter.convert(null, float.class));
-    assertNull(converter.convert(null, double.class));
-    assertNull(converter.convert(null, boolean.class));
-    assertNull(converter.convert(null, Date.class));
-    assertNull(converter.convert(null, Timestamp.class));
-    assertNull(converter.convert(null, Time.class));
-    assertNull(converter.convert(null, LocalDateTime.class));
-    assertNull(converter.convert(null, LocalDate.class));
-    assertNull(converter.convert(null, LocalTime.class));
-    assertNull(converter.convert(null, Instant.class));
-    assertNull(converter.convert(null, OffsetDateTime.class));
+    assertNull(converter.coerceToType(null, byte[].class));
+    assertNull(converter.coerceToType(null, String.class));
+    assertNull(converter.coerceToType(null, int.class));
+    assertNull(converter.coerceToType(null, long.class));
+    assertNull(converter.coerceToType(null, float.class));
+    assertNull(converter.coerceToType(null, double.class));
+    assertNull(converter.coerceToType(null, boolean.class));
+    assertNull(converter.coerceToType(null, Date.class));
+    assertNull(converter.coerceToType(null, Timestamp.class));
+    assertNull(converter.coerceToType(null, Time.class));
+    assertNull(converter.coerceToType(null, LocalDateTime.class));
+    assertNull(converter.coerceToType(null, LocalDate.class));
+    assertNull(converter.coerceToType(null, LocalTime.class));
+    assertNull(converter.coerceToType(null, Instant.class));
+    assertNull(converter.coerceToType(null, OffsetDateTime.class));
   }
 
   @DataProvider(name = "conversions")
@@ -328,7 +328,7 @@ public class CustomTypeConverterTest {
 
   @Test(dataProvider = "conversions")
   public void testNonNullConversions(Object o, Class<?> type, Object expected) {
-    Object converted = converter.convert(o, type);
+    Object converted = converter.coerceToType(o, type);
     Assert.assertEquals(converted.getClass(), type);
     if (type.equals(Time.class)) {
       // j.s.Time equality is weird...

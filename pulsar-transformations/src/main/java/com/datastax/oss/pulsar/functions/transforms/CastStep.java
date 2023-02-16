@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import com.datastax.oss.pulsar.functions.transforms.jstl.CustomTypeConverter;
+import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -50,7 +50,7 @@ public class CastStep implements TransformStep {
   }
 
   private Object convertValue(Object originalValue, SchemaType schemaType) {
-    return CustomTypeConverter.INSTANCE.convert(originalValue, getJavaType(schemaType));
+    return JstlTypeConverter.INSTANCE.coerceToType(originalValue, getJavaType(schemaType));
   }
 
   private Class<?> getJavaType(SchemaType type) {
