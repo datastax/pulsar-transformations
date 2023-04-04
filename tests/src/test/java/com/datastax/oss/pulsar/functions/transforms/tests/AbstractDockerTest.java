@@ -20,13 +20,19 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.fail;
 import static org.testng.AssertJUnit.assertNull;
 
+import com.datastax.oss.pulsar.functions.transforms.tests.util.NativeSchemaWrapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.Value;
+import org.apache.avro.LogicalTypes;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.Consumer;
@@ -56,6 +62,9 @@ public abstract class AbstractDockerTest {
   private PulsarContainer pulsarContainer;
   private PulsarAdmin admin;
   private PulsarClient client;
+  private static final org.apache.avro.Schema dateType =
+      LogicalTypes.date()
+          .addToSchema(org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT));
 
   AbstractDockerTest(String image) {
     this.image = image;
@@ -348,6 +357,49 @@ public abstract class AbstractDockerTest {
     org.apache.avro.generic.GenericRecord genericRecord =
         (org.apache.avro.generic.GenericRecord) value.getNativeObject();
     assertEquals(genericRecord.toString(), "{\"a\": \"13360\", \"b\": 13360}");
+  }
+
+  @Test
+  public void testComputeAvroDateToString() throws Exception {
+    String userConfig =
+        ("{\"steps\": [{\"type\": \"compute\", \"fields\": ["
+            + "{\"name\": \"value.dateField\", \"expression\": \"value.dateField\", \"type\": \"STRING\"},"
+            + "{\"name\": \"value.optionalDateField\", \"expression\": \"value.optionalDateField\", \"type\": \"STRING\"}"
+            + "]}]}");
+
+    List<org.apache.avro.Schema.Field> fields =
+        List.of(createDateField("dateField", false), createDateField("optionalDateField", true));
+    org.apache.avro.Schema avroSchema =
+        org.apache.avro.Schema.createRecord("avro_date", "", "ns", false, fields);
+    org.apache.avro.generic.GenericRecord record = new GenericData.Record(avroSchema);
+
+    LocalDate date = LocalDate.parse("2023-04-01");
+    LocalDate optionalDate = LocalDate.parse("2023-04-02");
+    record.put("dateField", (int) date.toEpochDay());
+    record.put("optionalDateField", (int) optionalDate.toEpochDay());
+
+    Schema pulsarSchema = new NativeSchemaWrapper(avroSchema, SchemaType.AVRO);
+    GenericRecord value = testTransformFunction(userConfig, pulsarSchema, record);
+
+    assertEquals(value.getSchemaType(), SchemaType.AVRO);
+    org.apache.avro.generic.GenericRecord genericRecord =
+        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
+    assertEquals(
+        genericRecord.toString(),
+        "{\"dateField\": \"2023-04-01\", \"optionalDateField\": \"2023-04-02\"}");
+  }
+
+  private org.apache.avro.Schema.Field createDateField(String name, boolean optional) {
+    org.apache.avro.Schema.Field dateField = new org.apache.avro.Schema.Field(name, dateType);
+    if (optional) {
+      dateField =
+          new org.apache.avro.Schema.Field(
+              name,
+              SchemaBuilder.unionOf().nullType().and().type(dateField.schema()).endUnion(),
+              null,
+              org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
+    }
+    return dateField;
   }
 
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)

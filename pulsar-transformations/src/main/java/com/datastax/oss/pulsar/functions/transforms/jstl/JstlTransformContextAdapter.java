@@ -16,6 +16,7 @@
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
+import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -135,7 +136,8 @@ public class JstlTransformContextAdapter {
       Object value = null;
       if (genericRecord.hasField(key)) {
         value = genericRecord.get(key);
-        LogicalType logicalType = genericRecord.getSchema().getField(key).schema().getLogicalType();
+        LogicalType logicalType =
+            AvroUtil.getLogicalType(genericRecord.getSchema().getField(key).schema());
         if (LogicalTypes.date().equals(logicalType)) {
           return LocalDate.ofEpochDay((int) value);
         } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
