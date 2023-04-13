@@ -20,6 +20,7 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
 import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -32,7 +33,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -265,8 +265,8 @@ public class ComputeStep implements TransformStep {
     if (value instanceof Byte || value instanceof Short) {
       return ((Number) value).intValue();
     }
-
-    LogicalType logicalType = getLogicalType(schema);
+    
+    LogicalType logicalType = AvroUtil.getLogicalType(schema);
     if (logicalType == null) {
       return value;
     }
@@ -300,20 +300,6 @@ public class ComputeStep implements TransformStep {
   private Integer getAvroTimeMillis(Object value, LogicalType logicalType) {
     validateLogicalType(value, logicalType, Time.class, LocalTime.class);
     return JstlTypeConverter.INSTANCE.coerceToType(value, Integer.class);
-  }
-
-  private LogicalType getLogicalType(Schema schema) {
-    if (!schema.isUnion()) {
-      return schema.getLogicalType();
-    }
-
-    return schema
-        .getTypes()
-        .stream()
-        .map(Schema::getLogicalType)
-        .filter(Objects::nonNull)
-        .findAny()
-        .orElse(null);
   }
 
   void validateLogicalType(Object value, LogicalType logicalType, Class<?>... expectedClasses) {

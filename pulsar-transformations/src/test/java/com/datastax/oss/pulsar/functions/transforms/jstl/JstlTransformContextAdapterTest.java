@@ -21,11 +21,19 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.Utils;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.apache.avro.LogicalTypes;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
+import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -33,6 +41,10 @@ import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
 public class JstlTransformContextAdapterTest {
+  private static final org.apache.avro.Schema dateType =
+      LogicalTypes.date()
+          .addToSchema(org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT));
+
   @Test
   void testAdapterForKeyValueRecord() {
     // given
@@ -196,6 +208,54 @@ public class JstlTransformContextAdapterTest {
     assertEquals(headerProps.get("p1"), "v1");
     assertEquals(headerProps.get("p2"), "v2");
     assertNull(headerProps.get("p3"));
+  }
+
+  @Test
+  public void testAdapterForLogicalTypes() {
+    // given
+    List<org.apache.avro.Schema.Field> fields =
+        List.of(createDateField("dateField", false), createDateField("optionalDateField", true));
+    org.apache.avro.Schema avroSchema =
+        org.apache.avro.Schema.createRecord("avro_date", "", "ns", false, fields);
+    org.apache.avro.generic.GenericRecord genericRecord = new GenericData.Record(avroSchema);
+
+    LocalDate date = LocalDate.parse("2023-04-01");
+    LocalDate optionalDate = LocalDate.parse("2023-04-02");
+    genericRecord.put("dateField", (int) date.toEpochDay());
+    genericRecord.put("optionalDateField", (int) optionalDate.toEpochDay());
+
+    List<Field> pulsarFields =
+        fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
+    GenericAvroRecord valueRecord =
+        new GenericAvroRecord(new byte[0], avroSchema, pulsarFields, genericRecord);
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+    Record<GenericObject> record = new Utils.TestRecord<>(pulsarValueSchema, valueRecord, "key");
+    Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
+    TransformContext transformContext =
+        new TransformContext(context, record.getValue().getNativeObject());
+
+    // when
+    JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
+
+    // then
+    assertTrue(adapter.getValue() instanceof Map);
+    Map<String, Object> map = (Map) adapter.getValue();
+    assertEquals(map.get("dateField"), date);
+    assertEquals(map.get("optionalDateField"), optionalDate);
+  }
+
+  private org.apache.avro.Schema.Field createDateField(String name, boolean optional) {
+    org.apache.avro.Schema.Field dateField = new org.apache.avro.Schema.Field(name, dateType);
+    if (optional) {
+      dateField =
+          new org.apache.avro.Schema.Field(
+              name,
+              SchemaBuilder.unionOf().nullType().and().type(dateField.schema()).endUnion(),
+              null,
+              org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
+    }
+    return dateField;
   }
 
   void assertNestedRecord(Map<String, Object> root) {
