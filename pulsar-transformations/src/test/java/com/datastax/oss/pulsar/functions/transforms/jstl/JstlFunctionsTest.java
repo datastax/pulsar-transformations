@@ -20,6 +20,8 @@ import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertNull;
 import static org.testng.AssertJUnit.assertTrue;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -145,6 +147,14 @@ public class JstlFunctionsTest {
         Instant.parse("2022-10-02T02:02:03Z"),
         JstlFunctions.timestampAdd(
             "2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @Test
+  void testToBigDecimal() {
+    assertEquals(
+        new BigDecimal("12.34567890123456789012345678901234567890"),
+        JstlFunctions.toBigDecimal(
+            new BigInteger("1234567890123456789012345678901234567890").toByteArray(), 38));
   }
 
   @Test(

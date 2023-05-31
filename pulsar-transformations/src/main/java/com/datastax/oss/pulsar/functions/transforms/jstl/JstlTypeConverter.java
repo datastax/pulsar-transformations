@@ -19,6 +19,8 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.el.ELContext;
 import jakarta.el.ELException;
 import jakarta.el.TypeConverter;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -211,6 +213,9 @@ public class JstlTypeConverter extends TypeConverter {
     if (type == OffsetDateTime.class) {
       return (T) coerceToOffsetDateTime(value);
     }
+    if (type == BigDecimal.class) {
+      return (T) coerceToBigDecimal(value);
+    }
     return null;
   }
 
@@ -238,6 +243,12 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (value instanceof byte[]) {
       return (byte[]) value;
+    }
+    if (value instanceof ByteBuffer) {
+      ByteBuffer bb = (ByteBuffer) value;
+      byte[] bytes = new byte[bb.remaining()];
+      bb.duplicate().get(bytes);
+      return bytes;
     }
     if (value instanceof OffsetDateTime) {
       return coerceToBytes(((OffsetDateTime) value).toInstant());
@@ -448,6 +459,20 @@ public class JstlTypeConverter extends TypeConverter {
     }
     throw new ELException(
         MessageFactory.get("error.convert", value, value.getClass(), OffsetDateTime.class));
+  }
+
+  protected BigDecimal coerceToBigDecimal(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof BigDecimal) {
+      return (BigDecimal) value;
+    }
+    if (value instanceof String) {
+      return new BigDecimal((String) value);
+    }
+    throw new ELException(
+        MessageFactory.get("error.convert", value, value.getClass(), BigDecimal.class));
   }
 
   @Override

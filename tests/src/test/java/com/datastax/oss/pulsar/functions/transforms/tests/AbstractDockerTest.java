@@ -23,6 +23,7 @@ import static org.testng.AssertJUnit.assertNull;
 import com.datastax.oss.pulsar.functions.transforms.tests.util.NativeSchemaWrapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -389,6 +390,47 @@ public abstract class AbstractDockerTest {
         "{\"dateField\": \"2023-04-01\", \"optionalDateField\": \"2023-04-02\"}");
   }
 
+  @Test
+  public void testComputeCqlDecimalToAvroDecimal() throws Exception {
+    String userConfig =
+        ("{\"steps\": [{\"type\": \"compute\", \"fields\": ["
+            + "{\"name\": \"value.cqlDecimalField\", \"expression\": \"fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)\", \"type\": \"DECIMAL\"},"
+            + "{\"name\": \"value.cqlDecimalOptionalField\", \"expression\": \"fn:decimal(value.cqlDecimalOptionalField.bigint, value.cqlDecimalOptionalField.scale)\", \"type\": \"DECIMAL\"}"
+            + "{\"name\": \"value.cqlDecimalFieldAsString\", \"expression\": \"fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)\", \"type\": \"STRING\"}"
+            + "{\"name\": \"value.cqlDecimalOptionalFieldAsString\", \"expression\": \"fn:str(fn:decimal(value.cqlDecimalOptionalField.bigint, value.cqlDecimalOptionalField.scale))\"}"
+            + "]}]}");
+
+    BigDecimal decimal = new BigDecimal("123456789012345678901234567890.123456789");
+    BigDecimal optionalDecimal = new BigDecimal("567890123456789012345678901234.456789");
+    List<org.apache.avro.Schema.Field> fields =
+        List.of(
+            createDecimalField("cqlDecimalField", decimal.precision(), decimal.scale(), false),
+            createDecimalField(
+                "cqlDecimalOptionalField",
+                optionalDecimal.precision(),
+                optionalDecimal.scale(),
+                true));
+    org.apache.avro.Schema avroSchema =
+        org.apache.avro.Schema.createRecord("avro_decimal", "", "ns", false, fields);
+    org.apache.avro.generic.GenericRecord record = new GenericData.Record(avroSchema);
+
+    LocalDate date = LocalDate.parse("2023-04-01");
+    LocalDate optionalDate = LocalDate.parse("2023-04-02");
+    record.put("cqlDecimalField", (int) date.toEpochDay());
+    record.put("cqlDecimalOptionalField", (int) optionalDate.toEpochDay());
+
+    Schema pulsarSchema = new NativeSchemaWrapper(avroSchema, SchemaType.AVRO);
+    GenericRecord value = testTransformFunction(userConfig, pulsarSchema, record);
+
+    assertEquals(value.getSchemaType(), SchemaType.AVRO);
+    org.apache.avro.generic.GenericRecord genericRecord =
+        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
+    assertEquals(genericRecord.get("cqlDecimalField"), decimal);
+    assertEquals(genericRecord.get("cqlDecimalOptionalField"), optionalDecimal.toString());
+    assertEquals(genericRecord.get("cqlDecimalFieldAsString"), decimal);
+    assertEquals(genericRecord.get("cqlDecimalOptionalFieldAsString"), optionalDecimal.toString());
+  }
+
   private org.apache.avro.Schema.Field createDateField(String name, boolean optional) {
     org.apache.avro.Schema.Field dateField = new org.apache.avro.Schema.Field(name, dateType);
     if (optional) {
@@ -400,6 +442,23 @@ public abstract class AbstractDockerTest {
               org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
     }
     return dateField;
+  }
+
+  private org.apache.avro.Schema.Field createDecimalField(
+      String name, int precision, int scale, boolean optional) {
+    org.apache.avro.Schema decimalType =
+        LogicalTypes.decimal(precision, scale)
+            .addToSchema(org.apache.avro.Schema.create(org.apache.avro.Schema.Type.BYTES));
+    org.apache.avro.Schema.Field decimalField = new org.apache.avro.Schema.Field(name, decimalType);
+    if (optional) {
+      decimalField =
+          new org.apache.avro.Schema.Field(
+              name,
+              SchemaBuilder.unionOf().nullType().and().type(decimalField.schema()).endUnion(),
+              null,
+              org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
+    }
+    return decimalField;
   }
 
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)

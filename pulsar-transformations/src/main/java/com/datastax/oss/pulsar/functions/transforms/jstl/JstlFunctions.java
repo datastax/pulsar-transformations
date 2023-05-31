@@ -16,6 +16,8 @@
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import jakarta.el.ELException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -65,6 +67,10 @@ public class JstlFunctions {
 
   public static String toString(Object input) {
     return JstlTypeConverter.INSTANCE.coerceToString(input);
+  }
+
+  public static BigDecimal toBigDecimal(byte[] bytes, int scale) {
+    return new BigDecimal(new BigInteger(bytes), scale);
   }
 
   public static Instant now() {

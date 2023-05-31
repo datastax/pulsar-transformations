@@ -37,5 +37,6 @@ public enum ComputeFieldType {
    */
   @Deprecated
   DATETIME,
-  BYTES
+  BYTES,
+  DECIMAL
 }

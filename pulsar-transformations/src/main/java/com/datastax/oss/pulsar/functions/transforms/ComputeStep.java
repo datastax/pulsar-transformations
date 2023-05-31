@@ -21,6 +21,7 @@ import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -188,29 +189,25 @@ public class ComputeStep implements TransformStep {
       GenericRecord record,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache,
       TransformContext context) {
+
+    // Evaluate computed fields
+    Map<Schema.Field, Object> evaluatedFields = new HashMap<>();
+    for (ComputeField field : fields) {
+      Object value = field.getEvaluator().evaluate(context);
+      ComputeFieldType type = field.getType() == null ? getFieldType(value) : field.getType();
+      Schema.Field avroField;
+      if (type == ComputeFieldType.DECIMAL) {
+        BigDecimal decimal = (BigDecimal) value;
+        avroField = createAvroDecimalField(field, decimal.precision(), decimal.scale());
+      } else {
+        avroField = createAvroField(field, type);
+      }
+      evaluatedFields.put(avroField, getAvroValue(avroField.schema(), value));
+    }
+
     org.apache.avro.Schema avroSchema = record.getSchema();
-
-    Map<String, Object> inferredFields = new HashMap<>();
-    fields
-        .stream()
-        .filter(field -> field.getType() == null)
-        .forEach(
-            field -> inferredFields.put(field.getName(), field.getEvaluator().evaluate(context)));
-
-    List<Schema.Field> computedFields =
-        fields
-            .stream()
-            .map(
-                field ->
-                    createAvroField(
-                        field,
-                        field.getType() != null
-                            ? field.getType()
-                            : getFieldType(inferredFields.get(field.getName()))))
-            .collect(Collectors.toList());
-
     Set<String> computedFieldNames =
-        computedFields.stream().map(Schema.Field::name).collect(Collectors.toSet());
+        evaluatedFields.keySet().stream().map(Schema.Field::name).collect(Collectors.toSet());
     // New fields are the intersection between existing fields and computed fields. Computed fields
     // take precedence.
     List<Schema.Field> newFields =
@@ -223,7 +220,7 @@ public class ComputeStep implements TransformStep {
                     new org.apache.avro.Schema.Field(
                         f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
             .collect(Collectors.toList());
-    newFields.addAll(computedFields);
+    newFields.addAll(evaluatedFields.keySet().stream().collect(Collectors.toList()));
     org.apache.avro.Schema newSchema =
         schemaCache.computeIfAbsent(
             avroSchema,
@@ -241,15 +238,7 @@ public class ComputeStep implements TransformStep {
       newRecordBuilder.set(field.name(), record.get(field.name()));
     }
     // Add computed fields
-    for (ComputeField field : fields) {
-      newRecordBuilder.set(
-          field.getName(),
-          getAvroValue(
-              newSchema.getField(field.getName()).schema(),
-              field.getType() != null
-                  ? field.getEvaluator().evaluate(context)
-                  : inferredFields.get(field.getName())));
-    }
+    evaluatedFields.forEach(newRecordBuilder::set);
     return newRecordBuilder.build();
   }
 
@@ -265,7 +254,7 @@ public class ComputeStep implements TransformStep {
     if (value instanceof Byte || value instanceof Short) {
       return ((Number) value).intValue();
     }
-    
+
     LogicalType logicalType = AvroUtil.getLogicalType(schema);
     if (logicalType == null) {
       return value;
@@ -279,6 +268,8 @@ public class ComputeStep implements TransformStep {
         return getAvroTimeMillis(value, schema.getLogicalType());
       case "timestamp-millis":
         return getAvroTimestampMillis(value, schema.getLogicalType());
+      case "decimal":
+        return getAvroDecimal(value, schema.getLogicalType());
     }
 
     throw new IllegalArgumentException(
@@ -302,6 +293,11 @@ public class ComputeStep implements TransformStep {
     return JstlTypeConverter.INSTANCE.coerceToType(value, Integer.class);
   }
 
+  private BigDecimal getAvroDecimal(Object value, LogicalType logicalType) {
+    validateLogicalType(value, logicalType, BigDecimal.class);
+    return JstlTypeConverter.INSTANCE.coerceToType(value, BigDecimal.class);
+  }
+
   void validateLogicalType(Object value, LogicalType logicalType, Class<?>... expectedClasses) {
     for (Class<?> clazz : expectedClasses) {
       if ((value.getClass().equals(clazz))) {
@@ -314,6 +310,16 @@ public class ComputeStep implements TransformStep {
 
   private Schema.Field createAvroField(ComputeField field, ComputeFieldType type) {
     Schema avroSchema = getAvroSchema(type);
+    Object defaultValue = null;
+    if (field.isOptional()) {
+      avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
+      defaultValue = Schema.Field.NULL_DEFAULT_VALUE;
+    }
+    return new Schema.Field(field.getName(), avroSchema, null, defaultValue);
+  }
+
+  private Schema.Field createAvroDecimalField(ComputeField field, int scale, int precision) {
+    Schema avroSchema = getAvroDecimalSchema(scale, precision);
     Object defaultValue = null;
     if (field.isOptional()) {
       avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
@@ -354,6 +360,7 @@ public class ComputeStep implements TransformStep {
         schemaType = Schema.Type.BOOLEAN;
         break;
       case BYTES:
+      case DECIMAL:
         schemaType = Schema.Type.BYTES;
         break;
       default:
@@ -380,6 +387,17 @@ public class ComputeStep implements TransformStep {
             default:
               return schema;
           }
+        });
+  }
+
+  private Schema getAvroDecimalSchema(int precision, int scale) {
+    Schema.Type schemaType = Schema.Type.BYTES;
+    return fieldTypeToAvroSchemaCache.computeIfAbsent(
+        ComputeFieldType.DECIMAL,
+        key -> {
+          Schema schema = Schema.create(schemaType);
+          // See: https://avro.apache.org/docs/1.10.2/spec.html#Decimal
+          return LogicalTypes.decimal(precision, scale).addToSchema(schema);
         });
   }
 
@@ -548,6 +566,9 @@ public class ComputeStep implements TransformStep {
     }
     if (value.getClass().equals(Instant.class)) {
       return ComputeFieldType.INSTANT;
+    }
+    if (value.getClass().equals(BigDecimal.class)) {
+      return ComputeFieldType.DECIMAL;
     }
     throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }
