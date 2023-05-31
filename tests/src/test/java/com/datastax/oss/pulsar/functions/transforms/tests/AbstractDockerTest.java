@@ -24,6 +24,7 @@ import com.datastax.oss.pulsar.functions.transforms.tests.util.NativeSchemaWrapp
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.Value;
+import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
@@ -66,6 +68,25 @@ public abstract class AbstractDockerTest {
   private static final org.apache.avro.Schema dateType =
       LogicalTypes.date()
           .addToSchema(org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT));
+
+  // CQL DECIMAL
+  private static final CqlDecimalLogicalType CQL_DECIMAL_LOGICAL_TYPE = new CqlDecimalLogicalType();
+  private static final String CQL_DECIMAL = "cql_decimal";
+  private static final String CQL_DECIMAL_BIGINT = "bigint";
+  private static final String CQL_DECIMAL_SCALE = "scale";
+  private static final org.apache.avro.Schema decimalType =
+          CQL_DECIMAL_LOGICAL_TYPE.addToSchema(
+                  SchemaBuilder.record(CQL_DECIMAL)
+                          .fields()
+                          .name(CQL_DECIMAL_BIGINT)
+                          .type()
+                          .bytesType()
+                          .noDefault()
+                          .name(CQL_DECIMAL_SCALE)
+                          .type()
+                          .intType()
+                          .noDefault()
+                          .endRecord());
 
   AbstractDockerTest(String image) {
     this.image = image;
@@ -395,29 +416,23 @@ public abstract class AbstractDockerTest {
     String userConfig =
         ("{\"steps\": [{\"type\": \"compute\", \"fields\": ["
             + "{\"name\": \"value.cqlDecimalField\", \"expression\": \"fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)\", \"type\": \"DECIMAL\"},"
-            + "{\"name\": \"value.cqlDecimalOptionalField\", \"expression\": \"fn:decimal(value.cqlDecimalOptionalField.bigint, value.cqlDecimalOptionalField.scale)\", \"type\": \"DECIMAL\"}"
-            + "{\"name\": \"value.cqlDecimalFieldAsString\", \"expression\": \"fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)\", \"type\": \"STRING\"}"
+            + "{\"name\": \"value.cqlDecimalOptionalField\", \"expression\": \"fn:decimal(value.cqlDecimalOptionalField.bigint, value.cqlDecimalOptionalField.scale)\"},"
+            + "{\"name\": \"value.cqlDecimalFieldAsString\", \"expression\": \"fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)\", \"type\": \"STRING\"},"
             + "{\"name\": \"value.cqlDecimalOptionalFieldAsString\", \"expression\": \"fn:str(fn:decimal(value.cqlDecimalOptionalField.bigint, value.cqlDecimalOptionalField.scale))\"}"
             + "]}]}");
 
-    BigDecimal decimal = new BigDecimal("123456789012345678901234567890.123456789");
-    BigDecimal optionalDecimal = new BigDecimal("567890123456789012345678901234.456789");
     List<org.apache.avro.Schema.Field> fields =
         List.of(
-            createDecimalField("cqlDecimalField", decimal.precision(), decimal.scale(), false),
-            createDecimalField(
-                "cqlDecimalOptionalField",
-                optionalDecimal.precision(),
-                optionalDecimal.scale(),
-                true));
+            createDecimalField("cqlDecimalField", false),
+            createDecimalField("cqlDecimalOptionalField", true));
     org.apache.avro.Schema avroSchema =
-        org.apache.avro.Schema.createRecord("avro_decimal", "", "ns", false, fields);
+        org.apache.avro.Schema.createRecord("cql_decimal", "", "ns", false, fields);
     org.apache.avro.generic.GenericRecord record = new GenericData.Record(avroSchema);
 
-    LocalDate date = LocalDate.parse("2023-04-01");
-    LocalDate optionalDate = LocalDate.parse("2023-04-02");
-    record.put("cqlDecimalField", (int) date.toEpochDay());
-    record.put("cqlDecimalOptionalField", (int) optionalDate.toEpochDay());
+    BigDecimal decimal = new BigDecimal("123456789012345678901234567890.123456789");
+    BigDecimal optionalDecimal = new BigDecimal("567890123456789012345678901234.456789");
+    record.put("cqlDecimalField", createDecimalRecord(decimal));
+    record.put("cqlDecimalOptionalField", createDecimalRecord(optionalDecimal));
 
     Schema pulsarSchema = new NativeSchemaWrapper(avroSchema, SchemaType.AVRO);
     GenericRecord value = testTransformFunction(userConfig, pulsarSchema, record);
@@ -444,11 +459,7 @@ public abstract class AbstractDockerTest {
     return dateField;
   }
 
-  private org.apache.avro.Schema.Field createDecimalField(
-      String name, int precision, int scale, boolean optional) {
-    org.apache.avro.Schema decimalType =
-        LogicalTypes.decimal(precision, scale)
-            .addToSchema(org.apache.avro.Schema.create(org.apache.avro.Schema.Type.BYTES));
+  private org.apache.avro.Schema.Field createDecimalField(String name, boolean optional) {
     org.apache.avro.Schema.Field decimalField = new org.apache.avro.Schema.Field(name, decimalType);
     if (optional) {
       decimalField =
@@ -458,7 +469,20 @@ public abstract class AbstractDockerTest {
               null,
               org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
     }
+
     return decimalField;
+  }
+
+  private static class CqlDecimalLogicalType extends LogicalType {
+    public CqlDecimalLogicalType() {
+      super(CQL_DECIMAL);
+    }
+  }
+  private org.apache.avro.generic.GenericRecord createDecimalRecord(BigDecimal decimal) {
+    org.apache.avro.generic.GenericRecord decimalRecord = new GenericData.Record(decimalType);
+    decimalRecord.put(CQL_DECIMAL_BIGINT, ByteBuffer.wrap(decimal.unscaledValue().toByteArray()));
+    decimalRecord.put(CQL_DECIMAL_SCALE, decimal.scale());
+    return decimalRecord;
   }
 
   private <T> GenericRecord testTransformFunction(String userConfig, Schema<T> schema, T value)
