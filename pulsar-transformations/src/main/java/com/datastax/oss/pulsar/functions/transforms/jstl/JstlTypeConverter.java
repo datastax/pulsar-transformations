@@ -20,6 +20,7 @@ import jakarta.el.ELContext;
 import jakarta.el.ELException;
 import jakarta.el.TypeConverter;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -470,6 +471,9 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (value instanceof String) {
       return new BigDecimal((String) value);
+    }
+    if (value instanceof byte[]) {
+      return new BigDecimal(new BigInteger((byte[]) value));
     }
     throw new ELException(
         MessageFactory.get("error.convert", value, value.getClass(), BigDecimal.class));

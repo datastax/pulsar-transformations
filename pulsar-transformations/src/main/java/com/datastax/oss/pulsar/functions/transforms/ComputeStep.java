@@ -31,7 +31,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -192,17 +191,12 @@ public class ComputeStep implements TransformStep {
       TransformContext context) {
 
     // Evaluate computed fields
-    Map<Schema.Field, Object> evaluatedFields = new LinkedHashMap<>(); // preserves the insertion order of keys
+    Map<Schema.Field, Object> evaluatedFields =
+        new LinkedHashMap<>(); // preserves the insertion order of keys
     for (ComputeField field : fields) {
       Object value = field.getEvaluator().evaluate(context);
       ComputeFieldType type = field.getType() == null ? getFieldType(value) : field.getType();
-      Schema.Field avroField;
-      if (type == ComputeFieldType.DECIMAL) {
-        BigDecimal decimal = (BigDecimal) value;
-        avroField = createAvroDecimalField(field, decimal.precision(), decimal.scale());
-      } else {
-        avroField = createAvroField(field, type);
-      }
+      Schema.Field avroField = createAvroField(field, type, value);
       evaluatedFields.put(avroField, getAvroValue(avroField.schema(), value));
     }
 
@@ -309,8 +303,8 @@ public class ComputeStep implements TransformStep {
         String.format("Invalid java type %s for logical type %s", value.getClass(), logicalType));
   }
 
-  private Schema.Field createAvroField(ComputeField field, ComputeFieldType type) {
-    Schema avroSchema = getAvroSchema(type);
+  private Schema.Field createAvroField(ComputeField field, ComputeFieldType type, Object value) {
+    Schema avroSchema = getAvroSchema(type, value);
     Object defaultValue = null;
     if (field.isOptional()) {
       avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
@@ -319,17 +313,7 @@ public class ComputeStep implements TransformStep {
     return new Schema.Field(field.getName(), avroSchema, null, defaultValue);
   }
 
-  private Schema.Field createAvroDecimalField(ComputeField field, int scale, int precision) {
-    Schema avroSchema = getAvroDecimalSchema(scale, precision);
-    Object defaultValue = null;
-    if (field.isOptional()) {
-      avroSchema = SchemaBuilder.unionOf().nullType().and().type(avroSchema).endUnion();
-      defaultValue = Schema.Field.NULL_DEFAULT_VALUE;
-    }
-    return new Schema.Field(field.getName(), avroSchema, null, defaultValue);
-  }
-
-  private Schema getAvroSchema(ComputeFieldType type) {
+  private Schema getAvroSchema(ComputeFieldType type, Object value) {
     Schema.Type schemaType;
     switch (type) {
       case STRING:
@@ -361,9 +345,14 @@ public class ComputeStep implements TransformStep {
         schemaType = Schema.Type.BOOLEAN;
         break;
       case BYTES:
-      case DECIMAL:
         schemaType = Schema.Type.BYTES;
         break;
+      case DECIMAL:
+        // disable caching for decimal schema because the schema is different for each precision and
+        // scale combo and will result in an arbitrary numbers of schemas
+        // See: https://avro.apache.org/docs/1.10.2/spec.html#Decimal
+        BigDecimal decimal = (BigDecimal) value;
+        return LogicalTypes.decimal(decimal.precision(), decimal.scale()).addToSchema(Schema.create(Schema.Type.BYTES));
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
@@ -388,17 +377,6 @@ public class ComputeStep implements TransformStep {
             default:
               return schema;
           }
-        });
-  }
-
-  private Schema getAvroDecimalSchema(int precision, int scale) {
-    Schema.Type schemaType = Schema.Type.BYTES;
-    return fieldTypeToAvroSchemaCache.computeIfAbsent(
-        ComputeFieldType.DECIMAL,
-        key -> {
-          Schema schema = Schema.create(schemaType);
-          // See: https://avro.apache.org/docs/1.10.2/spec.html#Decimal
-          return LogicalTypes.decimal(precision, scale).addToSchema(schema);
         });
   }
 

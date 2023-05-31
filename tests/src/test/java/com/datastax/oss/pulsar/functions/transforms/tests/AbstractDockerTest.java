@@ -15,17 +15,28 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.tests;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.fail;
+import static org.testng.AssertJUnit.assertNull;
+
 import com.datastax.oss.pulsar.functions.transforms.tests.util.CqlLogicalTypes;
 import com.datastax.oss.pulsar.functions.transforms.tests.util.NativeSchemaWrapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import lombok.Value;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.ReflectData;
-import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.Consumer;
@@ -48,21 +59,10 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.fail;
-import static org.testng.AssertJUnit.assertNull;
-
 public abstract class AbstractDockerTest {
-  private static final GenericData[] GD_INSTANCES = { ReflectData.AllowNull.get(), ReflectData.get(), GenericData.get() };
+  private static final GenericData[] GD_INSTANCES = {
+    ReflectData.AllowNull.get(), ReflectData.get(), GenericData.get()
+  };
 
   static {
     // A workaround to register decimal conversion on the generic data objected associated with the consumer used to
@@ -71,6 +71,7 @@ public abstract class AbstractDockerTest {
       gd.addLogicalTypeConversion(new Conversions.DecimalConversion());
     }
   }
+
   private final String image;
   private Network network;
   private PulsarContainer pulsarContainer;
@@ -403,43 +404,54 @@ public abstract class AbstractDockerTest {
         "{\"dateField\": \"2023-04-01\", \"optionalDateField\": \"2023-04-02\"}");
   }
 
-  /**
-   * TODO: Enable non-optional decimal tests. For now the tests works fine with optional only or non-optional. However,
-   * enabling both results in org.apache.pulsar.client.api.SchemaSerializationException: java.io.EOFException
-   */
   @Test
   public void testComputeCqlDecimalToAvroDecimal() throws Exception {
     String userConfig =
         ("{\"steps\": [{\"type\": \"compute\", \"fields\": ["
-            //+ "{\"name\": \"value.cqlDecimal\", \"expression\": \"fn:decimal(value.cqlDecimal.bigint, value.cqlDecimal.scale)\", \"type\": \"DECIMAL\"},"
-            + "{\"name\": \"value.cqlDecimalOptional\", \"expression\": \"fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale)\", \"type\": \"DECIMAL\"},"
-            //+ "{\"name\": \"value.cqlDecimalAsString\", \"expression\": \"fn:decimal(value.cqlDecimal.bigint, value.cqlDecimal.scale)\", \"type\": \"STRING\"},"
-            + "{\"name\": \"value.cqlDecimalOptionalAsString\", \"expression\": \"fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale)\", \"type\": \"STRING\"}"
+            + "{\"name\": \"key.cqlDecimal\", \"expression\":\"fn:decimal(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"DECIMAL\"},"
+            + "{\"name\": \"value.cqlDecimalOptional\", \"expression\": \"fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale)\"}," // Inferred
+            + "{\"name\": \"key.cqlDecimalAsString\", \"expression\":\"fn:decimal(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"STRING\"},"
+            + "{\"name\": \"value.cqlDecimalOptionalAsString\", \"expression\": \"fn:str(fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale))\"}" // Inferred
             + "]}]}");
 
-    List<org.apache.avro.Schema.Field> fields =
-        List.of(
-            //CqlLogicalTypes.createDecimalField("cqlDecimal", false),
-            CqlLogicalTypes.createDecimalField("cqlDecimalOptional", true));
-    org.apache.avro.Schema avroSchema =
-        org.apache.avro.Schema.createRecord("cql_decimal", "", "ns", false, fields);
-    org.apache.avro.generic.GenericRecord record = new GenericData.Record(avroSchema);
+    org.apache.avro.Schema avroKeySchema =
+        org.apache.avro.Schema.createRecord(
+            "key",
+            "",
+            "ns",
+            false,
+            List.of(CqlLogicalTypes.createDecimalField("cqlDecimal", false)));
+    org.apache.avro.Schema avroValueSchema =
+        org.apache.avro.Schema.createRecord(
+            "value",
+            "",
+            "ns",
+            false,
+            List.of(CqlLogicalTypes.createDecimalField("cqlDecimalOptional", true)));
+    org.apache.avro.generic.GenericRecord keyRecord = new GenericData.Record(avroKeySchema);
+    org.apache.avro.generic.GenericRecord valueRecord = new GenericData.Record(avroValueSchema);
 
-    //BigDecimal decimal = new BigDecimal("123456789012345678901234567890.123456789");
+    BigDecimal decimal = new BigDecimal("123456789012345678901234567890.123456789");
     BigDecimal optionalDecimal = new BigDecimal("567890123456789012345678901234.456789");
-    //record.put("cqlDecimal", CqlLogicalTypes.createDecimalRecord(decimal));
-    record.put("cqlDecimalOptional", CqlLogicalTypes.createDecimalRecord(optionalDecimal));
+    keyRecord.put("cqlDecimal", CqlLogicalTypes.createDecimalRecord(decimal));
+    valueRecord.put("cqlDecimalOptional", CqlLogicalTypes.createDecimalRecord(optionalDecimal));
 
-    Schema pulsarSchema = new NativeSchemaWrapper(avroSchema, SchemaType.AVRO);
-    GenericRecord value = testTransformFunction(userConfig, pulsarSchema, record);
+    Schema keySchema = new NativeSchemaWrapper(avroKeySchema, SchemaType.AVRO);
+    Schema valueSchema = new NativeSchemaWrapper(avroValueSchema, SchemaType.AVRO);
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(keySchema, valueSchema),
+            new KeyValue<>(keyRecord, valueRecord));
 
-    assertEquals(value.getSchemaType(), SchemaType.AVRO);
-    org.apache.avro.generic.GenericRecord genericRecord =
-        (org.apache.avro.generic.GenericRecord) value.getNativeObject();
-    //assertEquals(genericRecord.get("cqlDecimal"), decimal);
-    assertEquals(genericRecord.get("cqlDecimalOptional"), optionalDecimal);
-    //assertEquals(genericRecord.get("cqlDecimalFieldAsString"), new Utf8(decimal.toString()));
-    assertEquals(genericRecord.get("cqlDecimalOptionalAsString"), new Utf8(optionalDecimal.toString()));
+    assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
+    KeyValue<GenericRecord, GenericRecord> keyValue =
+        (KeyValue<GenericRecord, GenericRecord>) value.getNativeObject();
+    assertEquals(keyValue.getKey().getField("cqlDecimal"), decimal);
+    assertEquals(keyValue.getKey().getField("cqlDecimalAsString"), decimal.toString());
+    assertEquals(keyValue.getValue().getField("cqlDecimalOptional"), optionalDecimal);
+    assertEquals(
+        keyValue.getValue().getField("cqlDecimalOptionalAsString"), optionalDecimal.toString());
   }
 
   private org.apache.avro.Schema.Field createDateField(String name, boolean optional) {
