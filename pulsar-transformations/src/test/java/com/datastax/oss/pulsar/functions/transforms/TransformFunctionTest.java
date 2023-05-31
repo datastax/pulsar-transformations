@@ -113,6 +113,9 @@ public class TransformFunctionTest {
       },
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: '1234', type: 'DATE'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: 'value.field1', type: 'DECIMAL'}]}]}"
       }
     };
   }

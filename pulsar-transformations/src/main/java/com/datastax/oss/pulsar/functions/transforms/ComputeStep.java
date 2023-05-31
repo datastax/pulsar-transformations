@@ -32,6 +32,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -191,7 +192,7 @@ public class ComputeStep implements TransformStep {
       TransformContext context) {
 
     // Evaluate computed fields
-    Map<Schema.Field, Object> evaluatedFields = new HashMap<>();
+    Map<Schema.Field, Object> evaluatedFields = new LinkedHashMap<>(); // preserves the insertion order of keys
     for (ComputeField field : fields) {
       Object value = field.getEvaluator().evaluate(context);
       ComputeFieldType type = field.getType() == null ? getFieldType(value) : field.getType();
