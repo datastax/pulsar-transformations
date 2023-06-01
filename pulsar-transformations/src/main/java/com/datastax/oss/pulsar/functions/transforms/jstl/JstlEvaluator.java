@@ -86,7 +86,14 @@ public class JstlEvaluator<T> {
         .mapFunction(
             "fn",
             "decimal",
-            JstlFunctions.class.getMethod("toBigDecimal", byte[].class, int.class));
+            JstlFunctions.class.getMethod("toBigDecimal", Object.class, Object.class));
+
+    this.expressionContext
+            .getFunctionMapper()
+            .mapFunction(
+                    "fn",
+                    "decimal",
+                    JstlFunctions.class.getMethod("toBigDecimal", Object.class));
 
     // Deprecated
     this.expressionContext

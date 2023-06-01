@@ -69,8 +69,15 @@ public class JstlFunctions {
     return JstlTypeConverter.INSTANCE.coerceToString(input);
   }
 
-  public static BigDecimal toBigDecimal(byte[] bytes, int scale) {
-    return new BigDecimal(new BigInteger(bytes), scale);
+  public static BigDecimal toBigDecimal(Object value, Object scale) {
+    final BigInteger bigInteger = JstlTypeConverter.INSTANCE.coerceToBigInteger(value);
+    final int scaleInteger = JstlTypeConverter.INSTANCE.coerceToInteger(scale);
+    return new BigDecimal(bigInteger, scaleInteger);
+  }
+
+  public static BigDecimal toBigDecimal(Object value) {
+    final double d = JstlTypeConverter.INSTANCE.coerceToDouble(value);
+    return BigDecimal.valueOf(d);
   }
 
   public static Instant now() {

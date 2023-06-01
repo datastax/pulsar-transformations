@@ -149,12 +149,14 @@ public class JstlFunctionsTest {
             "2022-10-02T01:02:03Z", 1, "hours".getBytes(StandardCharsets.UTF_8)));
   }
 
-  @Test
-  void testToBigDecimal() {
-    assertEquals(
-        new BigDecimal("12.34567890123456789012345678901234567890"),
-        JstlFunctions.toBigDecimal(
-            new BigInteger("1234567890123456789012345678901234567890").toByteArray(), 38));
+  @Test(dataProvider = "toBigDecimalProvider")
+  void testToBigDecimal(Object value, Object scale, BigDecimal expected) {
+    assertEquals(expected, JstlFunctions.toBigDecimal(value, scale));
+  }
+
+  @Test(dataProvider = "toBigDecimalWithoutScaleProvider")
+  void testToBigDecimalWithoutScale(Object value, BigDecimal expected) {
+    assertEquals(expected, JstlFunctions.toBigDecimal(value));
   }
 
   @Test(
@@ -164,6 +166,34 @@ public class JstlFunctionsTest {
   )
   void testInvalidAddDate() {
     JstlFunctions.dateadd((byte) 7, 0, "days");
+  }
+
+  /** @return {"value convertible to BigInteger, scale, "expected BigDecimal value"} */
+  @DataProvider(name = "toBigDecimalProvider")
+  public static Object[][] toBigDecimalProvider() {
+    BigDecimal bigDecimal = new BigDecimal("12.34567890123456789012345678901234567890");
+    BigDecimal smallDecimal = new BigDecimal("1234.5678");
+    return new Object[][] {
+      {new BigInteger("1234567890123456789012345678901234567890").toByteArray(), 38, bigDecimal},
+      {"1234567890123456789012345678901234567890", "38", bigDecimal},
+      {12345678, 4, smallDecimal},
+      {12345678L, 4, smallDecimal},
+    };
+  }
+
+  /** @return {"value convertible to double, "expected BigDecimal value"} */
+  @DataProvider(name = "toBigDecimalWithoutScaleProvider")
+  public static Object[][] toBigDecimalWithoutScaleProvider() {
+    BigDecimal bigDecimal = BigDecimal.valueOf(12.34567890123456789012345678901234567890d);
+    BigDecimal smallDecimal = BigDecimal.valueOf(1234.5678f);
+    BigDecimal unscaledDecimal = BigDecimal.valueOf(1234567d);
+    return new Object[][] {
+      {"12.34567890123456789012345678901234567890", bigDecimal},
+      {12.34567890123456789012345678901234567890d, bigDecimal},
+      {1234.5678f, smallDecimal},
+      {1234567, unscaledDecimal},
+      {1234567L, unscaledDecimal},
+    };
   }
 
   /** @return {"input date in epoch millis", "delta", "unit", "expected value (in epoch millis)"} */

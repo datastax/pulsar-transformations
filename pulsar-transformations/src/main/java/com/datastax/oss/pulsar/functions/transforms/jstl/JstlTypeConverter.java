@@ -214,6 +214,9 @@ public class JstlTypeConverter extends TypeConverter {
     if (type == OffsetDateTime.class) {
       return (T) coerceToOffsetDateTime(value);
     }
+    if (type == BigInteger.class) {
+      return (T) coerceToBigInteger(value);
+    }
     if (type == BigDecimal.class) {
       return (T) coerceToBigDecimal(value);
     }
@@ -462,6 +465,26 @@ public class JstlTypeConverter extends TypeConverter {
         MessageFactory.get("error.convert", value, value.getClass(), OffsetDateTime.class));
   }
 
+  protected BigInteger coerceToBigInteger(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof BigInteger) {
+      return (BigInteger) value;
+    }
+    if (value instanceof String) {
+      return new BigInteger((String) value);
+    }
+    if (value instanceof byte[]) {
+      return new BigInteger((byte[]) value);
+    }
+    if (value instanceof Integer || value instanceof Long) {
+      return BigInteger.valueOf(((Number) value).longValue());
+    }
+    throw new ELException(
+            MessageFactory.get("error.convert", value, value.getClass(), BigInteger.class));
+  }
+
   protected BigDecimal coerceToBigDecimal(Object value) {
     if (value == null) {
       return null;
@@ -472,8 +495,11 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof String) {
       return new BigDecimal((String) value);
     }
-    if (value instanceof byte[]) {
-      return new BigDecimal(new BigInteger((byte[]) value));
+    if (value instanceof Integer || value instanceof Long) {
+      return BigDecimal.valueOf(((Number) value).longValue());
+    }
+    if (value instanceof Float || value instanceof Double) {
+      return BigDecimal.valueOf(((Number) value).doubleValue());
     }
     throw new ELException(
         MessageFactory.get("error.convert", value, value.getClass(), BigDecimal.class));

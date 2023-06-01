@@ -352,7 +352,8 @@ public class ComputeStep implements TransformStep {
         // scale combo and will result in an arbitrary numbers of schemas
         // See: https://avro.apache.org/docs/1.10.2/spec.html#Decimal
         BigDecimal decimal = (BigDecimal) value;
-        return LogicalTypes.decimal(decimal.precision(), decimal.scale()).addToSchema(Schema.create(Schema.Type.BYTES));
+        return LogicalTypes.decimal(decimal.precision(), decimal.scale())
+            .addToSchema(Schema.create(Schema.Type.BYTES));
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
