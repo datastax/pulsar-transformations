@@ -516,8 +516,7 @@ public class ComputeStepTest {
                         .build(),
                     ComputeField.builder()
                         .scopedName("value.decimalFieldFromDouble")
-                        .expression(
-                            "fn:decimalFromDouble(12.23)")
+                        .expression("fn:decimalFromDouble(12.23)")
                         .type(ComputeFieldType.DECIMAL)
                         .build()))
             .build();

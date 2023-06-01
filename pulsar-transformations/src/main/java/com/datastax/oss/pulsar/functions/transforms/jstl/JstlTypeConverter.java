@@ -482,7 +482,7 @@ public class JstlTypeConverter extends TypeConverter {
       return BigInteger.valueOf(((Number) value).longValue());
     }
     throw new ELException(
-            MessageFactory.get("error.convert", value, value.getClass(), BigInteger.class));
+        MessageFactory.get("error.convert", value, value.getClass(), BigInteger.class));
   }
 
   protected BigDecimal coerceToBigDecimal(Object value) {

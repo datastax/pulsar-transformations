@@ -332,16 +332,16 @@ public class JstlTypeConverterTest {
       // BigDecimal
       {bigInteger, BigInteger.class, bigInteger},
       {"345781342432523452345", BigInteger.class, bigInteger},
-      {Integer.MAX_VALUE , BigInteger.class, BigInteger.valueOf(Integer.MAX_VALUE)},
-      {Long.MAX_VALUE , BigInteger.class, BigInteger.valueOf(Long.MAX_VALUE)},
+      {Integer.MAX_VALUE, BigInteger.class, BigInteger.valueOf(Integer.MAX_VALUE)},
+      {Long.MAX_VALUE, BigInteger.class, BigInteger.valueOf(Long.MAX_VALUE)},
 
       // BigDecimal
       {bigDecimal, BigDecimal.class, bigDecimal},
       {"435897983457.83421", BigDecimal.class, bigDecimal},
-      {Integer.MAX_VALUE , BigDecimal.class, BigDecimal.valueOf(Integer.MAX_VALUE)},
-      {Long.MAX_VALUE , BigDecimal.class, BigDecimal.valueOf(Long.MAX_VALUE)},
-      {Float.MAX_VALUE , BigDecimal.class, BigDecimal.valueOf(Float.MAX_VALUE)},
-      {Double.MAX_VALUE , BigDecimal.class, BigDecimal.valueOf(Double.MAX_VALUE)},
+      {Integer.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Integer.MAX_VALUE)},
+      {Long.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Long.MAX_VALUE)},
+      {Float.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Float.MAX_VALUE)},
+      {Double.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Double.MAX_VALUE)},
     };
   }
 

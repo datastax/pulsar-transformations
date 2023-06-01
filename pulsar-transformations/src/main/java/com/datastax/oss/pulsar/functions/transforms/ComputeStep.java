@@ -203,9 +203,8 @@ public class ComputeStep implements TransformStep {
     org.apache.avro.Schema avroSchema = record.getSchema();
     Set<String> computedFieldNames =
         evaluatedFields.keySet().stream().map(Schema.Field::name).collect(Collectors.toSet());
-    // New fields are the intersection between existing fields and computed fields. Computed fields
-    // take precedence.
-    List<Schema.Field> newFields =
+    // original fields - overwritten fields
+    List<Schema.Field> nonOverwrittenFields =
         avroSchema
             .getFields()
             .stream()
@@ -215,7 +214,11 @@ public class ComputeStep implements TransformStep {
                     new org.apache.avro.Schema.Field(
                         f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
             .collect(Collectors.toList());
-    newFields.addAll(evaluatedFields.keySet().stream().collect(Collectors.toList()));
+    // allFields is the intersection between existing fields and computed fields. Computed fields
+    // take precedence.
+    List<Schema.Field> allFields = new ArrayList<>();
+    allFields.addAll(nonOverwrittenFields);
+    allFields.addAll(evaluatedFields.keySet().stream().collect(Collectors.toList()));
     org.apache.avro.Schema newSchema =
         schemaCache.computeIfAbsent(
             avroSchema,
@@ -225,15 +228,18 @@ public class ComputeStep implements TransformStep {
                     avroSchema.getDoc(),
                     avroSchema.getNamespace(),
                     avroSchema.isError(),
-                    newFields));
+                    allFields));
 
     GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
     // Add original fields
-    for (org.apache.avro.Schema.Field field : avroSchema.getFields()) {
+    for (org.apache.avro.Schema.Field field : nonOverwrittenFields) {
       newRecordBuilder.set(field.name(), record.get(field.name()));
     }
     // Add computed fields
-    evaluatedFields.forEach(newRecordBuilder::set);
+    for (Map.Entry<Schema.Field, Object> entry : evaluatedFields.entrySet()) {
+      // set the field by name to preserve field position
+      newRecordBuilder.set(entry.getKey().name(), entry.getValue());
+    }
     return newRecordBuilder.build();
   }
 
