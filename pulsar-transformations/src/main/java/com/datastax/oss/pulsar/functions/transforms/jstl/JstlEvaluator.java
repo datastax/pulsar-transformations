@@ -92,7 +92,7 @@ public class JstlEvaluator<T> {
             .getFunctionMapper()
             .mapFunction(
                     "fn",
-                    "decimal",
+                    "decimalFromDouble",
                     JstlFunctions.class.getMethod("toBigDecimal", Object.class));
 
     // Deprecated

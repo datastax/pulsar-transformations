@@ -295,7 +295,7 @@ The Expression Language supports the following functions:
 * `decimal(input, scale)`: Converts `input` to a `BigDecimal` with the given `scale`. 
   * `input` unscaled value of the BigDecimal. Can be any of STRING, INTEGER, LONG or Array of bytes containing the two's-complement representation in big-endian byte order.
   * `scale` the scale of the `BigDecimal` to create.
-* `decimal(input)`: Converts `input` to a `BigDecimal`.
+* `decimalFromDouble(input)`: Converts `input` to a `BigDecimal`.
     * `input` value of the BigDecimal in DOUBLE or FLOAT. If INTEGER or LONG is provided, an unscaled BigDecimal value will be returned.
 For all methods, if a parameter is not in the right type, a conversion will be done using the rules described in [Type conversions](#type-conversions).
 For instance, you can do `fn:timestampAdd('2022-10-02T01:02:03Z', '42', 'hours'.bytes)`

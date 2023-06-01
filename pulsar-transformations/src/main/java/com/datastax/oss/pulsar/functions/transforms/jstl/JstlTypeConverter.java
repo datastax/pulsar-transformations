@@ -248,12 +248,6 @@ public class JstlTypeConverter extends TypeConverter {
     if (value instanceof byte[]) {
       return (byte[]) value;
     }
-    if (value instanceof ByteBuffer) {
-      ByteBuffer bb = (ByteBuffer) value;
-      byte[] bytes = new byte[bb.remaining()];
-      bb.duplicate().get(bytes);
-      return bytes;
-    }
     if (value instanceof OffsetDateTime) {
       return coerceToBytes(((OffsetDateTime) value).toInstant());
     }
@@ -477,6 +471,12 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (value instanceof byte[]) {
       return new BigInteger((byte[]) value);
+    }
+    if (value instanceof ByteBuffer) {
+      ByteBuffer bb = (ByteBuffer) value;
+      byte[] bytes = new byte[bb.remaining()];
+      bb.duplicate().get(bytes);
+      return new BigInteger(bytes);
     }
     if (value instanceof Integer || value instanceof Long) {
       return BigInteger.valueOf(((Number) value).longValue());

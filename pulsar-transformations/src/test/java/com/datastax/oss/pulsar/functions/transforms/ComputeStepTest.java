@@ -513,6 +513,12 @@ public class ComputeStepTest {
                         .expression(
                             "fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)")
                         .type(ComputeFieldType.DECIMAL)
+                        .build(),
+                    ComputeField.builder()
+                        .scopedName("value.decimalFieldFromDouble")
+                        .expression(
+                            "fn:decimalFromDouble(12.23)")
+                        .type(ComputeFieldType.DECIMAL)
                         .build()))
             .build();
     Record<?> outputRecord = Utils.process(record, step);
@@ -520,6 +526,7 @@ public class ComputeStepTest {
     GenericData.Record read =
         Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
     assertEquals(read.get("decimalField"), decimal);
+    assertEquals(read.get("decimalFieldFromDouble"), BigDecimal.valueOf(12.23d));
   }
 
   @Test
