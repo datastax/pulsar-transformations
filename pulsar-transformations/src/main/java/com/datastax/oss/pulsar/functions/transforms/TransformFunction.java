@@ -366,7 +366,7 @@ public class TransformFunction
             new OpenAIEmbeddingsService(openAIClient, config.getModel())
         )
         .embeddingsFieldName(config.getEmbeddingsFieldName())
-        .fields(List.of(config.getField()))
+        .fields(config.getFields())
         .build();
   }
 

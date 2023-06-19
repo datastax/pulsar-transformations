@@ -36,6 +36,8 @@ import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
+import javax.ws.rs.HEAD;
+
 public class AddEmbeddingsStepTest {
 
   @Test

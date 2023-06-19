@@ -17,10 +17,11 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.avro.Schema;
@@ -32,7 +33,6 @@ import org.apache.pulsar.common.schema.SchemaType;
 @Builder
 public class AddEmbeddingsStep implements TransformStep {
 
-  public static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
   @Builder.Default private final List<String> fields = new ArrayList<>();
   @Builder.Default private final String embeddingsFieldName;
   @Builder.Default private final EmbeddingsService embeddingsService;
@@ -44,11 +44,10 @@ public class AddEmbeddingsStep implements TransformStep {
     if (!isEmbeddingsAppliableToTheSchema(transformContext)) {
       return;
     }
-    String value = getFieldFromKey(fields, transformContext);
-    if (value == null) {
-      value = getFieldFromValue(fields, transformContext);
-    }
-    if (value == null) {
+    Map<String, String> values = new HashMap<>();
+    collectFieldValuesFromKey(fields, transformContext, values);
+    collectFieldValuesFromValue(fields, transformContext, values);
+    if (values.isEmpty()) {
       return;
     }
     final List<Double> embeddings = embeddingsService.calculateEmbeddings(List.of(value)).get(0);
@@ -62,21 +61,29 @@ public class AddEmbeddingsStep implements TransformStep {
         valueSchemaCache.computeIfAbsent(
             avroSchema,
             schema -> {
+              AtomicBoolean fieldExists = new AtomicBoolean(false);
               final List<Schema.Field> newFields =
                   avroSchema
                       .getFields()
                       .stream()
+                        .peek(f -> {
+                          if (f.name().equals(embeddingsFieldName)) {
+                            fieldExists.set(true);
+                          }
+                        })
                       .map(
                           f ->
                               new Schema.Field(
                                   f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
                       .collect(Collectors.toList());
-              newFields.add(
-                  new Schema.Field(
-                          embeddingsFieldName,
-                      Schema.createArray(Schema.create(Schema.Type.DOUBLE)),
-                      "embeddings",
-                      List.of()));
+              if (fieldExists.get()) {
+                newFields.add(
+                        new Schema.Field(
+                                embeddingsFieldName,
+                                Schema.createArray(Schema.create(Schema.Type.DOUBLE)),
+                                "embeddings",
+                                List.of()));
+              }
               return Schema.createRecord(
                   avroSchema.getName(),
                   avroSchema.getDoc(),
@@ -109,33 +116,32 @@ public class AddEmbeddingsStep implements TransformStep {
     return false;
   }
 
-  public String getFieldFromKey(List<String> fields, TransformContext record) {
+  private void collectFieldValuesFromKey(List<String> fields, TransformContext record, Map<String, String> collect) {
     if (record.getKeyObject() != null
         && record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
       if (record.getKeyObject() instanceof GenericRecord) {
         GenericRecord avroRecord = (GenericRecord) record.getKeyObject();
-        final Object rawValue = avroRecord.get(fields.get(0));
-        if (rawValue == null) {
-          return null;
-        }
-        return rawValue.toString();
+        collectFields(fields, collect, avroRecord);
       }
     }
-    return null;
   }
 
-  public String getFieldFromValue(List<String> fields, TransformContext record) {
+  private void collectFieldValuesFromValue(List<String> fields, TransformContext record, Map<String, String> collect) {
     if (record.getValueObject() != null
         && record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
       if (record.getValueObject() instanceof GenericRecord) {
         GenericRecord avroRecord = (GenericRecord) record.getValueObject();
-        final Object rawValue = avroRecord.get(fields.get(0));
-        if (rawValue == null) {
-          return null;
-        }
-        return rawValue.toString();
+        collectFields(fields, collect, avroRecord);
       }
     }
-    return null;
+  }
+
+  private void collectFields(List<String> fields, Map<String, String> collect, GenericRecord avroRecord) {
+    for (String field : fields) {
+      final Object rawValue = avroRecord.get(field);
+      if (rawValue != null) {
+        collect.put(field, rawValue.toString());
+      }
+    }
   }
 }
