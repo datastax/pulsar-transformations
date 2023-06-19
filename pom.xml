@@ -50,6 +50,11 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-ai-openai</artifactId>
+        <version>1.0.0-beta.1</version>
+      </dependency>
+      <dependency>
         <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar</artifactId>
         <version>${pulsar.version}</version>

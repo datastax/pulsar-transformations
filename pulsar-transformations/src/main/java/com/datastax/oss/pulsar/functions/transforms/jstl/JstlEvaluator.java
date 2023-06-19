@@ -30,6 +30,7 @@ public class JstlEvaluator<T> {
   private final ELContext expressionContext;
 
   public JstlEvaluator(String expression, Class<? extends T> type) {
+
     this.expressionContext = new StandardContext(FACTORY);
     registerFunctions();
     this.valueExpression = FACTORY.createValueExpression(expressionContext, expression, type);
@@ -74,6 +75,9 @@ public class JstlEvaluator<T> {
     this.expressionContext
         .getFunctionMapper()
         .mapFunction("fn", "now", JstlFunctions.class.getMethod("now"));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "embed", JstlFunctions.class.getMethod("embed", Object.class));
     this.expressionContext
         .getFunctionMapper()
         .mapFunction(

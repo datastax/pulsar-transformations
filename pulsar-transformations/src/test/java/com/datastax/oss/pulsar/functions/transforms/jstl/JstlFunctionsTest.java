@@ -119,6 +119,11 @@ public class JstlFunctionsTest {
     assertEquals(fixedInstant, JstlFunctions.now());
   }
 
+  @Test
+  void testEmbed() {
+    JstlFunctions.embed("Michael Matshal");
+  }
+
   @Test(dataProvider = "millisTimestampAddProvider")
   void testAddDateMillis(long input, int delta, String unit, Instant expected) {
     assertEquals(expected, JstlFunctions.timestampAdd(input, delta, unit));

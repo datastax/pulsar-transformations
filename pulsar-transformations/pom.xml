@@ -31,6 +31,10 @@
   </properties>
   <dependencies>
     <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-ai-openai</artifactId>
+    </dependency>
+    <dependency>
       <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-functions-api</artifactId>
       <scope>provided</scope>

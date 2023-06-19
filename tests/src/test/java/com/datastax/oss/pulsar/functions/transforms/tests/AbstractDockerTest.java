@@ -65,7 +65,8 @@ public abstract class AbstractDockerTest {
   };
 
   static {
-    // A workaround to register decimal conversion on the generic data objected associated with the consumer used to
+    // A workaround to register decimal conversion on the generic data objected associated with the
+    // consumer used to
     // read the output topic inspired by https://github.com/apache/pulsar/issues/15899
     for (GenericData gd : GD_INSTANCES) {
       gd.addLogicalTypeConversion(new Conversions.DecimalConversion());

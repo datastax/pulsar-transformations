@@ -15,16 +15,26 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.azure.ai.openai.models.Embeddings;
+import com.azure.ai.openai.models.EmbeddingsOptions;
+import com.azure.core.credential.AzureKeyCredential;
 import jakarta.el.ELException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.el.util.MessageFactory;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
+@Slf4j
 public class JstlFunctions {
   @Setter private static Clock clock = Clock.systemUTC();
 
@@ -82,6 +92,59 @@ public class JstlFunctions {
 
   public static Instant now() {
     return Instant.now(clock);
+  }
+
+  public static Object embed(Object input) {
+
+    log.error("embed started: " + input);
+
+    String azureOpenaiKey = "783fe7bc013149f2a197ce3a4ef54531";
+    String endpoint = "https://datastax-openai-dev.openai.azure.com";
+    String deploymentOrModelId = "text-embedding-ada-002";
+
+    OpenAIClient client =
+        new OpenAIClientBuilder()
+            .endpoint(endpoint)
+            .credential(new AzureKeyCredential(azureOpenaiKey))
+            .buildClient();
+
+    List<String> prompt = new ArrayList<>();
+    String value = JstlTypeConverter.INSTANCE.coerceToString(input);
+    prompt.add(value);
+    EmbeddingsOptions options = new EmbeddingsOptions(prompt);
+
+    Embeddings embeddings = client.getEmbeddings(deploymentOrModelId, options);
+    embeddings.getData().forEach(System.out::println);
+
+    ProcessBuilder builder = new ProcessBuilder();
+
+    String cqlSh = "INSERT INTO online.embeddings (id, value, item_vector) VALUES (%s, '%s', %s);";
+    cqlSh =
+        String.format(
+            cqlSh,
+            ThreadLocalRandom.current().nextInt(),
+            value,
+            embeddings.getData().get(0).getEmbedding());
+    builder.command(
+        "/Users/ayman.khalil/Downloads/cqlsh-astra/bin/cqlsh",
+        "-b",
+        "/Users/ayman.khalil/Downloads/secure-connect-hackathon-db.zip",
+        "-u",
+        "UTFmPpZidZfkyZeNSKncFllQ",
+        "-p",
+        "E1DxA6H84oAy9dqRvOG4ZXh-v4ohBc2Y9ua2Jj2M5NxMgYwDlWKfXZb-4y890dpzdE-oGYLmsED38T4C0FbX+qk-Mc0OPndb80MMa+E+gNjLjS9n+LGZAx7btbeHX1TH",
+        "-e",
+        cqlSh);
+
+    try {
+      Process process = builder.start();
+      int exitCode = process.waitFor();
+      log.warn("\nExited with error code : " + exitCode);
+    } catch (Exception e) {
+      log.warn(e.getMessage());
+    }
+
+    return input;
   }
 
   public static Instant timestampAdd(Object input, Object delta, Object unit) {
