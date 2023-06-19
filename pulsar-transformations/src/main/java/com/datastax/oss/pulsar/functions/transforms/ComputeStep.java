@@ -265,7 +265,7 @@ public class ComputeStep implements TransformStep {
     if (value instanceof Byte || value instanceof Short) {
       return ((Number) value).intValue();
     }
-
+    
     LogicalType logicalType = AvroUtil.getLogicalType(schema);
     if (logicalType == null) {
       return value;

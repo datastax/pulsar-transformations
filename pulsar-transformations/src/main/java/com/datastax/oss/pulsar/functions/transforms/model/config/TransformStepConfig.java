@@ -23,6 +23,4 @@ import lombok.Getter;
 public class TransformStepConfig {
   @JsonProperty(required = true)
   private List<StepConfig> steps;
-
-  private OpenAIConfig openAI;
 }
