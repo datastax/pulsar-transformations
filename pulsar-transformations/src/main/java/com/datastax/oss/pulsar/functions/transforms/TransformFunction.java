@@ -210,7 +210,7 @@ public class TransformFunction
 
     TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
 
-    openAIClient = buildOpenAIClient(config.getOpenAI());
+    openAIClient = buildOpenAIClient(config.getOpenai());
 
     for (StepConfig step : config.getSteps()) {
       switch (step.getType()) {

@@ -21,6 +21,10 @@ import lombok.Getter;
 @Getter
 public class OpenAIConfig {
   @JsonProperty private String url;
-  @JsonProperty private String accessKey;
+
+  @JsonProperty(value = "access-key", required = true)
+  private String accessKey;
+
+  @JsonProperty
   OpenAIProvider provider = OpenAIProvider.OPENAI;
 }

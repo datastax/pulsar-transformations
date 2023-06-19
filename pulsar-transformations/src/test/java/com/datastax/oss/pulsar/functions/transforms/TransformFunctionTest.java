@@ -113,7 +113,9 @@ public class TransformFunctionTest {
       },
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: '1234', type: 'DATE'}]}]}"
-      }
+      },
+      {"{'steps': [], 'openai': {'access-key': 'qwerty', 'url': 'some-url', 'provider': 'azure'}}"},
+      {"{'steps': [], 'openai': {'access-key': 'qwerty'}}"}
     };
   }
 
@@ -199,7 +201,9 @@ public class TransformFunctionTest {
       },
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'key', expression: '1234', type: 'DATE'}]}]}"
-      }
+      },
+      {"{'steps': [], 'openai': {'url': 'some-url'}}"},
+      {"{'steps': [], 'openai': {'provider': 'invalid'}}"}
     };
   }
 
