@@ -243,7 +243,7 @@ properties:
         type:
           - string
           - 'null'
-        description: The URL of the API. Required if provider is `azure`.
+        description: The URL of the OpenAI API. Required if the provider is `azure`.
       access-key:
         type: string
         description: The access key for authentication.
@@ -257,5 +257,7 @@ properties:
           - azure
           - null
         default: openai
+    required:
+      - access-key
 required:
   - steps

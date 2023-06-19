@@ -24,5 +24,5 @@ public class TransformStepConfig {
   @JsonProperty(required = true)
   private List<StepConfig> steps;
 
-  private OpenAIConfig openAI;
+  @JsonProperty private OpenAIConfig openai;
 }
