@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright DataStax, Inc.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.datastax.oss</groupId>
+  <artifactId>pulsar-transformations-parent</artifactId>
+  <packaging>pom</packaging>
+  <version>2.1.1-SNAPSHOT</version>
+  <name>Pulsar transformations parent</name>
+  <description>A Pulsar Function that provides common basic transformations of the data</description>
+  <url>https://github.com/datastax/pulsar-transformations</url>
+  <inceptionYear>2022</inceptionYear>
+  <organization>
+    <name>DataStax</name>
+    <url>http://www.datastax.com</url>
+  </organization>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <java.version>1.11</java.version>
+    <java.release.version>11</java.release.version>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <pulsar.groupId>com.datastax.oss</pulsar.groupId>
+    <pulsar.version>2.10.2.5</pulsar.version>
+    <surefire.version>3.0.0-M5</surefire.version>
+    <!-- Must match version in pulsar -->
+    <avro.version>1.10.2</avro.version>
+  </properties>
+  <modules>
+    <module>pulsar-transformations</module>
+    <module>tests</module>
+  </modules>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>${pulsar.groupId}</groupId>
+        <artifactId>pulsar</artifactId>
+        <version>${pulsar.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>${pulsar.groupId}</groupId>
+        <artifactId>pulsar-functions-api</artifactId>
+        <version>${pulsar.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${pulsar.groupId}</groupId>
+        <artifactId>pulsar-client-original</artifactId>
+        <version>${pulsar.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${pulsar.groupId}</groupId>
+        <artifactId>pulsar-client-admin</artifactId>
+        <version>${pulsar.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>3.2.4</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-assembly-plugin</artifactId>
+          <version>3.3.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.8.1</version>
+          <configuration>
+            <compilerArgs>-Xlint:unchecked</compilerArgs>
+            <fork>false</fork>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+          <version>2.0.0</version>
+          <configuration>
+            <excludedScopes>test</excludedScopes>
+            <licenseMerges>
+              <licenseMerge>Apache License, Version 2.0|The Apache Software License, Version 2.0|Apache Public License 2.0|Apache License 2.0|Apache 2.0|Apache 2</licenseMerge>
+              <licenseMerge>BSD License|The BSD License|BSD|BSD-2-Clause</licenseMerge>
+              <licenseMerge>MIT License|The MIT License|MIT license</licenseMerge>
+              <licenseMerge>Creative Commons CC0|Public Domain, per Creative Commons CC0|CC0</licenseMerge>
+              <licenseMerge>Eclipse Public License, Version 1.0|Eclipse Public License - v 1.0|Common Public License - v 1.0</licenseMerge>
+            </licenseMerges>
+            <failOnMissing>true</failOnMissing>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.mycila</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+          <version>3.0</version>
+          <configuration>
+            <inlineHeader><![CDATA[
+Copyright DataStax, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.]]></inlineHeader>
+            <includes>
+              <include>src/**/*.java</include>
+              <include>src/**/*.xml</include>
+              <include>src/**/*.properties</include>
+              <include>**/pom.xml</include>
+            </includes>
+            <excludes>
+              <exclude>**/rabbitmqtests/javaclient/**/*</exclude>
+            </excludes>
+            <mapping>
+              <java>SLASHSTAR_STYLE</java>
+              <properties>SCRIPT_STYLE</properties>
+              <g4>SLASHSTAR_STYLE</g4>
+            </mapping>
+            <strictCheck>true</strictCheck>
+          </configuration>
+          <executions>
+            <execution>
+              <id>check-license</id>
+              <phase>initialize</phase>
+              <goals>
+                <goal>format</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>au.com.acegi</groupId>
+          <artifactId>xml-format-maven-plugin</artifactId>
+          <version>3.1.1</version>
+        </plugin>
+        <plugin>
+          <groupId>com.coveo</groupId>
+          <artifactId>fmt-maven-plugin</artifactId>
+          <version>2.3.0</version>
+          <executions>
+            <execution>
+              <goals>
+                <goal>format</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${surefire.version}</version>
+          <configuration>
+            <trimStackTrace>false</trimStackTrace>
+            <systemPropertyVariables>
+              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+            </systemPropertyVariables>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>${surefire.version}</version>
+          <configuration>
+            <trimStackTrace>false</trimStackTrace>
+            <systemPropertyVariables>
+              <logback.configurationFile>${project.basedir}/src/test/resources/logback-test.xml</logback.configurationFile>
+            </systemPropertyVariables>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>com.github.spotbugs</groupId>
+          <artifactId>spotbugs-maven-plugin</artifactId>
+          <version>4.2.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>3.0.0-M1</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>au.com.acegi</groupId>
+        <artifactId>xml-format-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>xml-format</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <exclude>.idea/**</exclude>
+            <exclude>perf/**</exclude>
+            <exclude>**/target/**</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>**/arquillian.xml</exclude>
+            <exclude>**/ra.xml</exclude>
+            <exclude>**/tomee.xml</exclude>
+            <exclude>**/.flattened-pom.xml</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.coveo</groupId>
+        <artifactId>fmt-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.8</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>false</autoReleaseAfterClose>
+          <skipLocalStaging>true</skipLocalStaging>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <licenses>
+    <license>
+      <name>Apache 2</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>Apache License Version 2.0</comments>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:git:git@github.com:datastax/pulsar-transformations.git</connection>
+    <developerConnection>scm:git:git@github.com:datastax/pulsar-transformations.git</developerConnection>
+    <url>https://github.com/datastax/spulsar-transformations</url>
+    <tag>HEAD</tag>
+  </scm>
+  <developers>
+    <developer>
+      <name>Various</name>
+      <organization>DataStax</organization>
+    </developer>
+  </developers>
+  <profiles>
+    <!--
+  Profile activated when releasing. See:
+  http://central.sonatype.org/pages/apache-maven.html
+  -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>3.2.0</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>3.2.1</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>3.0.1</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-release-plugin</artifactId>
+            <version>3.0.0-M5</version>
+            <configuration>
+              <tagNameFormat>v@{project.version}</tagNameFormat>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+  <distributionManagement>
+    <!-- releases go to Maven central -->
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+    <snapshotRepository>
+      <id>datastax-snapshots-local</id>
+      <name>DataStax Local Snapshots</name>
+      <url>https://repo.aws.dsinternal.org/artifactory/datastax-snapshots-local/</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <repositories>
+    <repository>
+      <id>datastax-public-releases-local</id>
+      <url>https://repo.datastax.com/artifactory/datastax-public-releases-local</url>
+    </repository>
+  </repositories>
+</project>
