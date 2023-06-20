@@ -21,6 +21,11 @@ import static org.testng.Assert.assertNotNull;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.MockEmbeddingsService;
 import java.util.Arrays;
 import java.util.List;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -35,7 +40,7 @@ import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
-public class AddEmbeddingsStepTest {
+public class ComputeAIEmbeddingsTest {
 
   @Test
   void testAvro() throws Exception {
@@ -91,5 +96,40 @@ public class AddEmbeddingsStepTest {
     GenericData.Record valueAvroRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(valueAvroRecord.get("newField"), expectedEmbeddings);
+  }
+
+  @Test
+  void testJson() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.JSON);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord =
+            genericSchema
+                    .newRecordBuilder()
+                    .set("firstName", "Jane")
+                    .set("lastName", "The Princess ")
+                    .build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+    MockEmbeddingsService mockService = new MockEmbeddingsService();
+    final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
+    mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
+    ComputeAIEmbeddingsStep step =
+            ComputeAIEmbeddingsStep.builder()
+                    .embeddingsFieldName("newField")
+                    .embeddingsService(mockService)
+                    .fields(List.of("firstName", "lastName"))
+                    .build();
+
+    Record<?> outputRecord = Utils.process(record, step);
+
+    final ObjectNode jsonNode = (ObjectNode) outputRecord.getValue();
+    assertNotNull(jsonNode.get("newField"));
+    final List asList = new ObjectMapper().convertValue(jsonNode.get("newField"), List.class);
+    assertEquals(asList, expectedEmbeddings);
   }
 }

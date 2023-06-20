@@ -24,6 +24,10 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Builder;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -37,7 +41,7 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
   @Builder.Default private final List<String> fields = new ArrayList<>();
   @Builder.Default private final String embeddingsFieldName;
   @Builder.Default private final EmbeddingsService embeddingsService;
-  private final Map<org.apache.avro.Schema, org.apache.avro.Schema> valueSchemaCache =
+  private final Map<org.apache.avro.Schema, org.apache.avro.Schema> avroValueSchemaCache =
       new ConcurrentHashMap<>();
 
   @Override
@@ -68,10 +72,24 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
   }
 
   private void applyEmbeddingsToRecord(TransformContext transformContext, List<Double> embeddings) {
+    final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
+    switch (type) {
+      case AVRO:
+        applyEmbeddingsToAvroRecord(transformContext, embeddings);
+        break;
+      case JSON:
+        applyEmbeddingsToJsonRecord(transformContext, embeddings);
+        break;
+      default:
+        return;
+    }
+  }
+
+  private void applyEmbeddingsToAvroRecord(TransformContext transformContext, List<Double> embeddings) {
     GenericRecord avroRecord = (GenericRecord) transformContext.getValueObject();
     Schema avroSchema = avroRecord.getSchema();
     Schema modified =
-        valueSchemaCache.computeIfAbsent(
+        avroValueSchemaCache.computeIfAbsent(
             avroSchema,
             schema -> {
               AtomicBoolean fieldExists = new AtomicBoolean(false);
@@ -120,46 +138,67 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
     transformContext.setValueObject(newRecord);
   }
 
+
+  private void applyEmbeddingsToJsonRecord(TransformContext transformContext, List<Double> embeddings) {
+    ObjectNode jsonNode = (ObjectNode) transformContext.getValueObject();
+    final ArrayNode arrayNode = jsonNode.arrayNode().addAll(embeddings.stream().map(v -> jsonNode.numberNode(v)).collect(Collectors.toList()));
+    jsonNode.set(embeddingsFieldName, arrayNode);
+    transformContext.setValueModified(true);
+    transformContext.setValueObject(jsonNode);
+  }
+
   private boolean isSchemaCompatible(TransformContext transformContext) {
-    if (transformContext.getValueObject() != null
-        && transformContext.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      if (transformContext.getValueObject() instanceof GenericRecord) {
-        return true;
-      } else {
-        transformContext
-            .getContext()
-            .getLogger()
-            .debug("Skipping message, schema is not a generic record");
-      }
-    } else {
-      transformContext.getContext().getLogger().debug("Skipping message, value schema is not avro");
+    if (transformContext.getValueObject() == null) {
+      return false;
     }
-    return false;
+    final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
+    switch (type) {
+      case AVRO:
+      case JSON:
+        return true;
+      default:
+        transformContext
+                .getContext()
+                .getLogger()
+                .debug("Skipping message, schema is not a generic record");
+        return false;
+    }
   }
 
   private void collectFieldValuesFromKey(
       List<String> fields, TransformContext record, Map<String, String> collect) {
-    if (record.getKeyObject() != null
-        && record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      if (record.getKeyObject() instanceof GenericRecord) {
-        GenericRecord avroRecord = (GenericRecord) record.getKeyObject();
-        collectFields(fields, collect, avroRecord);
-      }
-    }
+      collectFieldsFromRecord(fields, record.getKeySchema(), record.getKeyObject(), collect);
   }
 
   private void collectFieldValuesFromValue(
       List<String> fields, TransformContext record, Map<String, String> collect) {
-    if (record.getValueObject() != null
-        && record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      if (record.getValueObject() instanceof GenericRecord) {
-        GenericRecord avroRecord = (GenericRecord) record.getValueObject();
-        collectFields(fields, collect, avroRecord);
-      }
+    collectFieldsFromRecord(fields, record.getValueSchema(), record.getValueObject(), collect);
+  }
+
+  private void collectFieldsFromRecord(List<String> fields,
+                                       org.apache.pulsar.client.api.Schema schema,
+                                       Object object,
+                                       Map<String, String> collect) {
+    if (object == null) {
+      return;
+    }
+
+    final SchemaType type = schema.getSchemaInfo().getType();
+    switch (type) {
+      case AVRO:
+        GenericRecord avroRecord = (GenericRecord) object;
+        collectFieldsFromAvro(fields, collect, avroRecord);
+        break;
+      case JSON:
+        final JsonNode json = (JsonNode) object;
+        collectFieldsFromJson(fields, collect, json);
+        break;
+      default:
+        return;
     }
   }
 
-  private void collectFields(
+  private void collectFieldsFromAvro(
       List<String> fields, Map<String, String> collect, GenericRecord avroRecord) {
     for (String field : fields) {
       if (!avroRecord.hasField(field)) {
@@ -168,6 +207,18 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
       final Object rawValue = avroRecord.get(field);
       if (rawValue != null) {
         collect.put(field, rawValue.toString());
+      }
+    }
+  }
+  private void collectFieldsFromJson(
+          List<String> fields, Map<String, String> collect, JsonNode json) {
+    for (String field : fields) {
+      if (!json.has(field)) {
+        continue;
+      }
+      final JsonNode node = json.get(field);
+      if (node != null) {
+        collect.put(field, node.asText());
       }
     }
   }
