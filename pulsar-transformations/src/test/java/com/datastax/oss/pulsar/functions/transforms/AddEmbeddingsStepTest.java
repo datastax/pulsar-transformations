@@ -53,8 +53,8 @@ public class AddEmbeddingsStepTest {
     MockEmbeddingsService mockService = new MockEmbeddingsService();
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
-    AddEmbeddingsStep step =
-        AddEmbeddingsStep.builder()
+    ComputeAIEmbeddingsStep step =
+        ComputeAIEmbeddingsStep.builder()
             .embeddingsFieldName("newField")
             .embeddingsService(mockService)
             .fields(List.of("firstName", "lastName"))
@@ -73,8 +73,8 @@ public class AddEmbeddingsStepTest {
     MockEmbeddingsService mockService = new MockEmbeddingsService();
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("key1", expectedEmbeddings);
-    AddEmbeddingsStep step =
-        AddEmbeddingsStep.builder()
+    ComputeAIEmbeddingsStep step =
+        ComputeAIEmbeddingsStep.builder()
             .embeddingsFieldName("newField")
             .embeddingsService(mockService)
             .fields(List.of("keyField1"))

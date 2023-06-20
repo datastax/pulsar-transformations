@@ -30,7 +30,7 @@ import lombok.Getter;
     @JsonSubTypes.Type(value = DropConfig.class, name = "drop"),
     @JsonSubTypes.Type(value = FlattenConfig.class, name = "flatten"),
     @JsonSubTypes.Type(value = ComputeConfig.class, name = "compute"),
-    @JsonSubTypes.Type(value = AddEmbeddingsConfig.class, name = "add-embeddings")
+    @JsonSubTypes.Type(value = ComputeAIEmbeddingsConfig.class, name = "compute-ai-embeddings")
   }
 )
 @Getter
