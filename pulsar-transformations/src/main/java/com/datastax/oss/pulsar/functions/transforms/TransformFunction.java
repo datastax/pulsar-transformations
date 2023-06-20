@@ -19,11 +19,13 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
@@ -235,6 +237,9 @@ public class TransformFunction
         case "compute":
           transformStep = newComputeFieldFunction((ComputeConfig) step);
           break;
+        case "compute-ai-embeddings":
+          transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step);
+          break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
@@ -352,6 +357,14 @@ public class TransformFunction
                       .build());
             });
     return ComputeStep.builder().fields(fieldList).build();
+  }
+
+  private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
+    return ComputeAIEmbeddingsStep.builder()
+        .embeddingsService(new OpenAIEmbeddingsService(openAIClient, config.getModel()))
+        .embeddingsFieldName(config.getEmbeddingsFieldName())
+        .fields(config.getFields())
+        .build();
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {

@@ -16,14 +16,17 @@
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
-public class OpenAIConfig {
-  @JsonProperty private String url;
+public class ComputeAIEmbeddingsConfig extends StepConfig {
+  @JsonProperty(value = "model", required = true)
+  private String model;
 
-  @JsonProperty(value = "access-key", required = true)
-  private String accessKey;
+  @JsonProperty(value = "fields", required = true)
+  private List<String> fields;
 
-  @JsonProperty OpenAIProvider provider = OpenAIProvider.OPENAI;
+  @JsonProperty(value = "embeddings-field", required = true)
+  private String embeddingsFieldName;
 }

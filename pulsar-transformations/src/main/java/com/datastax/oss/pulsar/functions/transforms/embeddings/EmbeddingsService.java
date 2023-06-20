@@ -13,17 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.model.config;
+package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Getter;
+import java.util.List;
 
-@Getter
-public class OpenAIConfig {
-  @JsonProperty private String url;
+public interface EmbeddingsService {
 
-  @JsonProperty(value = "access-key", required = true)
-  private String accessKey;
-
-  @JsonProperty OpenAIProvider provider = OpenAIProvider.OPENAI;
+  List<List<Double>> computeEmbeddings(List<String> texts);
 }
