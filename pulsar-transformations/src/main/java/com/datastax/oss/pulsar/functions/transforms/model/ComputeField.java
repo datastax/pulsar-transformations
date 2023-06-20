@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms.model;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlEvaluator;
 import jakarta.el.ELException;
+import java.math.BigDecimal;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -156,6 +157,8 @@ public class ComputeField {
           return Timestamp.class;
         case BYTES:
           return byte[].class;
+        case DECIMAL:
+          return BigDecimal.class;
         default:
           throw new UnsupportedOperationException("Unsupported compute field type: " + type);
       }

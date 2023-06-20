@@ -29,6 +29,8 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Time;
@@ -45,11 +47,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import org.apache.avro.AvroRuntimeException;
+import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
@@ -57,6 +62,7 @@ import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
+import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
@@ -83,6 +89,24 @@ public class ComputeStepTest {
       LogicalTypes.timeMillis().addToSchema(org.apache.avro.Schema.create(INT));
   private static final org.apache.avro.Schema TIMESTAMP_SCHEMA =
       LogicalTypes.timestampMillis().addToSchema(org.apache.avro.Schema.create(LONG));
+
+  private static final CqlDecimalLogicalType CQL_DECIMAL_LOGICAL_TYPE = new CqlDecimalLogicalType();
+  private static final String CQL_DECIMAL = "cql_decimal";
+  private static final String CQL_DECIMAL_BIGINT = "bigint";
+  private static final String CQL_DECIMAL_SCALE = "scale";
+  private static final org.apache.avro.Schema decimalType =
+      CQL_DECIMAL_LOGICAL_TYPE.addToSchema(
+          org.apache.avro.SchemaBuilder.record(CQL_DECIMAL)
+              .fields()
+              .name(CQL_DECIMAL_BIGINT)
+              .type()
+              .bytesType()
+              .noDefault()
+              .name(CQL_DECIMAL_SCALE)
+              .type()
+              .intType()
+              .noDefault()
+              .endRecord());
 
   @Test
   void testAvro() throws Exception {
@@ -459,6 +483,49 @@ public class ComputeStepTest {
     assertOptionalFieldNull(read, "newDoubleField", DOUBLE);
     assertOptionalFieldNull(read, "newBooleanField", BOOLEAN);
     assertOptionalFieldNull(read, "newBytesField", BYTES);
+  }
+
+  @Test
+  void testAvroWithCqlDecimal() throws Exception {
+    List<org.apache.avro.Schema.Field> fields = new ArrayList<>();
+    fields.add(createDecimalField("cqlDecimalField"));
+
+    org.apache.avro.Schema avroSchema =
+        org.apache.avro.Schema.createRecord("custom", "", "ns1", false, fields);
+    org.apache.avro.generic.GenericRecord avroRecord = new GenericData.Record(avroSchema);
+    BigDecimal decimal =
+        new BigDecimal(new BigInteger("1234567890123456789012345678901234567890"), 38);
+    avroRecord.put("cqlDecimalField", createDecimalRecord(decimal));
+    Schema<org.apache.avro.generic.GenericRecord> genericSchema =
+        new Utils.NativeSchemaWrapper(avroSchema, SchemaType.AVRO);
+    List<Field> pulsarFields =
+        fields.stream().map(v -> new Field(v.name(), v.pos())).collect(Collectors.toList());
+    GenericAvroRecord genericRecord =
+        new GenericAvroRecord(new byte[0], avroSchema, pulsarFields, avroRecord);
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                List.of(
+                    ComputeField.builder()
+                        .scopedName("value.decimalField")
+                        .expression(
+                            "fn:decimalFromUnscaled(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)")
+                        .type(ComputeFieldType.DECIMAL)
+                        .build(),
+                    ComputeField.builder()
+                        .scopedName("value.decimalFieldFromDouble")
+                        .expression("fn:decimalFromNumber(12.23)")
+                        .type(ComputeFieldType.DECIMAL)
+                        .build()))
+            .build();
+    Record<?> outputRecord = Utils.process(record, step);
+
+    GenericData.Record read =
+        Utils.getRecord(outputRecord.getSchema(), (byte[]) outputRecord.getValue());
+    assertEquals(read.get("decimalField"), decimal);
+    assertEquals(read.get("decimalFieldFromDouble"), BigDecimal.valueOf(12.23d));
   }
 
   @Test
@@ -1071,5 +1138,35 @@ public class ComputeStepTest {
             .build());
 
     return fields;
+  }
+
+  private org.apache.avro.generic.GenericRecord createDecimalRecord(BigDecimal decimal) {
+    decimal.unscaledValue().toByteArray();
+    org.apache.avro.generic.GenericRecord decimalRecord = new GenericData.Record(decimalType);
+    decimalRecord.put(CQL_DECIMAL_BIGINT, ByteBuffer.wrap(decimal.unscaledValue().toByteArray()));
+    decimalRecord.put(CQL_DECIMAL_SCALE, decimal.scale());
+    return decimalRecord;
+  }
+
+  private org.apache.avro.Schema.Field createDecimalField(String name) {
+    org.apache.avro.Schema.Field decimalField = new org.apache.avro.Schema.Field(name, decimalType);
+    org.apache.avro.Schema.Field optionalDecimalField =
+        new org.apache.avro.Schema.Field(
+            name,
+            org.apache.avro.SchemaBuilder.unionOf()
+                .nullType()
+                .and()
+                .type(decimalField.schema())
+                .endUnion(),
+            null,
+            org.apache.avro.Schema.Field.NULL_DEFAULT_VALUE);
+
+    return optionalDecimalField;
+  }
+
+  private static class CqlDecimalLogicalType extends LogicalType {
+    public CqlDecimalLogicalType() {
+      super(CQL_DECIMAL);
+    }
   }
 }

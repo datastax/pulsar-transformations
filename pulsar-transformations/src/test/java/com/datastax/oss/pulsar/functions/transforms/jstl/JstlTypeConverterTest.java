@@ -17,6 +17,8 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import static org.testng.AssertJUnit.assertNull;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -56,6 +58,7 @@ public class JstlTypeConverterTest {
     assertNull(converter.coerceToType(null, LocalTime.class));
     assertNull(converter.coerceToType(null, Instant.class));
     assertNull(converter.coerceToType(null, OffsetDateTime.class));
+    assertNull(converter.coerceToType(null, BigDecimal.class));
   }
 
   @DataProvider(name = "conversions")
@@ -82,6 +85,8 @@ public class JstlTypeConverterTest {
     Time time = new Time(timeMillis);
     LocalDateTime localDateTimeWithoutNanos =
         LocalDateTime.ofEpochSecond(dateTimeMillis / 1000, 0, ZoneOffset.UTC);
+    BigInteger bigInteger = new BigInteger("345781342432523452345");
+    BigDecimal bigDecimal = new BigDecimal("435897983457.83421");
     return new Object[][] {
       // Bytes
       {new byte[] {1, 2, 3}, byte[].class, new byte[] {1, 2, 3}},
@@ -323,6 +328,20 @@ public class JstlTypeConverterTest {
       {offsetDateTime, OffsetDateTime.class, offsetDateTime},
       {localDate, OffsetDateTime.class, offsetDateTime.truncatedTo(ChronoUnit.DAYS)},
       {instant, OffsetDateTime.class, offsetDateTime},
+
+      // BigDecimal
+      {bigInteger, BigInteger.class, bigInteger},
+      {"345781342432523452345", BigInteger.class, bigInteger},
+      {Integer.MAX_VALUE, BigInteger.class, BigInteger.valueOf(Integer.MAX_VALUE)},
+      {Long.MAX_VALUE, BigInteger.class, BigInteger.valueOf(Long.MAX_VALUE)},
+
+      // BigDecimal
+      {bigDecimal, BigDecimal.class, bigDecimal},
+      {"435897983457.83421", BigDecimal.class, bigDecimal},
+      {Integer.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Integer.MAX_VALUE)},
+      {Long.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Long.MAX_VALUE)},
+      {Float.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Float.MAX_VALUE)},
+      {Double.MAX_VALUE, BigDecimal.class, BigDecimal.valueOf(Double.MAX_VALUE)},
     };
   }
 

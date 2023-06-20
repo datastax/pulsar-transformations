@@ -19,6 +19,9 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.el.ELContext;
 import jakarta.el.ELException;
 import jakarta.el.TypeConverter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -210,6 +213,12 @@ public class JstlTypeConverter extends TypeConverter {
     }
     if (type == OffsetDateTime.class) {
       return (T) coerceToOffsetDateTime(value);
+    }
+    if (type == BigInteger.class) {
+      return (T) coerceToBigInteger(value);
+    }
+    if (type == BigDecimal.class) {
+      return (T) coerceToBigDecimal(value);
     }
     return null;
   }
@@ -448,6 +457,52 @@ public class JstlTypeConverter extends TypeConverter {
     }
     throw new ELException(
         MessageFactory.get("error.convert", value, value.getClass(), OffsetDateTime.class));
+  }
+
+  protected BigInteger coerceToBigInteger(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof BigInteger) {
+      return (BigInteger) value;
+    }
+    if (value instanceof String) {
+      return new BigInteger((String) value);
+    }
+    if (value instanceof byte[]) {
+      return new BigInteger((byte[]) value);
+    }
+    if (value instanceof ByteBuffer) {
+      ByteBuffer bb = (ByteBuffer) value;
+      byte[] bytes = new byte[bb.remaining()];
+      bb.duplicate().get(bytes);
+      return new BigInteger(bytes);
+    }
+    if (value instanceof Integer || value instanceof Long) {
+      return BigInteger.valueOf(((Number) value).longValue());
+    }
+    throw new ELException(
+        MessageFactory.get("error.convert", value, value.getClass(), BigInteger.class));
+  }
+
+  protected BigDecimal coerceToBigDecimal(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof BigDecimal) {
+      return (BigDecimal) value;
+    }
+    if (value instanceof String) {
+      return new BigDecimal((String) value);
+    }
+    if (value instanceof Integer || value instanceof Long) {
+      return BigDecimal.valueOf(((Number) value).longValue());
+    }
+    if (value instanceof Float || value instanceof Double) {
+      return BigDecimal.valueOf(((Number) value).doubleValue());
+    }
+    throw new ELException(
+        MessageFactory.get("error.convert", value, value.getClass(), BigDecimal.class));
   }
 
   @Override

@@ -81,6 +81,17 @@ public class JstlEvaluator<T> {
             "timestampAdd",
             JstlFunctions.class.getMethod(
                 "timestampAdd", Object.class, Object.class, Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
+            "fn",
+            "decimalFromUnscaled",
+            JstlFunctions.class.getMethod("toBigDecimal", Object.class, Object.class));
+
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction(
+            "fn", "decimalFromNumber", JstlFunctions.class.getMethod("toBigDecimal", Object.class));
 
     // Deprecated
     this.expressionContext

@@ -114,6 +114,9 @@ public class TransformFunctionTest {
       {
         "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: '1234', type: 'DATE'}]}]}"
       },
+      {
+        "{'steps': [{'type': 'compute', 'fields': [{'name': 'value.field1', expression: 'value.field1', type: 'DECIMAL'}]}]}"
+      },
       {"{'steps': [], 'openai': {'access-key': 'qwerty', 'url': 'some-url', 'provider': 'azure'}}"},
       {"{'steps': [], 'openai': {'access-key': 'qwerty'}}"}
     };

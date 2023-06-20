@@ -209,6 +209,7 @@ components:
                       - LOCAL_DATE_TIME
                       - DATETIME
                       - BYTES
+                      - DECIMAL
                       - null
                   optional:
                     type: boolean

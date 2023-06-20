@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.Conversions;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryEncoder;
@@ -155,6 +156,9 @@ public class TransformContext {
 
   public static byte[] serializeGenericRecord(GenericRecord record) throws IOException {
     GenericDatumWriter<GenericRecord> writer = new GenericDatumWriter<>(record.getSchema());
+    // enable Decimal conversion, otherwise attempting to serialize java.math.BigDecimal will throw
+    // ClassCastException
+    writer.getData().addLogicalTypeConversion(new Conversions.DecimalConversion());
     ByteArrayOutputStream oo = new ByteArrayOutputStream();
     BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(oo, null);
     writer.write(record, encoder);
