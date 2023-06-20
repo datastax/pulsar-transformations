@@ -17,6 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
+
 import com.datastax.oss.pulsar.functions.transforms.embeddings.MockEmbeddingsService;
 import java.util.Arrays;
 import java.util.List;
@@ -45,9 +46,12 @@ public class AddEmbeddingsStepTest {
     SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
 
-    GenericRecord genericRecord = genericSchema.newRecordBuilder()
+    GenericRecord genericRecord =
+        genericSchema
+            .newRecordBuilder()
             .set("firstName", "Jane")
-            .set("lastName", "The Princess ").build();
+            .set("lastName", "The Princess ")
+            .build();
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
     MockEmbeddingsService mockService = new MockEmbeddingsService();

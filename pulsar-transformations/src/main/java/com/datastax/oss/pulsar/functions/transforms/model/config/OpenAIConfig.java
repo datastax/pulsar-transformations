@@ -25,6 +25,5 @@ public class OpenAIConfig {
   @JsonProperty(value = "access-key", required = true)
   private String accessKey;
 
-  @JsonProperty
-  OpenAIProvider provider = OpenAIProvider.OPENAI;
+  @JsonProperty OpenAIProvider provider = OpenAIProvider.OPENAI;
 }

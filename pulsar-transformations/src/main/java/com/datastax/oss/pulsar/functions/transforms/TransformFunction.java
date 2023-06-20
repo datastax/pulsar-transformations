@@ -24,8 +24,8 @@ import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
-import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
@@ -361,9 +361,7 @@ public class TransformFunction
 
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
     return ComputeAIEmbeddingsStep.builder()
-        .embeddingsService(
-            new OpenAIEmbeddingsService(openAIClient, config.getModel())
-        )
+        .embeddingsService(new OpenAIEmbeddingsService(openAIClient, config.getModel()))
         .embeddingsFieldName(config.getEmbeddingsFieldName())
         .fields(config.getFields())
         .build();

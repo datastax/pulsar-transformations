@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface EmbeddingsService {
 
-  List<List<Double>> calculateEmbeddings(List<String> texts);
+  List<List<Double>> computeEmbeddings(List<String> texts);
 }

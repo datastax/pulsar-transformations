@@ -263,6 +263,7 @@ properties:
         - "$ref": "#/components/schemas/Drop"
         - "$ref": "#/components/schemas/Flatten"
         - "$ref": "#/components/schemas/Compute"
+        - "$ref": "#/components/schemas/ComputeAIEmbeddings"
   openai:
     type: object
     description: The OpenAI configuration.
