@@ -13,16 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.model.config;
+package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import lombok.Getter;
 
-@Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+public interface EmbeddingsService {
 
-  @JsonProperty private OpenAIConfig openai;
+  List<List<Double>> computeEmbeddings(List<String> texts);
 }

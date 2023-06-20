@@ -67,6 +67,7 @@ import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.functions.api.utils.FunctionRecord;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Utils {
 
@@ -585,7 +586,7 @@ public class Utils {
 
             @Override
             public Logger getLogger() {
-              return null;
+              return LoggerFactory.getILoggerFactory().getLogger("Context");
             }
 
             @Override
@@ -665,7 +666,7 @@ public class Utils {
 
     @Override
     public Logger getLogger() {
-      return null;
+      return LoggerFactory.getILoggerFactory().getLogger("Context");
     }
 
     @Override

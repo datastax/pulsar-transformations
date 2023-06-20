@@ -42,6 +42,7 @@ components:
           flatten: "#/components/schemas/Flatten"
           drop: "#/components/schemas/Drop"
           compute: "#/components/schemas/Compute"
+          compute-ai-embeddings: "#/components/schemas/ComputeAIEmbeddings"
     DropFields:
       allOf:
         - "$ref": "#/components/schemas/Step"
@@ -222,6 +223,33 @@ components:
             - type
             - fields
         - "$ref": "#/components/schemas/Part"
+    ComputeAIEmbeddings:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: |
+            Compute AI Embeddings for one or more records fields and put the value into a new or existing field.
+          properties:
+            type:
+              type: string
+              enum:
+                - compute-ai-embeddings
+            model:
+              type:
+                - string
+              description: The OpenAI embeddings model to use.
+            embeddings-field:
+              type:
+                - string
+              description: The record field where to inject the computed embeddings value. If the field already exists, it will be used. Note that the field must be a representation of a double's array.
+            fields:
+              type: array
+              minItems: 1
+              items:
+                type:
+                  - string
+              description: The record fields to compute embeddings for. The fields value will be concatened.
+        - "$ref": "#/components/schemas/Part"
 type: object
 properties:
   steps:
@@ -236,5 +264,30 @@ properties:
         - "$ref": "#/components/schemas/Drop"
         - "$ref": "#/components/schemas/Flatten"
         - "$ref": "#/components/schemas/Compute"
+        - "$ref": "#/components/schemas/ComputeAIEmbeddings"
+  openai:
+    type: object
+    description: The OpenAI configuration.
+    properties:
+      url:
+        type:
+          - string
+          - 'null'
+        description: The URL of the OpenAI API. Required if the provider is `azure`.
+      access-key:
+        type: string
+        description: The access key for authentication.
+      provider:
+        type:
+          - string
+          - 'null'
+        description: The provider of the API.
+        enum:
+          - openai
+          - azure
+          - null
+        default: openai
+    required:
+      - access-key
 required:
   - steps

@@ -20,9 +20,13 @@ import java.util.List;
 import lombok.Getter;
 
 @Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+public class ComputeAIEmbeddingsConfig extends StepConfig {
+  @JsonProperty(value = "model", required = true)
+  private String model;
 
-  @JsonProperty private OpenAIConfig openai;
+  @JsonProperty(value = "fields", required = true)
+  private List<String> fields;
+
+  @JsonProperty(value = "embeddings-field", required = true)
+  private String embeddingsFieldName;
 }

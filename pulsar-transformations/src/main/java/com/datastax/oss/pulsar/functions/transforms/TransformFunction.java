@@ -15,14 +15,22 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
+import com.azure.core.credential.AzureKeyCredential;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIProvider;
 import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
@@ -125,6 +133,7 @@ public class TransformFunction
     implements Function<GenericObject, Record<GenericObject>>, TransformStep {
 
   private final List<StepPredicatePair> steps = new ArrayList<>();
+  private OpenAIClient openAIClient;
 
   @Override
   public void initialize(Context context) {
@@ -202,6 +211,9 @@ public class TransformFunction
     TransformStep transformStep;
 
     TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
+
+    openAIClient = buildOpenAIClient(config.getOpenai());
+
     for (StepConfig step : config.getSteps()) {
       switch (step.getType()) {
         case "drop-fields":
@@ -224,6 +236,9 @@ public class TransformFunction
           break;
         case "compute":
           transformStep = newComputeFieldFunction((ComputeConfig) step);
+          break;
+        case "compute-ai-embeddings":
+          transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step);
           break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
@@ -344,7 +359,31 @@ public class TransformFunction
     return ComputeStep.builder().fields(fieldList).build();
   }
 
+  private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
+    return ComputeAIEmbeddingsStep.builder()
+        .embeddingsService(new OpenAIEmbeddingsService(openAIClient, config.getModel()))
+        .embeddingsFieldName(config.getEmbeddingsFieldName())
+        .fields(config.getFields())
+        .build();
+  }
+
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
     return new UnwrapKeyValueStep(config.isUnwrapKey());
+  }
+
+  private OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
+    if (openAIConfig == null) {
+      return null;
+    }
+    OpenAIClientBuilder openAIClientBuilder = new OpenAIClientBuilder();
+    if (openAIConfig.getProvider() == OpenAIProvider.AZURE) {
+      openAIClientBuilder.credential(new AzureKeyCredential(openAIConfig.getAccessKey()));
+    } else {
+      openAIClientBuilder.credential(new NonAzureOpenAIKeyCredential(openAIConfig.getAccessKey()));
+    }
+    if (openAIConfig.getUrl() != null) {
+      openAIClientBuilder.endpoint(openAIConfig.getUrl());
+    }
+    return openAIClientBuilder.buildClient();
   }
 }

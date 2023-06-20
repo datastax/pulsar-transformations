@@ -17,8 +17,9 @@ package com.datastax.oss.pulsar.functions.transforms.tests;
 
 public class DockerTest {
 
-  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_1.5";
-  private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.0";
+  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_4.6";
+  private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.1";
+  private static final String IMAGE_PULSAR30 = "apachepulsar/pulsar:3.0.0";
 
   public static class LunaStreaming210Test extends AbstractDockerTest {
     LunaStreaming210Test() {
@@ -29,6 +30,12 @@ public class DockerTest {
   public static class Pulsar211Test extends AbstractDockerTest {
     Pulsar211Test() {
       super(IMAGE_PULSAR211);
+    }
+  }
+
+  public static class Pulsar30Test extends AbstractDockerTest {
+    Pulsar30Test() {
+      super(IMAGE_PULSAR30);
     }
   }
 }

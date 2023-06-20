@@ -13,16 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.model.config;
+package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.HashMap;
 import java.util.List;
-import lombok.Getter;
+import java.util.Map;
 
-@Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+public class MockEmbeddingsService implements EmbeddingsService {
 
-  @JsonProperty private OpenAIConfig openai;
+  private final Map<String, List<Double>> embeddingsMapping = new HashMap<>();
+
+  public void setEmbeddingsForText(String text, List<Double> embeddings) {
+    embeddingsMapping.put(text, embeddings);
+  }
+
+  @Override
+  public List<List<Double>> computeEmbeddings(List<String> texts) {
+    return texts
+        .stream()
+        .map(text -> embeddingsMapping.get(text))
+        .collect(java.util.stream.Collectors.toList());
+  }
 }
