@@ -25,6 +25,7 @@ import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicate
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
@@ -240,6 +241,9 @@ public class TransformFunction
         case "compute-ai-embeddings":
           transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step);
           break;
+        case "chat-completions":
+          transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step);
+          break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
@@ -369,6 +373,10 @@ public class TransformFunction
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
     return new UnwrapKeyValueStep(config.isUnwrapKey());
+  }
+
+  private TransformStep newChatCompletionsFunction(ChatCompletionsConfig config) {
+    return new ChatCompletionsStep(openAIClient, config);
   }
 
   private OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {

@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -107,22 +109,22 @@ public class ComputeAIEmbeddingsTest {
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
 
     GenericRecord genericRecord =
-            genericSchema
-                    .newRecordBuilder()
-                    .set("firstName", "Jane")
-                    .set("lastName", "The Princess ")
-                    .build();
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "The Princess ")
+            .build();
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
     MockEmbeddingsService mockService = new MockEmbeddingsService();
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-            ComputeAIEmbeddingsStep.builder()
-                    .embeddingsFieldName("newField")
-                    .embeddingsService(mockService)
-                    .fields(List.of("firstName", "lastName"))
-                    .build();
+        ComputeAIEmbeddingsStep.builder()
+            .embeddingsFieldName("newField")
+            .embeddingsService(mockService)
+            .fields(List.of("firstName", "lastName"))
+            .build();
 
     Record<?> outputRecord = Utils.process(record, step);
 

@@ -137,7 +137,7 @@ public class TransformContext {
     return recordBuilder.build();
   }
 
-  private Map<String, String> getOutputProperties() {
+  public Map<String, String> getOutputProperties() {
     if (this.properties == null) {
       return context.getCurrentRecord().getProperties();
     }
