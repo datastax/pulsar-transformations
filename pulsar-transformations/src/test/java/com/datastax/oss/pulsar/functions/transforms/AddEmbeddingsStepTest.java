@@ -17,8 +17,6 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
-
-import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.MockEmbeddingsService;
 import java.util.Arrays;
 import java.util.List;
@@ -36,29 +34,30 @@ import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
-import javax.ws.rs.HEAD;
-
 public class AddEmbeddingsStepTest {
 
   @Test
   void testAvro() throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
 
     SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
 
-    GenericRecord genericRecord = genericSchema.newRecordBuilder().set("firstName", "Jane").build();
+    GenericRecord genericRecord = genericSchema.newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "The Princess ").build();
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
     MockEmbeddingsService mockService = new MockEmbeddingsService();
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
-    mockService.setEmbeddingsForText("Jane", expectedEmbeddings);
+    mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     AddEmbeddingsStep step =
         AddEmbeddingsStep.builder()
             .embeddingsFieldName("newField")
             .embeddingsService(mockService)
-            .fields(List.of("firstName"))
+            .fields(List.of("firstName", "lastName"))
             .build();
 
     Record<?> outputRecord = Utils.process(record, step);

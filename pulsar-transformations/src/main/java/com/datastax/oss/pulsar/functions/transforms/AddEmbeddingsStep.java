@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -41,16 +42,23 @@ public class AddEmbeddingsStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) {
-    if (!isEmbeddingsAppliableToTheSchema(transformContext)) {
+    if (!isSchemaCompatible(transformContext)) {
       return;
     }
+
     Map<String, String> values = new HashMap<>();
     collectFieldValuesFromKey(fields, transformContext, values);
     collectFieldValuesFromValue(fields, transformContext, values);
     if (values.isEmpty()) {
+      transformContext.getContext().getLogger().debug("Skipping message, empty values for configured fields");
       return;
     }
-    final List<Double> embeddings = embeddingsService.calculateEmbeddings(List.of(value)).get(0);
+    final String text = fields.stream()
+            .map(f -> values.get(f))
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining(" "));
+
+    final List<Double> embeddings = embeddingsService.calculateEmbeddings(List.of(text)).get(0);
     applyEmbeddingsToRecord(transformContext, embeddings);
   }
 
@@ -76,7 +84,7 @@ public class AddEmbeddingsStep implements TransformStep {
                               new Schema.Field(
                                   f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
                       .collect(Collectors.toList());
-              if (fieldExists.get()) {
+              if (!fieldExists.get()) {
                 newFields.add(
                         new Schema.Field(
                                 embeddingsFieldName,
@@ -106,12 +114,16 @@ public class AddEmbeddingsStep implements TransformStep {
     transformContext.setValueObject(newRecord);
   }
 
-  private boolean isEmbeddingsAppliableToTheSchema(TransformContext transformContext) {
+  private boolean isSchemaCompatible(TransformContext transformContext) {
     if (transformContext.getValueObject() != null
         && transformContext.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
       if (transformContext.getValueObject() instanceof GenericRecord) {
         return true;
+      } else {
+        transformContext.getContext().getLogger().debug("Skipping message, schema is not a generic record");
       }
+    } else {
+      transformContext.getContext().getLogger().debug("Skipping message, value schema is not avro");
     }
     return false;
   }
@@ -138,6 +150,9 @@ public class AddEmbeddingsStep implements TransformStep {
 
   private void collectFields(List<String> fields, Map<String, String> collect, GenericRecord avroRecord) {
     for (String field : fields) {
+      if (!avroRecord.hasField(field)) {
+        continue;
+      }
       final Object rawValue = avroRecord.get(field);
       if (rawValue != null) {
         collect.put(field, rawValue.toString());

@@ -14,6 +14,7 @@ public class MockEmbeddingsService implements EmbeddingsService {
 
   @Override
   public List<List<Double>> calculateEmbeddings(List<String> texts) {
+    System.out.println("MockEmbeddingsService.calculateEmbeddings" + texts + " " + embeddingsMapping);
     return texts
         .stream()
         .map(text -> embeddingsMapping.get(text))
