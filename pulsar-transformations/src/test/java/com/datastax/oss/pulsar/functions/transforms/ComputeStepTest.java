@@ -511,12 +511,12 @@ public class ComputeStepTest {
                     ComputeField.builder()
                         .scopedName("value.decimalField")
                         .expression(
-                            "fn:decimal(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)")
+                            "fn:decimalFromUnscaled(value.cqlDecimalField.bigint, value.cqlDecimalField.scale)")
                         .type(ComputeFieldType.DECIMAL)
                         .build(),
                     ComputeField.builder()
                         .scopedName("value.decimalFieldFromDouble")
-                        .expression("fn:decimalFromDouble(12.23)")
+                        .expression("fn:decimalFromNumber(12.23)")
                         .type(ComputeFieldType.DECIMAL)
                         .build()))
             .build();

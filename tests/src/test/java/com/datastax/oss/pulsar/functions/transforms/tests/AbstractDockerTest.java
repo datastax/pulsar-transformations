@@ -408,10 +408,10 @@ public abstract class AbstractDockerTest {
   public void testComputeCqlDecimalToAvroDecimal() throws Exception {
     String userConfig =
         ("{\"steps\": [{\"type\": \"compute\", \"fields\": ["
-            + "{\"name\": \"key.cqlDecimal\", \"expression\":\"fn:decimal(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"DECIMAL\"},"
-            + "{\"name\": \"value.cqlDecimalOptional\", \"expression\": \"fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale)\"}," // Inferred
-            + "{\"name\": \"key.cqlDecimalAsString\", \"expression\":\"fn:decimal(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"STRING\"},"
-            + "{\"name\": \"value.cqlDecimalOptionalAsString\", \"expression\": \"fn:str(fn:decimal(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale))\"}" // Inferred
+            + "{\"name\": \"key.cqlDecimal\", \"expression\":\"fn:decimalFromUnscaled(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"DECIMAL\"},"
+            + "{\"name\": \"value.cqlDecimalOptional\", \"expression\": \"fn:decimalFromUnscaled(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale)\"}," // Inferred
+            + "{\"name\": \"key.cqlDecimalAsString\", \"expression\":\"fn:decimalFromUnscaled(key.cqlDecimal.bigint, key.cqlDecimal.scale)\", \"type\":\"STRING\"},"
+            + "{\"name\": \"value.cqlDecimalOptionalAsString\", \"expression\": \"fn:str(fn:decimalFromUnscaled(value.cqlDecimalOptional.bigint, value.cqlDecimalOptional.scale))\"}" // Inferred
             + "]}]}");
 
     org.apache.avro.Schema avroKeySchema =
