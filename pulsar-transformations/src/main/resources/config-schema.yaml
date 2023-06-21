@@ -257,7 +257,6 @@ components:
             - embeddings-field
             - fields
         - "$ref": "#/components/schemas/Part"
-
     AIChatCompletions:
       allOf:
         - "$ref": "#/components/schemas/Step"
@@ -375,6 +374,11 @@ components:
         - type: object
           description: |
             Execute a Query and put the result into a new or existing field.
+                - query
+        - properties:
+            type:
+              type: string
+              enum:
                 - query
             query:
               type:
