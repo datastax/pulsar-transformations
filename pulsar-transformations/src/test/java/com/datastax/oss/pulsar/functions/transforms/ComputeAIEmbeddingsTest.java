@@ -21,10 +21,7 @@ import static org.testng.Assert.assertNotNull;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.MockEmbeddingsService;
 import java.util.Arrays;
 import java.util.List;
-
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
@@ -75,6 +72,7 @@ public class ComputeAIEmbeddingsTest {
     assertNotNull(read.get("newField"));
     List<Double> embeddings = (List<Double>) read.get("newField");
     assertEquals(embeddings, expectedEmbeddings);
+    assertEquals(outputRecord.getSchema().getSchemaInfo().getType(), SchemaType.AVRO);
   }
 
   @Test
@@ -96,6 +94,7 @@ public class ComputeAIEmbeddingsTest {
     GenericData.Record valueAvroRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(valueAvroRecord.get("newField"), expectedEmbeddings);
+    assertEquals(outputRecord.getSchema().getSchemaInfo().getType(), SchemaType.KEY_VALUE);
   }
 
   @Test
@@ -131,5 +130,6 @@ public class ComputeAIEmbeddingsTest {
     assertNotNull(jsonNode.get("newField"));
     final List asList = new ObjectMapper().convertValue(jsonNode.get("newField"), List.class);
     assertEquals(asList, expectedEmbeddings);
+    assertEquals(outputRecord.getSchema().getSchemaInfo().getType(), SchemaType.JSON);
   }
 }
