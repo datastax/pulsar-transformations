@@ -15,8 +15,6 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import static org.apache.pulsar.common.schema.SchemaType.AVRO;
-
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
@@ -44,9 +42,17 @@ public class ChatCompletionsStep implements TransformStep {
 
   private final Map<Schema, Schema> avroKeySchemaCache = new ConcurrentHashMap<>();
 
+  private final Map<ChatMessage, Template> messageTemplates = new ConcurrentHashMap<>();
+
   public ChatCompletionsStep(OpenAIClient client, ChatCompletionsConfig config) {
     this.client = client;
     this.config = config;
+    config
+        .getMessages()
+        .forEach(
+            chatMessage ->
+                messageTemplates.put(
+                    chatMessage, Mustache.compiler().compile(chatMessage.getContent())));
   }
 
   @Override
@@ -74,7 +80,7 @@ public class ChatCompletionsStep implements TransformStep {
             .map(
                 message ->
                     new ChatMessage(message.getRole())
-                        .setContent(applyTemplate(message.getContent(), jsonRecord)))
+                        .setContent(messageTemplates.get(message).execute(jsonRecord)))
             .collect(Collectors.toList());
 
     ChatCompletionsOptions chatCompletionsOptions =
@@ -145,11 +151,5 @@ public class ChatCompletionsStep implements TransformStep {
         throw new UnsupportedOperationException(
             "Unsupported schemaType " + schema.getSchemaInfo().getType());
     }
-  }
-
-  private String applyTemplate(String template, JsonRecord record) {
-    // TODO: pre-compile the templates at init time
-    Template tmpl = Mustache.compiler().compile(template);
-    return tmpl.execute(record);
   }
 }

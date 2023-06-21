@@ -19,8 +19,6 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 import com.datastax.oss.pulsar.functions.transforms.embeddings.MockEmbeddingsService;
-import java.util.Arrays;
-import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;

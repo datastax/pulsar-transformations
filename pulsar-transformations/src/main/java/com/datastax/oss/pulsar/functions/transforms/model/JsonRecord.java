@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.model;
 
-import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
 
