@@ -249,6 +249,11 @@ components:
                 type:
                   - string
               description: The record fields to compute embeddings for. The fields value will be concatened.
+          required:
+            - type
+            - model
+            - embeddings-field
+            - fields
         - "$ref": "#/components/schemas/Part"
 type: object
 properties:
