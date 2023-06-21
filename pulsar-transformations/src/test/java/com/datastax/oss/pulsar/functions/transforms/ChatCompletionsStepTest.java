@@ -36,22 +36,47 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
+import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
+import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.mockito.ArgumentCaptor;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class ChatCompletionsStepTest {
 
+  private static final String COMPLETION =
+      (""
+              + "{"
+              + "  'choices': ["
+              + "    {"
+              + "      'message': {"
+              + "        'content': 'result'"
+              + "      }"
+              + "    }"
+              + "  ]"
+              + "}")
+          .replace("'", "\"");
   private static final ObjectMapper mapper = new ObjectMapper();
+  private OpenAIClient openAIClient;
+
+  @BeforeMethod
+  void setup() throws Exception {
+    openAIClient = mock(OpenAIClient.class);
+    when(openAIClient.getChatCompletions(eq("test-model"), any()))
+        .thenReturn(mapper.readValue(COMPLETION, ChatCompletions.class));
+  }
 
   @Test
   void testPrimitive() throws Exception {
@@ -68,24 +93,8 @@ public class ChatCompletionsStepTest {
             .properties(Map.of("test-key", "test-value"))
             .build();
 
-    OpenAIClient client = mock(OpenAIClient.class);
-    String completion =
-        (""
-                + "{"
-                + "  'choices': ["
-                + "    {"
-                + "      'message': {"
-                + "        'content': 'result'"
-                + "      }"
-                + "    }"
-                + "  ]"
-                + "}")
-            .replace("'", "\"");
-
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    when(client.getChatCompletions(eq("test-model"), any()))
-        .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(
@@ -93,8 +102,8 @@ public class ChatCompletionsStepTest {
             new ChatMessage(ChatRole.USER)
                 .setContent(
                     "{{ value }} {{ key}} {{ eventTime }} {{ topicName }} {{ destinationTopic }} {{ properties.test-key }}")));
-    Utils.process(record, new ChatCompletionsStep(client, config));
-    verify(client).getChatCompletions(eq("test-model"), captor.capture());
+    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -128,23 +137,6 @@ public class ChatCompletionsStepTest {
 
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
-    OpenAIClient client = mock(OpenAIClient.class);
-    String completion =
-        (""
-                + "{"
-                + "  'choices': ["
-                + "    {"
-                + "      'message': {"
-                + "        'content': 'result',"
-                + "        'role': 'user'"
-                + "      }"
-                + "    }"
-                + "  ]"
-                + "}")
-            .replace("'", "\"");
-
-    when(client.getChatCompletions(eq("test-model"), any()))
-        .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(
@@ -152,10 +144,10 @@ public class ChatCompletionsStepTest {
             new ChatMessage(ChatRole.USER)
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key}}")));
-    Utils.process(record, new ChatCompletionsStep(client, config));
+    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    verify(client).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -164,34 +156,139 @@ public class ChatCompletionsStepTest {
 
   @Test
   void testKVAvro() throws Exception {
-    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-    OpenAIClient client = mock(OpenAIClient.class);
-    String completion =
-        (""
-                + "{"
-                + "  'choices': ["
-                + "    {"
-                + "      'message': {"
-                + "        'content': 'result'"
-                + "      }"
-                + "    }"
-                + "  ]"
-                + "}")
-            .replace("'", "\"");
-
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    when(client.getChatCompletions(eq("test-model"), any()))
-        .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(
         List.of(
             new ChatMessage(ChatRole.USER)
                 .setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
-    Utils.process(record, new ChatCompletionsStep(client, config));
-    verify(client).getChatCompletions(eq("test-model"), captor.capture());
+    Utils.process(
+        Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
+  }
+
+  @Test
+  void testValueOutput() throws Exception {
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .key("test-key")
+            .value(
+                AutoConsumeSchema.wrapPrimitiveObject(
+                    "test-message", SchemaType.STRING, new byte[] {}))
+            .build();
+
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    assertEquals(outputRecord.getValue(), "result");
+  }
+
+  @Test
+  void testKeyOutput() throws Exception {
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("key");
+    Record<?> outputRecord =
+        Utils.process(
+            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(messageSchema.getKeySchema().getSchemaInfo().getType(), SchemaType.STRING);
+    assertEquals(messageValue.getKey(), "result");
+  }
+
+  @Test
+  void testDestinationTopicOutput() throws Exception {
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .key("test-key")
+            .value(
+                AutoConsumeSchema.wrapPrimitiveObject(
+                    "test-message", SchemaType.STRING, new byte[] {}))
+            .schema(Schema.STRING)
+            .build();
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("destinationTopic");
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    assertEquals(outputRecord.getDestinationTopic().orElseThrow(), "result");
+  }
+
+  @Test
+  void testMessageKeyOutput() throws Exception {
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .key("test-key")
+            .value(
+                AutoConsumeSchema.wrapPrimitiveObject(
+                    "test-message", SchemaType.STRING, new byte[] {}))
+            .schema(Schema.STRING)
+            .build();
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("messageKey");
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    assertEquals(outputRecord.getKey().orElseThrow(), "result");
+  }
+
+  @Test
+  void testPropertyOutput() throws Exception {
+    Record<GenericObject> record =
+        Utils.TestRecord.<GenericObject>builder()
+            .key("test-key")
+            .value(
+                AutoConsumeSchema.wrapPrimitiveObject(
+                    "test-message", SchemaType.STRING, new byte[] {}))
+            .schema(Schema.STRING)
+            .build();
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("properties.chat");
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    assertEquals(outputRecord.getProperties().get("chat"), "result");
+  }
+
+  @Test
+  void testValueFieldOutput() throws Exception {
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("value.chat");
+    Record<?> outputRecord =
+        Utils.process(
+            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record valueAvroRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+    assertEquals(valueAvroRecord.get("chat"), new Utf8("result"));
+  }
+
+  @Test
+  void testKeyFieldOutput() throws Exception {
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("key.chat");
+    Record<?> outputRecord =
+        Utils.process(
+            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record keyAvroRecord =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(keyAvroRecord.get("chat"), new Utf8("result"));
   }
 }

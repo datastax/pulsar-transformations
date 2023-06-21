@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static org.apache.pulsar.common.schema.SchemaType.AVRO;
+
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
@@ -28,14 +30,19 @@ import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import org.apache.pulsar.client.api.Schema;
+import org.apache.avro.Schema;
 import org.apache.pulsar.functions.api.Record;
 
 public class ChatCompletionsStep implements TransformStep {
 
   private final OpenAIClient client;
   private final ChatCompletionsConfig config;
+
+  private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
+
+  private final Map<Schema, Schema> avroKeySchemaCache = new ConcurrentHashMap<>();
 
   public ChatCompletionsStep(OpenAIClient client, ChatCompletionsConfig config) {
     this.client = client;
@@ -89,10 +96,10 @@ public class ChatCompletionsStep implements TransformStep {
 
     String fieldName = config.getFieldName();
     if (fieldName == null || fieldName.equals("value")) {
-      transformContext.setValueSchema(Schema.STRING);
+      transformContext.setValueSchema(org.apache.pulsar.client.api.Schema.STRING);
       transformContext.setValueObject(content);
     } else if (fieldName.equals("key")) {
-      transformContext.setKeySchema(Schema.STRING);
+      transformContext.setKeySchema(org.apache.pulsar.client.api.Schema.STRING);
       transformContext.setKeyObject(content);
     } else if (fieldName.equals("destinationTopic")) {
       transformContext.setOutputTopic(content);
@@ -101,15 +108,27 @@ public class ChatCompletionsStep implements TransformStep {
     } else if (fieldName.startsWith("properties.")) {
       String propertyKey = fieldName.substring("properties.".length());
       transformContext.addProperty(propertyKey, content);
+    } else if (fieldName.startsWith("value.")) {
+      String valueFieldName = fieldName.substring("value.".length());
+      Schema.Field fieldSchema =
+          new Schema.Field(valueFieldName, Schema.create(Schema.Type.STRING), null, null);
+      transformContext.addOrReplaceAvroValueFields(
+          Map.of(fieldSchema, content), avroValueSchemaCache);
+    } else if (fieldName.startsWith("key.")) {
+      String keyFieldName = fieldName.substring("key.".length());
+      Schema.Field fieldSchema =
+          new Schema.Field(keyFieldName, Schema.create(Schema.Type.STRING), null, null);
+      transformContext.addOrReplaceAvroKeyFields(Map.of(fieldSchema, content), avroKeySchemaCache);
     } else {
       throw new IllegalArgumentException(
           "Invalid fieldName: "
               + fieldName
-              + ". fieldName must be one of [value, key, destinationTopic, messageKey, properties.*]");
+              + ". fieldName must be one of [value, key, destinationTopic, messageKey, properties.*, value.*, key.*]");
     }
   }
 
-  private static Object toJsonSerializable(Schema<?> schema, Object val) {
+  private static Object toJsonSerializable(
+      org.apache.pulsar.client.api.Schema<?> schema, Object val) {
     if (schema == null || schema.getSchemaInfo().getType().isPrimitive()) {
       return val;
     }

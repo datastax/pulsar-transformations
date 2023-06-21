@@ -15,9 +15,17 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.util;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 
 public class AvroUtil {
 
@@ -37,5 +45,47 @@ public class AvroUtil {
         .filter(Objects::nonNull)
         .findAny()
         .orElse(null);
+  }
+
+  public static GenericData.Record addOrReplaceAvroFields(
+      GenericRecord record, Map<Schema.Field, Object> newFields, Map<Schema, Schema> schemaCache) {
+    Schema avroSchema = record.getSchema();
+    Set<String> computedFieldNames =
+        newFields.keySet().stream().map(Schema.Field::name).collect(Collectors.toSet());
+    // original fields - overwritten fields
+    List<Schema.Field> nonOverwrittenFields =
+        avroSchema
+            .getFields()
+            .stream()
+            .filter(f -> !computedFieldNames.contains(f.name()))
+            .map(f -> new Schema.Field(f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
+            .collect(Collectors.toList());
+    // allFields is the intersection between existing fields and computed fields. Computed fields
+    // take precedence.
+    List<Schema.Field> allFields = new ArrayList<>();
+    allFields.addAll(nonOverwrittenFields);
+    allFields.addAll(new ArrayList<>(newFields.keySet()));
+    Schema newSchema =
+        schemaCache.computeIfAbsent(
+            avroSchema,
+            schema ->
+                Schema.createRecord(
+                    avroSchema.getName(),
+                    avroSchema.getDoc(),
+                    avroSchema.getNamespace(),
+                    avroSchema.isError(),
+                    allFields));
+
+    GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
+    // Add original fields
+    for (Schema.Field field : nonOverwrittenFields) {
+      newRecordBuilder.set(field.name(), record.get(field.name()));
+    }
+    // Add computed fields
+    for (Map.Entry<Schema.Field, Object> entry : newFields.entrySet()) {
+      // set the field by name to preserve field position
+      newRecordBuilder.set(entry.getKey().name(), entry.getValue());
+    }
+    return newRecordBuilder.build();
   }
 }

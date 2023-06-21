@@ -25,11 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
 
@@ -63,11 +61,7 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
       return;
     }
     final String text =
-        fields
-            .stream()
-            .map(values::get)
-            .filter(Objects::nonNull)
-            .collect(Collectors.joining(" "));
+        fields.stream().map(values::get).filter(Objects::nonNull).collect(Collectors.joining(" "));
 
     final List<Double> embeddings = embeddingsService.computeEmbeddings(List.of(text)).get(0);
     applyEmbeddingsToRecord(transformContext, embeddings);
@@ -89,56 +83,14 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
 
   private void applyEmbeddingsToAvroRecord(
       TransformContext transformContext, List<Double> embeddings) {
-    GenericRecord avroRecord = (GenericRecord) transformContext.getValueObject();
-    Schema avroSchema = avroRecord.getSchema();
-    Schema modified =
-        avroValueSchemaCache.computeIfAbsent(
-            avroSchema,
-            schema -> {
-              AtomicBoolean fieldExists = new AtomicBoolean(false);
-              final List<Schema.Field> newFields =
-                  avroSchema
-                      .getFields()
-                      .stream()
-                      .peek(
-                          f -> {
-                            if (f.name().equals(embeddingsFieldName)) {
-                              fieldExists.set(true);
-                            }
-                          })
-                      .map(
-                          f ->
-                              new Schema.Field(
-                                  f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
-                      .collect(Collectors.toList());
-              if (!fieldExists.get()) {
-                newFields.add(
-                    new Schema.Field(
-                        embeddingsFieldName,
-                        Schema.createArray(Schema.create(Schema.Type.DOUBLE)),
-                        "embeddings",
-                        List.of()));
-              }
-              return Schema.createRecord(
-                  avroSchema.getName(),
-                  avroSchema.getDoc(),
-                  avroSchema.getNamespace(),
-                  avroSchema.isError(),
-                  newFields);
-            });
-
-    GenericRecord newRecord = new GenericData.Record(modified);
-    for (Schema.Field field : modified.getFields()) {
-      if (field.name().equals(embeddingsFieldName)) {
-        newRecord.put(field.name(), embeddings);
-      } else {
-        newRecord.put(field.name(), avroRecord.get(field.name()));
-      }
-    }
-    if (avroRecord != newRecord) {
-      transformContext.setValueModified(true);
-    }
-    transformContext.setValueObject(newRecord);
+    Schema.Field embeddingSchema =
+        new Schema.Field(
+            embeddingsFieldName,
+            Schema.createArray(Schema.create(Schema.Type.DOUBLE)),
+            "embeddings",
+            List.of());
+    transformContext.addOrReplaceAvroValueFields(
+        Map.of(embeddingSchema, embeddings), avroValueSchemaCache);
   }
 
   private void applyEmbeddingsToJsonRecord(
