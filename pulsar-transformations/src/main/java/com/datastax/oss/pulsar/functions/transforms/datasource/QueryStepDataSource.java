@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms.model.config;
+package com.datastax.oss.pulsar.functions.transforms.datasource;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
+import java.util.Collections;
 import java.util.List;
-import lombok.Getter;
+import java.util.Map;
 
-@Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+public interface QueryStepDataSource {
 
-  @JsonProperty private OpenAIConfig openai;
+  default void initialize(DataSourceConfig config) {}
 
-  @JsonProperty private DataSourceConfig datasource;
+  default List<Map<String, String>> fetchData(String query, List<Object> params) {
+    return Collections.emptyList();
+  }
+
+  default void close() {}
 }

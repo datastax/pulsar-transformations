@@ -20,11 +20,13 @@ import java.util.List;
 import lombok.Getter;
 
 @Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+public class QueryConfig extends StepConfig {
+  @JsonProperty(value = "query", required = true)
+  private String query;
 
-  @JsonProperty private OpenAIConfig openai;
+  @JsonProperty(value = "fields", required = false)
+  private List<String> fields;
 
-  @JsonProperty private DataSourceConfig datasource;
+  @JsonProperty(value = "output-field", required = true)
+  private String outputField;
 }

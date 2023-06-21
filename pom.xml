@@ -43,6 +43,7 @@
     <!-- Must match version in pulsar -->
     <avro.version>1.10.2</avro.version>
     <azure-ai-openai.version>1.0.0-beta.2</azure-ai-openai.version>
+    <cassandra.driver.version>4.16.0</cassandra.driver.version>
   </properties>
   <modules>
     <module>pulsar-transformations</module>
@@ -76,6 +77,11 @@
         <groupId>com.azure</groupId>
         <artifactId>azure-ai-openai</artifactId>
         <version>${azure-ai-openai.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.datastax.oss</groupId>
+        <artifactId>java-driver-core</artifactId>
+        <version>${cassandra.driver.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

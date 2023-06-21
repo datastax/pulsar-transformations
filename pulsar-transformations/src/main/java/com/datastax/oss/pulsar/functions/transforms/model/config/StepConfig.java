@@ -31,7 +31,8 @@ import lombok.Getter;
     @JsonSubTypes.Type(value = FlattenConfig.class, name = "flatten"),
     @JsonSubTypes.Type(value = ComputeConfig.class, name = "compute"),
     @JsonSubTypes.Type(value = ComputeAIEmbeddingsConfig.class, name = "compute-ai-embeddings"),
-    @JsonSubTypes.Type(value = ChatCompletionsConfig.class, name = "ai-chat-completions")
+    @JsonSubTypes.Type(value = ChatCompletionsConfig.class, name = "ai-chat-completions"),
+    @JsonSubTypes.Type(value = QueryConfig.class, name = "query")
   }
 )
 @Getter

@@ -19,6 +19,8 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
+import com.datastax.oss.pulsar.functions.transforms.datasource.AstraDBDataSource;
+import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
@@ -28,10 +30,12 @@ import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIProvider;
+import com.datastax.oss.pulsar.functions.transforms.model.config.QueryConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
@@ -136,6 +140,7 @@ public class TransformFunction
 
   private final List<StepPredicatePair> steps = new ArrayList<>();
   private OpenAIClient openAIClient;
+  private QueryStepDataSource dataSource;
 
   @Override
   public void initialize(Context context) {
@@ -217,6 +222,7 @@ public class TransformFunction
     TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
 
     openAIClient = buildOpenAIClient(config.getOpenai());
+    dataSource = buildDataSource(config.getDatasource());
 
     for (StepConfig step : config.getSteps()) {
       switch (step.getType()) {
@@ -247,12 +253,22 @@ public class TransformFunction
         case "ai-chat-completions":
           transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step);
           break;
+        case "query":
+          transformStep = newQuery((QueryConfig) step);
+          break;
         default:
           throw new IllegalArgumentException("Invalid step type: " + step.getType());
       }
       steps.add(
           new StepPredicatePair(
               transformStep, step.getWhen() == null ? null : new JstlPredicate(step.getWhen())));
+    }
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (dataSource != null) {
+      dataSource.close();
     }
   }
 
@@ -385,7 +401,16 @@ public class TransformFunction
     return new ChatCompletionsStep(openAIClient, config);
   }
 
-  OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
+  private TransformStep newQuery(QueryConfig config) {
+    return QueryStep.builder()
+        .outputFieldName(config.getOutputField())
+        .query(config.getQuery())
+        .fields(config.getFields())
+        .dataSource(dataSource)
+        .build();
+  }
+
+  protected OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
     if (openAIConfig == null) {
       return null;
     }
@@ -399,5 +424,21 @@ public class TransformFunction
       openAIClientBuilder.endpoint(openAIConfig.getUrl());
     }
     return openAIClientBuilder.buildClient();
+  }
+
+  private QueryStepDataSource buildDataSource(DataSourceConfig dataSourceConfig) {
+    if (dataSourceConfig == null) {
+      return new QueryStepDataSource() {};
+    }
+    QueryStepDataSource dataSource;
+    switch (dataSourceConfig.getService() + "") {
+      case "astra":
+        dataSource = new AstraDBDataSource();
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid service type " + dataSourceConfig.getService());
+    }
+    dataSource.initialize(dataSourceConfig);
+    return dataSource;
   }
 }
