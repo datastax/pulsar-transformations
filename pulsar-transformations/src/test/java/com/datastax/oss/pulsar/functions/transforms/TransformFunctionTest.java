@@ -17,10 +17,20 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static com.datastax.oss.pulsar.functions.transforms.Utils.assertNonOptionalField;
 import static com.datastax.oss.pulsar.functions.transforms.Utils.assertOptionalField;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 import static org.testng.AssertJUnit.assertNull;
 
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.models.ChatCompletions;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.util.Map;
@@ -38,6 +48,7 @@ import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Record;
+import org.mockito.ArgumentCaptor;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -119,7 +130,39 @@ public class TransformFunctionTest {
       },
       {"{'steps': [], 'openai': {'access-key': 'qwerty', 'url': 'some-url', 'provider': 'azure'}}"},
       {"{'steps': [], 'openai': {'access-key': 'qwerty'}}"},
-      {"{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"}
+      {
+        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
+      },
+      {
+        "{"
+            + "'steps': ["
+            + "  {"
+            + "    'type': 'ai-chat-completions',"
+            + "    'model': 'example_model',"
+            + "    'messages': ["
+            + "      {"
+            + "        'role': 'user',"
+            + "        'content': 'Hello'"
+            + "      }"
+            + "    ],"
+            + "    'max-tokens': 100,"
+            + "    'temperature': 0.8,"
+            + "    'top-p': 0.9,"
+            + "    'logit-bias': {"
+            + "      'negative': -1"
+            + "    },"
+            + "    'user': 'John',"
+            + "    'stop': ['bye', 'stop'],"
+            + "    'presence-penalty': 0.5,"
+            + "    'frequency-penalty': 0.2"
+            + "  }"
+            + "],"
+            + "'openai': {'access-key': 'qwerty'}"
+            + "}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model', 'messages': [{'role': 'user','content': 'Hello'}]}], 'openai': {'access-key': 'qwerty'}}"
+      }
     };
   }
 
@@ -208,9 +251,33 @@ public class TransformFunctionTest {
       },
       {"{'steps': [], 'openai': {'url': 'some-url'}}"},
       {"{'steps': [], 'openai': {'provider': 'invalid'}}"},
-      {"{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb'}]}"},
-      {"{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'model': 'the-new-model'}]}"},
-      {"{'steps': [{'type': 'compute-ai-embeddings', 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"}
+      {
+        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb'}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'model': 'the-new-model'}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-ai-embeddings', 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model', 'messages': [{'role': 'user','content': 'Hello'}]}]}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'messages': [{'role': 'user','content': 'Hello'}]}], 'openai': {'access-key': 'qwerty'}}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model'}], 'openai': {'access-key': 'qwerty'}}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model', 'messages': [{'role': 'invalid','content': 'Hello'}]}], 'openai': {'access-key': 'qwerty'}}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model', 'messages': [{'content': 'Hello'}]}], 'openai': {'access-key': 'qwerty'}}"
+      },
+      {
+        "{'steps': [{'type': 'ai-chat-completions', 'model': 'example_model', 'messages': [{'role': 'user'}]}], 'openai': {'access-key': 'qwerty'}}"
+      }
     };
   }
 
@@ -487,6 +554,60 @@ public class TransformFunctionTest {
         false
       }
     };
+  }
+
+  @Test
+  void testChatCompletions() throws Exception {
+    String userConfig =
+        (""
+                + "{"
+                + "  'steps': ["
+                + "    {"
+                + "      'type': 'ai-chat-completions',"
+                + "      'model': 'test-model',"
+                + "      'messages': ["
+                + "        {"
+                + "          'role': 'user',"
+                + "          'content': '{{ value.valueField1 }} {{ key.keyField2 }}'"
+                + "        }"
+                + "      ]"
+                + "    }"
+                + "  ]"
+                + "}")
+            .replace("'", "\"");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = spy(new TransformFunction());
+
+    OpenAIClient client = mock(OpenAIClient.class);
+
+    String completion =
+        (""
+                + "{"
+                + "  'choices': ["
+                + "    {"
+                + "      'message': {"
+                + "        'content': 'result',"
+                + "        'role': 'user'"
+                + "      }"
+                + "    }"
+                + "  ]"
+                + "}")
+            .replace("'", "\"");
+    when(client.getChatCompletions(eq("test-model"), any()))
+        .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
+    when(transformFunction.buildOpenAIClient(any())).thenReturn(client);
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    transformFunction.process(record.getValue(), context);
+
+    ArgumentCaptor<ChatCompletionsOptions> captor =
+        ArgumentCaptor.forClass(ChatCompletionsOptions.class);
+    verify(client).getChatCompletions(eq("test-model"), captor.capture());
+
+    assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
   }
 
   // TODO: just for demo. To be removed

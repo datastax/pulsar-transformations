@@ -34,7 +34,6 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -43,8 +42,6 @@ import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
 
 /** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
@@ -83,12 +80,8 @@ public class ComputeStep implements TransformStep {
 
   public void computeValueFields(List<ComputeField> fields, TransformContext context) {
     if (context.getValueSchema().getSchemaInfo().getType() == AVRO) {
-      GenericRecord avroRecord = (GenericRecord) context.getValueObject();
-      GenericRecord newRecord = computeFields(fields, avroRecord, valueSchemaCache, context);
-      if (avroRecord != newRecord) {
-        context.setValueModified(true);
-      }
-      context.setValueObject(newRecord);
+      Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
+      context.addOrReplaceAvroValueFields(evaluatedFields, valueSchemaCache);
     }
   }
 
@@ -135,13 +128,9 @@ public class ComputeStep implements TransformStep {
 
   public void computeKeyFields(List<ComputeField> fields, TransformContext context) {
     if (context.getKeyObject() != null
-        && context.getValueSchema().getSchemaInfo().getType() == AVRO) {
-      GenericRecord avroRecord = (GenericRecord) context.getKeyObject();
-      GenericRecord newRecord = computeFields(fields, avroRecord, keySchemaCache, context);
-      if (avroRecord != newRecord) {
-        context.setKeyModified(true);
-      }
-      context.setKeyObject(newRecord);
+        && context.getKeySchema().getSchemaInfo().getType() == AVRO) {
+      Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
+      context.addOrReplaceAvroKeyFields(evaluatedFields, keySchemaCache);
     }
   }
 
@@ -184,13 +173,8 @@ public class ComputeStep implements TransformStep {
             field.getName(), value == null ? "null" : value.getClass().getSimpleName(), "String"));
   }
 
-  private GenericRecord computeFields(
-      List<ComputeField> fields,
-      GenericRecord record,
-      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache,
-      TransformContext context) {
-
-    // Evaluate computed fields
+  private Map<Schema.Field, Object> getEvaluatedFields(
+      List<ComputeField> fields, TransformContext context) {
     Map<Schema.Field, Object> evaluatedFields =
         new LinkedHashMap<>(); // preserves the insertion order of keys
     for (ComputeField field : fields) {
@@ -199,48 +183,7 @@ public class ComputeStep implements TransformStep {
       Schema.Field avroField = createAvroField(field, type, value);
       evaluatedFields.put(avroField, getAvroValue(avroField.schema(), value));
     }
-
-    org.apache.avro.Schema avroSchema = record.getSchema();
-    Set<String> computedFieldNames =
-        evaluatedFields.keySet().stream().map(Schema.Field::name).collect(Collectors.toSet());
-    // original fields - overwritten fields
-    List<Schema.Field> nonOverwrittenFields =
-        avroSchema
-            .getFields()
-            .stream()
-            .filter(f -> !computedFieldNames.contains(f.name()))
-            .map(
-                f ->
-                    new org.apache.avro.Schema.Field(
-                        f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
-            .collect(Collectors.toList());
-    // allFields is the intersection between existing fields and computed fields. Computed fields
-    // take precedence.
-    List<Schema.Field> allFields = new ArrayList<>();
-    allFields.addAll(nonOverwrittenFields);
-    allFields.addAll(evaluatedFields.keySet().stream().collect(Collectors.toList()));
-    org.apache.avro.Schema newSchema =
-        schemaCache.computeIfAbsent(
-            avroSchema,
-            schema ->
-                org.apache.avro.Schema.createRecord(
-                    avroSchema.getName(),
-                    avroSchema.getDoc(),
-                    avroSchema.getNamespace(),
-                    avroSchema.isError(),
-                    allFields));
-
-    GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
-    // Add original fields
-    for (org.apache.avro.Schema.Field field : nonOverwrittenFields) {
-      newRecordBuilder.set(field.name(), record.get(field.name()));
-    }
-    // Add computed fields
-    for (Map.Entry<Schema.Field, Object> entry : evaluatedFields.entrySet()) {
-      // set the field by name to preserve field position
-      newRecordBuilder.set(entry.getKey().name(), entry.getValue());
-    }
-    return newRecordBuilder.build();
+    return evaluatedFields;
   }
 
   private Object getAvroValue(Schema schema, Object value) {

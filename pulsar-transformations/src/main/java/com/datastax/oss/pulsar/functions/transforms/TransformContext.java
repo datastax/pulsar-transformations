@@ -15,6 +15,9 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static org.apache.pulsar.common.schema.SchemaType.AVRO;
+
+import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
@@ -137,7 +140,14 @@ public class TransformContext {
     return recordBuilder.build();
   }
 
-  private Map<String, String> getOutputProperties() {
+  public void addProperty(String key, String value) {
+    if (this.properties == null) {
+      this.properties = new HashMap<>();
+    }
+    this.properties.put(key, value);
+  }
+
+  public Map<String, String> getOutputProperties() {
     if (this.properties == null) {
       return context.getCurrentRecord().getProperties();
     }
@@ -163,5 +173,31 @@ public class TransformContext {
     BinaryEncoder encoder = EncoderFactory.get().directBinaryEncoder(oo, null);
     writer.write(record, encoder);
     return oo.toByteArray();
+  }
+
+  public void addOrReplaceAvroValueFields(
+      Map<org.apache.avro.Schema.Field, Object> newFields,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    if (valueSchema.getSchemaInfo().getType() == AVRO) {
+      GenericRecord avroRecord = (GenericRecord) valueObject;
+      GenericRecord newRecord = AvroUtil.addOrReplaceAvroFields(avroRecord, newFields, schemaCache);
+      if (avroRecord != newRecord) {
+        valueModified = true;
+      }
+      valueObject = newRecord;
+    }
+  }
+
+  public void addOrReplaceAvroKeyFields(
+      Map<org.apache.avro.Schema.Field, Object> newFields,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    if (keySchema.getSchemaInfo().getType() == AVRO) {
+      GenericRecord avroRecord = (GenericRecord) keyObject;
+      GenericRecord newRecord = AvroUtil.addOrReplaceAvroFields(avroRecord, newFields, schemaCache);
+      if (avroRecord != newRecord) {
+        keyModified = true;
+      }
+      keyObject = newRecord;
+    }
   }
 }
