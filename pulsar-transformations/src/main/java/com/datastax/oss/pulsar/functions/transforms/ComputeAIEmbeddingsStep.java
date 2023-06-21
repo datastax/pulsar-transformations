@@ -65,7 +65,7 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
     final String text =
         fields
             .stream()
-            .map(f -> values.get(f))
+            .map(values::get)
             .filter(Objects::nonNull)
             .collect(Collectors.joining(" "));
 
