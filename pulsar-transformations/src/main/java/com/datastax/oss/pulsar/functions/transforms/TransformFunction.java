@@ -40,6 +40,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
@@ -156,10 +157,12 @@ public class TransformFunction
             .objectMapper(mapper)
             .addUrnFactory(urnFactory)
             .build();
+    SchemaValidatorsConfig jsonSchemaConfig = new SchemaValidatorsConfig();
+    jsonSchemaConfig.setLosslessNarrowing(true);
     InputStream is =
         Thread.currentThread().getContextClassLoader().getResourceAsStream("config-schema.yaml");
 
-    JsonSchema schema = factory.getSchema(is);
+    JsonSchema schema = factory.getSchema(is, jsonSchemaConfig);
     Set<ValidationMessage> errors = schema.validate(jsonNode);
 
     if (errors.size() != 0) {
@@ -241,7 +244,7 @@ public class TransformFunction
         case "compute-ai-embeddings":
           transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step);
           break;
-        case "chat-completions":
+        case "ai-chat-completions":
           transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step);
           break;
         default:
@@ -376,10 +379,13 @@ public class TransformFunction
   }
 
   private TransformStep newChatCompletionsFunction(ChatCompletionsConfig config) {
+    if (openAIClient == null) {
+      throw new IllegalArgumentException("The OpenAI client must be configured for this step");
+    }
     return new ChatCompletionsStep(openAIClient, config);
   }
 
-  private OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
+  OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
     if (openAIConfig == null) {
       return null;
     }

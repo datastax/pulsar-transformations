@@ -28,7 +28,6 @@ import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.functions.api.Record;
@@ -39,8 +38,6 @@ public class ChatCompletionsStep implements TransformStep {
   private final ChatCompletionsConfig config;
 
   public ChatCompletionsStep(OpenAIClient client, ChatCompletionsConfig config) {
-    Objects.requireNonNull(
-        client, "The OpenAI client must be configured to use the chat completions step");
     this.client = client;
     this.config = config;
   }
@@ -85,12 +82,31 @@ public class ChatCompletionsStep implements TransformStep {
             .setFrequencyPenalty(config.getFrequencyPenalty());
 
     ChatCompletions chatCompletions =
-        client.getChatCompletions(config.getDeploymentId(), chatCompletionsOptions);
+        client.getChatCompletions(config.getModel(), chatCompletionsOptions);
 
     String content = chatCompletions.getChoices().get(0).getMessage().getContent();
     // TODO: At the moment, we only support outputing the value with STRING schema.
-    transformContext.setValueSchema(Schema.STRING);
-    transformContext.setValueObject(content);
+
+    String fieldName = config.getFieldName();
+    if (fieldName == null || fieldName.equals("value")) {
+      transformContext.setValueSchema(Schema.STRING);
+      transformContext.setValueObject(content);
+    } else if (fieldName.equals("key")) {
+      transformContext.setKeySchema(Schema.STRING);
+      transformContext.setKeyObject(content);
+    } else if (fieldName.equals("destinationTopic")) {
+      transformContext.setOutputTopic(content);
+    } else if (fieldName.equals("messageKey")) {
+      transformContext.setKey(content);
+    } else if (fieldName.startsWith("properties.")) {
+      String propertyKey = fieldName.substring("properties.".length());
+      transformContext.addProperty(propertyKey, content);
+    } else {
+      throw new IllegalArgumentException(
+          "Invalid fieldName: "
+              + fieldName
+              + ". fieldName must be one of [value, key, destinationTopic, messageKey, properties.*]");
+    }
   }
 
   private static Object toJsonSerializable(Schema<?> schema, Object val) {

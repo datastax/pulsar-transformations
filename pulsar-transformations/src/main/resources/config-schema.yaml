@@ -43,6 +43,7 @@ components:
           drop: "#/components/schemas/Drop"
           compute: "#/components/schemas/Compute"
           compute-ai-embeddings: "#/components/schemas/ComputeAIEmbeddings"
+          ai-chat-completions: "#/components/schemas/AIChatCompletions"
     DropFields:
       allOf:
         - "$ref": "#/components/schemas/Step"
@@ -255,6 +256,72 @@ components:
             - embeddings-field
             - fields
         - "$ref": "#/components/schemas/Part"
+    AIChatCompletions:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - ai-chat-completions
+            model:
+              type: string
+              description: The model.
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChatMessage'
+              description: The list of chat messages.
+            max-tokens:
+              type: integer
+              description: The maximum number of tokens.
+            temperature:
+              type: number
+              description: The temperature.
+            top-p:
+              type: number
+              description: The top-p value.
+            logit-bias:
+              type: object
+              additionalProperties:
+                type: integer
+              description: The logit bias map.
+            user:
+              type: string
+              description: The user.
+            stop:
+              type: array
+              items:
+                type: string
+              description: The list of stop words.
+            presence-penalty:
+              type: number
+              description: The presence penalty.
+            frequency-penalty:
+              type: number
+              description: The frequency penalty.
+          required:
+            - model
+            - messages
+
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - system
+            - user
+            - assistant
+          description: The role associated with this message payload.
+        content:
+          type: string
+          description: The text associated with this message payload.
+      required:
+        - role
+        - content
+
 type: object
 properties:
   steps:
@@ -270,6 +337,7 @@ properties:
         - "$ref": "#/components/schemas/Flatten"
         - "$ref": "#/components/schemas/Compute"
         - "$ref": "#/components/schemas/ComputeAIEmbeddings"
+        - "$ref": "#/components/schemas/AIChatCompletions"
   openai:
     type: object
     description: The OpenAI configuration.

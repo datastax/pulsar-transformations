@@ -137,6 +137,13 @@ public class TransformContext {
     return recordBuilder.build();
   }
 
+  public void addProperty(String key, String value) {
+    if (this.properties == null) {
+      this.properties = new HashMap<>();
+    }
+    this.properties.put(key, value);
+  }
+
   public Map<String, String> getOutputProperties() {
     if (this.properties == null) {
       return context.getCurrentRecord().getProperties();

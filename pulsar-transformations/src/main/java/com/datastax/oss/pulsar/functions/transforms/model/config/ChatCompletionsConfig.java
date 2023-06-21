@@ -25,10 +25,13 @@ import lombok.Data;
 public class ChatCompletionsConfig extends StepConfig {
 
   @JsonProperty(required = true)
-  private String deploymentId;
+  private String model;
 
   @JsonProperty(value = "messages", required = true)
   private List<ChatMessage> messages;
+
+  @JsonProperty(value = "completion-field")
+  private String fieldName;
 
   @JsonProperty(value = "max-tokens")
   private Integer maxTokens;

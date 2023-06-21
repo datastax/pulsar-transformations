@@ -84,17 +84,17 @@ public class ChatCompletionsStepTest {
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    when(client.getChatCompletions(eq("test-deployment-id"), any()))
+    when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
-    config.setDeploymentId("test-deployment-id");
+    config.setModel("test-model");
     config.setMessages(
         List.of(
             new ChatMessage(ChatRole.USER)
                 .setContent(
                     "{{ value }} {{ key}} {{ eventTime }} {{ topicName }} {{ destinationTopic }} {{ properties.test-key }}")));
     Utils.process(record, new ChatCompletionsStep(client, config));
-    verify(client).getChatCompletions(eq("test-deployment-id"), captor.capture());
+    verify(client).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -135,26 +135,27 @@ public class ChatCompletionsStepTest {
                 + "  'choices': ["
                 + "    {"
                 + "      'message': {"
-                + "        'content': 'result'"
+                + "        'content': 'result',"
+                + "        'role': 'user'"
                 + "      }"
                 + "    }"
                 + "  ]"
                 + "}")
             .replace("'", "\"");
 
-    ArgumentCaptor<ChatCompletionsOptions> captor =
-        ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    when(client.getChatCompletions(eq("test-deployment-id"), any()))
+    when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
-    config.setDeploymentId("test-deployment-id");
+    config.setModel("test-model");
     config.setMessages(
         List.of(
             new ChatMessage(ChatRole.USER)
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key}}")));
     Utils.process(record, new ChatCompletionsStep(client, config));
-    verify(client).getChatCompletions(eq("test-deployment-id"), captor.capture());
+    ArgumentCaptor<ChatCompletionsOptions> captor =
+        ArgumentCaptor.forClass(ChatCompletionsOptions.class);
+    verify(client).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -180,16 +181,16 @@ public class ChatCompletionsStepTest {
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    when(client.getChatCompletions(eq("test-deployment-id"), any()))
+    when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(mapper.readValue(completion, ChatCompletions.class));
     ChatCompletionsConfig config = new ChatCompletionsConfig();
-    config.setDeploymentId("test-deployment-id");
+    config.setModel("test-model");
     config.setMessages(
         List.of(
             new ChatMessage(ChatRole.USER)
                 .setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
     Utils.process(record, new ChatCompletionsStep(client, config));
-    verify(client).getChatCompletions(eq("test-deployment-id"), captor.capture());
+    verify(client).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
   }
