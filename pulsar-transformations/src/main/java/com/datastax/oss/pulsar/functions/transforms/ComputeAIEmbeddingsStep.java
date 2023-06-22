@@ -16,9 +16,12 @@
 package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
+import com.datastax.oss.pulsar.functions.transforms.model.JsonRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.samskivert.mustache.Mustache;
+import com.samskivert.mustache.Template;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,36 +35,27 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
 
 /**
- * Compute AI Embeddings for one or more records fields and put the value into a new or existing
- * field.
+ * Compute AI Embeddings from a template filled with the received message fields and metadata and put the value into a
+ * new or existing field.
  */
-@Builder
 public class ComputeAIEmbeddingsStep implements TransformStep {
 
-  @Builder.Default private final List<String> fields = new ArrayList<>();
-  @Builder.Default private final String embeddingsFieldName;
-  @Builder.Default private final EmbeddingsService embeddingsService;
+  private final Template template;
+  private final String embeddingsFieldName;
+  private final EmbeddingsService embeddingsService;
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> avroValueSchemaCache =
       new ConcurrentHashMap<>();
 
+  public ComputeAIEmbeddingsStep(String text, String embeddingsFieldName, EmbeddingsService embeddingsService) {
+    this.template = Mustache.compiler().compile(text);
+    this.embeddingsFieldName = embeddingsFieldName;
+    this.embeddingsService = embeddingsService;
+  }
+
   @Override
   public void process(TransformContext transformContext) {
-    if (!isSchemaCompatible(transformContext)) {
-      return;
-    }
-
-    Map<String, String> values = new HashMap<>();
-    collectFieldValuesFromKey(fields, transformContext, values);
-    collectFieldValuesFromValue(fields, transformContext, values);
-    if (values.isEmpty()) {
-      transformContext
-          .getContext()
-          .getLogger()
-          .debug("Skipping message, empty values for configured fields");
-      return;
-    }
-    final String text =
-        fields.stream().map(values::get).filter(Objects::nonNull).collect(Collectors.joining(" "));
+    JsonRecord jsonRecord = transformContext.toJsonRecord();
+    String text = template.execute(jsonRecord);
 
     final List<Double> embeddings = embeddingsService.computeEmbeddings(List.of(text)).get(0);
     applyEmbeddingsToRecord(transformContext, embeddings);

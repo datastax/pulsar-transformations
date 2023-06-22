@@ -17,7 +17,11 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 
+import com.datastax.oss.pulsar.functions.transforms.model.JsonRecord;
 import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
+import com.datastax.oss.pulsar.functions.transforms.util.JsonConverter;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
@@ -42,6 +46,8 @@ import org.apache.pulsar.functions.api.utils.FunctionRecord;
 @Slf4j
 @Data
 public class TransformContext {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final Context context;
   private Schema<?> keySchema;
   private Object keyObject;
@@ -198,6 +204,44 @@ public class TransformContext {
         keyModified = true;
       }
       keyObject = newRecord;
+    }
+  }
+
+  public JsonRecord toJsonRecord() {
+    JsonRecord jsonRecord = new JsonRecord();
+    if (keySchema != null) {
+      jsonRecord.setKey(
+          toJsonSerializable(keySchema, keyObject));
+    } else {
+      jsonRecord.setKey(key);
+    }
+    jsonRecord.setValue(
+        toJsonSerializable(valueSchema, valueObject));
+    jsonRecord.setDestinationTopic(outputTopic);
+
+    jsonRecord.setProperties(getOutputProperties());
+    Record<?> currentRecord = context.getCurrentRecord();
+    currentRecord.getEventTime().ifPresent(jsonRecord::setEventTime);
+    currentRecord.getTopicName().ifPresent(jsonRecord::setTopicName);
+    return jsonRecord;
+  }
+
+  private static Object toJsonSerializable(
+      org.apache.pulsar.client.api.Schema<?> schema, Object val) {
+    if (schema == null || schema.getSchemaInfo().getType().isPrimitive()) {
+      return val;
+    }
+    switch (schema.getSchemaInfo().getType()) {
+      case AVRO:
+        // TODO: do better than the double conversion AVRO -> JsonNode -> Map
+        return OBJECT_MAPPER.convertValue(
+            JsonConverter.toJson((org.apache.avro.generic.GenericRecord) val),
+            new TypeReference<Map<String, Object>>() {});
+      case JSON:
+        return OBJECT_MAPPER.convertValue(val, new TypeReference<Map<String, Object>>() {});
+      default:
+        throw new UnsupportedOperationException(
+            "Unsupported schemaType " + schema.getSchemaInfo().getType());
     }
   }
 }

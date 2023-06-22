@@ -60,11 +60,7 @@ public class ComputeAIEmbeddingsTest {
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-        ComputeAIEmbeddingsStep.builder()
-            .embeddingsFieldName("newField")
-            .embeddingsService(mockService)
-            .fields(List.of("firstName", "lastName"))
-            .build();
+        new ComputeAIEmbeddingsStep("{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
 
     Record<?> outputRecord = Utils.process(record, step);
     GenericData.Record read =
@@ -81,11 +77,7 @@ public class ComputeAIEmbeddingsTest {
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("key1", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-        ComputeAIEmbeddingsStep.builder()
-            .embeddingsFieldName("newField")
-            .embeddingsService(mockService)
-            .fields(List.of("keyField1"))
-            .build();
+        new ComputeAIEmbeddingsStep("{{ key.keyField1 }}", "newField", mockService);
 
     Record<?> outputRecord = Utils.process(Utils.createTestAvroKeyValueRecord(), step);
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
@@ -118,11 +110,7 @@ public class ComputeAIEmbeddingsTest {
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-        ComputeAIEmbeddingsStep.builder()
-            .embeddingsFieldName("newField")
-            .embeddingsService(mockService)
-            .fields(List.of("firstName", "lastName"))
-            .build();
+        new ComputeAIEmbeddingsStep("{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
 
     Record<?> outputRecord = Utils.process(record, step);
 

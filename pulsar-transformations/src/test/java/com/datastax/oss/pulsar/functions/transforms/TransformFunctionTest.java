@@ -136,7 +136,7 @@ public class TransformFunctionTest {
       {"{'steps': [], 'openai': {'access-key': 'qwerty', 'url': 'some-url', 'provider': 'azure'}}"},
       {"{'steps': [], 'openai': {'access-key': 'qwerty'}}"},
       {
-        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
+        "{'steps': [{'type': 'compute-ai-embeddings', 'text': '{{ value }}', 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
       },
       {
         "{"
@@ -257,10 +257,10 @@ public class TransformFunctionTest {
       {"{'steps': [], 'openai': {'url': 'some-url'}}"},
       {"{'steps': [], 'openai': {'provider': 'invalid'}}"},
       {
-        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'embeddings-field': 'emb'}]}"
+        "{'steps': [{'type': 'compute-ai-embeddings', 'text': '{{ value }}', 'embeddings-field': 'emb'}]}"
       },
       {
-        "{'steps': [{'type': 'compute-ai-embeddings', 'fields': ['field1', 'field2'], 'model': 'the-new-model'}]}"
+        "{'steps': [{'type': 'compute-ai-embeddings', 'text': '{{ value }}', 'model': 'the-new-model'}]}"
       },
       {
         "{'steps': [{'type': 'compute-ai-embeddings', 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
