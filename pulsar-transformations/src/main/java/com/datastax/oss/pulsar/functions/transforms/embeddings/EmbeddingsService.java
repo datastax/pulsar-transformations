@@ -17,7 +17,9 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import java.util.List;
 
-public interface EmbeddingsService {
+public interface EmbeddingsService extends AutoCloseable {
+
+  default void close() throws Exception {}
 
   List<List<Double>> computeEmbeddings(List<String> texts);
 }
