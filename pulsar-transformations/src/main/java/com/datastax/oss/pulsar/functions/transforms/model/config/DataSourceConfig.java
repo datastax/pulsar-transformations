@@ -16,15 +16,36 @@
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
-public class TransformStepConfig {
-  @JsonProperty(required = true)
-  private List<StepConfig> steps;
+@Setter
+public class DataSourceConfig {
 
-  @JsonProperty private OpenAIConfig openai;
+  @JsonProperty private String service = "astra";
 
-  @JsonProperty private DataSourceConfig datasource;
+  @JsonProperty private String username;
+
+  @JsonProperty private String password;
+
+  @JsonProperty private String secureBundle;
+
+  @Override
+  public String toString() {
+    return "DataSourceConfig{"
+                + "service='"
+                + service
+                + '\''
+                + ", username='"
+                + username
+                + '\''
+                +
+                // hide password from logs
+                ", password='"
+                + password
+            != null
+        ? "xxx"
+        : "" + '\'' + ", secureBundle='" + secureBundle != null ? "xxx" : "" + '\'' + '}';
+  }
 }

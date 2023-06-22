@@ -44,6 +44,7 @@ components:
           compute: "#/components/schemas/Compute"
           compute-ai-embeddings: "#/components/schemas/ComputeAIEmbeddings"
           ai-chat-completions: "#/components/schemas/AIChatCompletions"
+          query: "#/components/schemas/Query"
     DropFields:
       allOf:
         - "$ref": "#/components/schemas/Step"
@@ -367,6 +368,34 @@ components:
         - role
         - content
 
+    Query:
+      allOf:
+        - "$ref": "#/components/schemas/Step"
+        - type: object
+          description: |
+            Execute a Query and put the result into a new or existing field.
+                - query
+        - properties:
+            type:
+              type: string
+              enum:
+                - query
+            query:
+              type:
+                - string
+              description: The query.
+            output-field:
+              type:
+                - string
+              description: The record field where to inject the computed value. If the field already exists, it will be used. Note that the field must be a representation of an array.
+            fields:
+              type: array
+              items:
+                type:
+                  - string
+              description: The record fields to pass as query parameters.
+        - "$ref": "#/components/schemas/Part"
+
 type: object
 properties:
   steps:
@@ -383,6 +412,7 @@ properties:
         - "$ref": "#/components/schemas/Compute"
         - "$ref": "#/components/schemas/ComputeAIEmbeddings"
         - "$ref": "#/components/schemas/AIChatCompletions"
+        - "$ref": "#/components/schemas/Query"
   openai:
     type: object
     description: The OpenAI configuration.
