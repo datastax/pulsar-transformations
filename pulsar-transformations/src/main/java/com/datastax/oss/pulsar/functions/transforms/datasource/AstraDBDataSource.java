@@ -83,14 +83,16 @@ public class AstraDBDataSource implements QueryStepDataSource {
 
   @Override
   public List<Map<String, String>> fetchData(String query, List<Object> params) {
-    log.info(
-        "Executing query {} with params {} ({})",
-        query,
-        params,
-        params
-            .stream()
-            .map(v -> v == null ? "null" : v.getClass().toString())
-            .collect(Collectors.joining(",")));
+    if (log.isDebugEnabled()) {
+      log.debug(
+          "Executing query {} with params {} ({})",
+          query,
+          params,
+          params
+              .stream()
+              .map(v -> v == null ? "null" : v.getClass().toString())
+              .collect(Collectors.joining(",")));
+    }
     PreparedStatement preparedStatement =
         statements.computeIfAbsent(query, q -> session.prepare(q));
 
@@ -129,11 +131,13 @@ public class AstraDBDataSource implements QueryStepDataSource {
               for (int i = 0; i < columnDefinitions.size(); i++) {
                 String name = columnDefinitions.get(i).getName().toString();
                 Object object = r.getObject(i);
-                log.info(
-                    "Column {} is of type {} and value {}",
-                    name,
-                    object != null ? object.getClass().toString() : "null",
-                    object);
+                if (log.isTraceEnabled()) {
+                  log.trace(
+                      "Column {} is of type {} and value {}",
+                      name,
+                      object != null ? object.getClass().toString() : "null",
+                      object);
+                }
                 result.put(name, object != null ? object.toString() : null);
               }
               return result;

@@ -24,16 +24,21 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertThrows;
 import static org.testng.AssertJUnit.assertNull;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
+import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.util.List;
 import java.util.Map;
+import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.pulsar.client.api.Schema;
@@ -635,5 +640,62 @@ public class TransformFunctionTest {
         outputRecord.getValue(),
         "{\"keyField2\": \"key2\", \"keyField3\": \"key3\", \"valueField1\": "
             + "\"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+  }
+
+  @Test
+  void testQuery() throws Exception {
+    String userConfig =
+        (""
+                + "{'datasource': {'service': 'mock','username': 'test','password': 'testpwd', 'secureBundle':'xx'},"
+                + "   'steps': ["
+                + "    {'type': 'query', 'fields': ['keyField1'], 'query':'select * from products where description like ?', 'output-field':'results'}"
+                + "]}")
+            .replace("'", "\"");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction =
+        new TransformFunction() {
+          @Override
+          protected QueryStepDataSource buildDataSource(DataSourceConfig dataSourceConfig) {
+            assertEquals(dataSourceConfig.getService(), "mock");
+            assertEquals(dataSourceConfig.getUsername(), "test");
+            assertEquals(dataSourceConfig.getPassword(), "testpwd");
+            assertEquals(dataSourceConfig.getSecureBundle(), "xx");
+
+            return new QueryStepDataSource() {
+              @Override
+              public List<Map<String, String>> fetchData(String query, List<Object> params) {
+                assertEquals("select * from products where description like ?", query);
+                assertEquals(params.size(), 1);
+                assertEquals(params.get(0), "key1");
+
+                return List.of(
+                    Map.of("productId", "1", "name", "Product1"),
+                    Map.of("productId", "2", "name", "Product2"));
+              }
+            };
+          }
+        };
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    GenericData.Record valueAvroRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+    Object results = valueAvroRecord.get("results");
+    assertNotNull(results);
+    GenericArray array = (GenericArray) results;
+    assertEquals(2, array.size());
+    assertEquals(
+        Map.of(new Utf8("productId"), new Utf8("1"), new Utf8("name"), new Utf8("Product1")),
+        array.get(0));
+    assertEquals(
+        Map.of(new Utf8("productId"), new Utf8("2"), new Utf8("name"), new Utf8("Product2")),
+        array.get(1));
   }
 }

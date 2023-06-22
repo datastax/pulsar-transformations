@@ -426,7 +426,7 @@ public class TransformFunction
     return openAIClientBuilder.buildClient();
   }
 
-  private QueryStepDataSource buildDataSource(DataSourceConfig dataSourceConfig) {
+  protected QueryStepDataSource buildDataSource(DataSourceConfig dataSourceConfig) {
     if (dataSourceConfig == null) {
       return new QueryStepDataSource() {};
     }

@@ -50,11 +50,6 @@ public class QueryStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) {
-    log.info(
-        "process {} {} with {}",
-        transformContext.getKeyObject(),
-        transformContext.getValueObject(),
-        dataSource);
     if (!isSchemaCompatible(transformContext)) {
       return;
     }
@@ -64,14 +59,12 @@ public class QueryStep implements TransformStep {
     collectFieldValuesFromValue(fields, transformContext, values);
     List<Object> params = fields.stream().map(values::get).collect(Collectors.toList());
     final List<Map<String, String>> results = dataSource.fetchData(query, params);
-    log.info("Results {}", results);
     applyResultsToRecord(transformContext, results);
   }
 
   private void applyResultsToRecord(
       TransformContext transformContext, List<Map<String, String>> results) {
     final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
-    log.info("applyResultsToRecord {} {}", type, results);
     switch (type) {
       case AVRO:
         applyResultsToAvroRecord(transformContext, results);
@@ -127,7 +120,6 @@ public class QueryStep implements TransformStep {
     GenericRecord newRecord = new GenericData.Record(modified);
     for (Schema.Field field : modified.getFields()) {
       if (field.name().equals(outputFieldName)) {
-        log.info("Putting {} in field {}", results, field.name());
         GenericArray array = new GenericData.Array<>(results.size(), field.schema());
         results.forEach(array::add);
         newRecord.put(field.name(), array);
@@ -167,7 +159,6 @@ public class QueryStep implements TransformStep {
       return false;
     }
     final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
-    log.info("schema type {}", type);
     switch (type) {
       case AVRO:
       case JSON:

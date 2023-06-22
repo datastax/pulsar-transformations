@@ -18,10 +18,8 @@ package com.datastax.oss.pulsar.functions.transforms.model.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 @Getter
-@ToString
 @Setter
 public class DataSourceConfig {
 
@@ -32,4 +30,22 @@ public class DataSourceConfig {
   @JsonProperty private String password;
 
   @JsonProperty private String secureBundle;
+
+  @Override
+  public String toString() {
+    return "DataSourceConfig{"
+                + "service='"
+                + service
+                + '\''
+                + ", username='"
+                + username
+                + '\''
+                +
+                // hide password from logs
+                ", password='"
+                + password
+            != null
+        ? "xxx"
+        : "" + '\'' + ", secureBundle='" + secureBundle != null ? "xxx" : "" + '\'' + '}';
+  }
 }
