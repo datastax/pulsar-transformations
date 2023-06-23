@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,6 +87,18 @@ public class ChatCompletionsStep implements TransformStep {
     // TODO: At the moment, we only support outputing the value with STRING schema.
 
     String fieldName = config.getFieldName();
+    storeField(transformContext, content, fieldName);
+
+    String logField = config.getLogField();
+    if (logField != null && !logField.isEmpty()) {
+      Map<String, Object> logMap = new HashMap<>();
+      logMap.put("model", config.getModel());
+      logMap.put("options", chatCompletionsOptions);
+      storeField(transformContext, TransformContext.toJson(logMap), logField);
+    }
+  }
+
+  private void storeField(TransformContext transformContext, String content, String fieldName) {
     if (fieldName == null || fieldName.equals("value")) {
       transformContext.setValueSchema(org.apache.pulsar.client.api.Schema.STRING);
       transformContext.setValueObject(content);

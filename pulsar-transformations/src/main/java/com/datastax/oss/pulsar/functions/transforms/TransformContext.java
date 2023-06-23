@@ -20,6 +20,7 @@ import static org.apache.pulsar.common.schema.SchemaType.AVRO;
 import com.datastax.oss.pulsar.functions.transforms.model.JsonRecord;
 import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
 import com.datastax.oss.pulsar.functions.transforms.util.JsonConverter;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
@@ -241,5 +242,9 @@ public class TransformContext {
         throw new UnsupportedOperationException(
             "Unsupported schemaType " + schema.getSchemaInfo().getType());
     }
+  }
+
+  public static String toJson(Object object) throws JsonProcessingException {
+    return OBJECT_MAPPER.writeValueAsString(object);
   }
 }
