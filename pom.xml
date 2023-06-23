@@ -56,6 +56,13 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>ai.djl</groupId>
+        <artifactId>bom</artifactId>
+        <version>${djl.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar</artifactId>
         <version>${pulsar.version}</version>

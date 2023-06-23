@@ -18,11 +18,20 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 import ai.djl.MalformedModelException;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * EmbeddingsService implementation using HuggingFace models adapted for use in the DJL. Thread safe
+ * (but uses predictor per thread).
+ *
+ * <p>The model requested there should be trained for "sentence similarity" task. See
+ * https://github.com/deepjavalibrary/djl/blob/master/extensions/tokenizers/README.md for model
+ * conversion steps. E.g.: python3 -m pip install -r
+ * ./extensions/tokenizers/src/main/python/requirements.txt python3
+ * ./extensions/tokenizers/src/main/python/model_zoo_importer.py -m kmariunas/bert-uncased-triplet50
+ * find . | grep /bert-uncased-triplet50.zip
+ */
 public class HuggingFaceEmbeddingService
     extends AbstractHuggingFaceEmbeddingService<String, float[]> {
   public HuggingFaceEmbeddingService(HuggingConfig conf)
@@ -49,23 +58,17 @@ public class HuggingFaceEmbeddingService
   }
 
   public static void main(String[] args) throws Exception {
-    /*
-    brew install git-lfs
-    git lfs install
-    git clone https://huggingface.co/bert-base-uncased
-    */
     HuggingConfig conf =
         HuggingConfig.builder()
             .engine("PyTorch")
-            .modelDir(Path.of("/Users/andreyyegorov/src/bert-base-uncased"))
-            // .modelUrl("https://api-inference.huggingface.co/models/")
-            .arguments(Map.of("tokenizer", "bert-base-uncased"))
-            .modelName("pytorch_model.bin")
-            .shape(List.of(1L, 4L, 384L))
+            .modelUrl(
+                "file:///Users/andreyyegorov/src/djl/model/nlp/text_embedding/ai/djl/huggingface/pytorch/sentence-transformers/all-MiniLM-L6-v2/0.0.1/all-MiniLM-L6-v2.zip")
             .build();
+
     try (EmbeddingsService service = new HuggingFaceEmbeddingService(conf)) {
-      List<List<Double>> result = service.computeEmbeddings(List.of("Hello World"));
-      System.out.println(result);
+      List<List<Double>> result =
+          service.computeEmbeddings(List.of("hello world", "stranger things"));
+      result.forEach(System.out::println);
     }
   }
 }

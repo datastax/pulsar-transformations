@@ -18,23 +18,16 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 import ai.djl.MalformedModelException;
 import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;
 import ai.djl.inference.Predictor;
-import ai.djl.ndarray.NDArray;
-import ai.djl.ndarray.NDList;
-import ai.djl.ndarray.NDManager;
-import ai.djl.ndarray.types.Shape;
-import ai.djl.nn.Block;
-import ai.djl.nn.LambdaBlock;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -45,9 +38,13 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
 
   @Override
   public void close() throws Exception {
-    if (predictor != null) {
-      predictor.close();
+    while (!predictorList.isEmpty()) {
+      Predictor<?, ?> p = predictorList.poll();
+      if (p != null) {
+        p.close();
+      }
     }
+
     if (model != null) {
       model.close();
     }
@@ -58,25 +55,27 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   public static class HuggingConfig {
     String engine;
 
-    @Builder.Default Map<String, String> options = Map.of("hasParameter", "false");
+    @Builder.Default Map<String, String> options = Map.of();
 
     @Builder.Default Map<String, String> arguments = Map.of();
 
-    Path modelDir;
     String modelUrl;
 
     String modelName;
-
-    List<Long> shape;
   }
 
+  // thread safety:
+  // http://djl.ai/docs/development/inference_performance_optimization.html#multithreading-support
   ZooModel<IN, OUT> model;
-  Predictor<IN, OUT> predictor;
+
+  private static final ThreadLocal<Predictor<?, ?>> predictorThreadLocal = new ThreadLocal<>();
+  private static final ConcurrentLinkedQueue<Predictor<?, ?>> predictorList =
+      new ConcurrentLinkedQueue<>();
 
   public AbstractHuggingFaceEmbeddingService(HuggingConfig conf)
       throws IOException, ModelNotFoundException, MalformedModelException {
     Objects.requireNonNull(conf);
-    Objects.requireNonNull(conf.shape);
+    Objects.requireNonNull(conf.modelUrl);
 
     // https://stackoverflow.com/a/1901275/2237794
     // https://github.com/deepjavalibrary/djl/blob/master/extensions/tokenizers/src/test/java/ai/djl/huggingface/tokenizers/TextEmbeddingTranslatorTest.java
@@ -88,16 +87,9 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
             ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[1];
 
     Criteria.Builder<IN, OUT> builder = Criteria.builder().setTypes(inClass, outClass);
-    if (conf.modelUrl != null) {
-      builder.optModelUrls(conf.modelUrl);
-      log.info("Loading model from {}", conf.modelUrl);
-    } else if (conf.modelDir != null) {
-      Files.createDirectories(conf.modelDir.toAbsolutePath());
-      builder.optModelPath(conf.modelDir.toAbsolutePath());
-      log.info("Loading model from {}", conf.modelDir.toAbsolutePath());
-    } else {
-      throw new IllegalArgumentException("Either modelUrl or modelDir must be set");
-    }
+
+    builder.optModelUrls(conf.modelUrl);
+    log.info("Loading model from {}", conf.modelUrl);
 
     if (conf.modelName != null) {
       builder.optModelName(conf.modelName);
@@ -113,26 +105,22 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
       conf.arguments.forEach(builder::optArgument);
     }
 
-    Block block =
-        new LambdaBlock(
-            a -> {
-              NDManager manager = a.getManager();
-              NDArray arr = manager.ones(new Shape(conf.shape));
-              arr.setName("last_hidden_state");
-              return new NDList(arr);
-            },
-            "model");
-
-    builder.optBlock(block);
+    // for getting embeddings
     builder.optTranslatorFactory(new TextEmbeddingTranslatorFactory());
 
     Criteria<IN, OUT> criteria = builder.build();
 
     model = criteria.loadModel();
-    predictor = model.newPredictor();
   }
 
   public List<OUT> compute(List<IN> texts) throws TranslateException {
+    Predictor<IN, OUT> predictor = (Predictor<IN, OUT>) predictorThreadLocal.get();
+    if (predictor == null) {
+      predictor = model.newPredictor();
+      predictorThreadLocal.set(predictor);
+      predictorList.add(predictor);
+    }
+
     return predictor.batchPredict(texts);
   }
 

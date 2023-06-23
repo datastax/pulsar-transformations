@@ -24,19 +24,35 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * EmbeddingsService implementation using HuggingFace REST API.
+ *
+ * <p>The model requested there should be trained for "sentence similarity" task.
+ */
 @Slf4j
 public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
+
+  // https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task
+  @Data
+  @Builder
+  public static class HuggingRestConfig {
+    @Builder.Default public String hfUrl = HF_URL;
+
+    @Builder.Default Map<String, Object> options = Map.of("wait_for_model", true);
+  }
 
   private static final String HF_URL =
       "https://api-inference.huggingface.co/pipeline/feature-extraction/";
   private static final ObjectMapper om = createObjectMapper();
 
+  private final HuggingRestConfig conf;
   private final String model;
   private final String token;
 
@@ -53,11 +69,18 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   }
 
   public HuggingFaceRestEmbeddingService(String token, String model) throws MalformedURLException {
+    this(HuggingRestConfig.builder().build(), token, model);
+  }
+
+  public HuggingFaceRestEmbeddingService(HuggingRestConfig conf, String token, String model)
+      throws MalformedURLException {
+    this.conf = conf;
     this.model = model;
     this.token = token;
-    this.modelUrl = new URL(HF_URL + model);
+    this.modelUrl = new URL(conf.hfUrl + model);
 
-    // TODO: check if model is valid https://huggingface.co/docs/datasets-server/valid
+    // TODO: try checking if model is valid https://huggingface.co/docs/datasets-server/valid
+    // TODO: check if model is suitable for "sentence similarity" task
   }
 
   private static ObjectMapper createObjectMapper() {
@@ -70,8 +93,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
   @Override
   public List<List<Double>> computeEmbeddings(List<String> texts) {
-    HuggingPojo pojo =
-        HuggingPojo.builder().inputs(texts).options(Map.of("wait_for_model", true)).build();
+    HuggingPojo pojo = HuggingPojo.builder().inputs(texts).options(conf.options).build();
 
     try {
       String jsonContent = om.writeValueAsString(pojo);
@@ -85,6 +107,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     }
   }
 
+  // TODO: use some HTTP client library with better performance, if needed
   private String query(String jsonPayload) throws Exception {
     HttpURLConnection connection = (HttpURLConnection) modelUrl.openConnection();
     connection.setRequestMethod("POST");
@@ -95,7 +118,9 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     outputStream.write(jsonPayload.getBytes("UTF-8"));
     outputStream.close();
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+    BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
     StringBuilder response = new StringBuilder();
     String line;
     while ((line = reader.readLine()) != null) {
@@ -107,7 +132,11 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   }
 
   public static void main(String[] args) throws Exception {
-    EmbeddingsService svc = new HuggingFaceRestEmbeddingService(args[0], "bert-base-uncased");
-    svc.computeEmbeddings(List.of("hello world", "stranger things")).forEach(System.out::println);
+    try (EmbeddingsService service =
+        new HuggingFaceRestEmbeddingService(args[0], "sentence-transformers/all-MiniLM-L6-v2")) {
+      List<List<Double>> result =
+          service.computeEmbeddings(List.of("hello world", "stranger things"));
+      result.forEach(System.out::println);
+    }
   }
 }
