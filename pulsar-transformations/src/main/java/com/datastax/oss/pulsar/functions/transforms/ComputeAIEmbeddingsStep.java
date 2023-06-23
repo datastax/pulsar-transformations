@@ -22,21 +22,17 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.Builder;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
 
 /**
- * Compute AI Embeddings from a template filled with the received message fields and metadata and put the value into a
- * new or existing field.
+ * Compute AI Embeddings from a template filled with the received message fields and metadata and
+ * put the value into a new or existing field.
  */
 public class ComputeAIEmbeddingsStep implements TransformStep {
 
@@ -46,7 +42,8 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> avroValueSchemaCache =
       new ConcurrentHashMap<>();
 
-  public ComputeAIEmbeddingsStep(String text, String embeddingsFieldName, EmbeddingsService embeddingsService) {
+  public ComputeAIEmbeddingsStep(
+      String text, String embeddingsFieldName, EmbeddingsService embeddingsService) {
     this.template = Mustache.compiler().compile(text);
     this.embeddingsFieldName = embeddingsFieldName;
     this.embeddingsService = embeddingsService;

@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.avro.Conversion;
@@ -87,6 +88,8 @@ public class JsonConverter {
           Object[] iterable;
           if (value instanceof GenericData.Array) {
             iterable = ((GenericData.Array) value).toArray();
+          } else if (value instanceof List) {
+            iterable = ((List) value).toArray();
           } else {
             iterable = (Object[]) value;
           }
