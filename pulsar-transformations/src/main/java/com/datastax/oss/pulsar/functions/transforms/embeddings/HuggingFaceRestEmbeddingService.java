@@ -16,8 +16,6 @@
 package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -50,7 +48,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
   private static final String HF_URL =
       "https://api-inference.huggingface.co/pipeline/feature-extraction/";
-  private static final ObjectMapper om = createObjectMapper();
+  private static final ObjectMapper om = EmbeddingsService.createObjectMapper();
 
   private final HuggingRestConfig conf;
   private final String model;
@@ -81,14 +79,6 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
     // TODO: try checking if model is valid https://huggingface.co/docs/datasets-server/valid
     // TODO: check if model is suitable for "sentence similarity" task
-  }
-
-  private static ObjectMapper createObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    mapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
-    mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-    return mapper;
   }
 
   @Override

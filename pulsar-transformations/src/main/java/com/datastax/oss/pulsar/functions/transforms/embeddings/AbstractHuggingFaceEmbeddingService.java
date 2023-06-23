@@ -22,6 +22,8 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
@@ -35,6 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
     implements EmbeddingsService, AutoCloseable {
+
+  private static final ObjectMapper om = EmbeddingsService.createObjectMapper();
 
   @Override
   public void close() throws Exception {
@@ -53,6 +57,11 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   @Data
   @Builder
   public static class HuggingConfig {
+
+    public static HuggingConfig fromJsonString(String jsonStr) throws JsonProcessingException {
+      return om.readValue(jsonStr, HuggingConfig.class);
+    }
+
     String engine;
 
     @Builder.Default Map<String, String> options = Map.of();

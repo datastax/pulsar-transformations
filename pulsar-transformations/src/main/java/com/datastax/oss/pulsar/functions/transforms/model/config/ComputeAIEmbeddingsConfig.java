@@ -20,6 +20,13 @@ import lombok.Getter;
 
 @Getter
 public class ComputeAIEmbeddingsConfig extends StepConfig {
+
+  public enum SupportedServices {
+    OPENAI,
+    HUGGINGFACES_REST,
+    HUGGINGFACES_DJL
+  }
+
   @JsonProperty(required = true)
   private String model;
 
@@ -28,4 +35,10 @@ public class ComputeAIEmbeddingsConfig extends StepConfig {
 
   @JsonProperty(value = "embeddings-field", required = true)
   private String embeddingsFieldName;
+
+  @JsonProperty(value = "compute-service")
+  private String service;
+
+  @JsonProperty(value = "compute-config-json")
+  private String configJson;
 }

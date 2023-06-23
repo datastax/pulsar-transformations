@@ -19,8 +19,13 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
+import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.pulsar.functions.transforms.datasource.AstraDBDataSource;
 import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceEmbeddingService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceRestEmbeddingService;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
@@ -58,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -385,11 +391,38 @@ public class TransformFunction
     return ComputeStep.builder().fields(fieldList).build();
   }
 
+  @SneakyThrows
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
+    String targetSvc = config.getService();
+    if (targetSvc == null || Strings.isNullOrEmpty(targetSvc)) {
+      targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
+    }
+
+    ComputeAIEmbeddingsConfig.SupportedServices service =
+        ComputeAIEmbeddingsConfig.SupportedServices.valueOf(targetSvc.toUpperCase());
+
+    final EmbeddingsService embeddingService;
+    switch (service) {
+      case OPENAI:
+        embeddingService = new OpenAIEmbeddingsService(openAIClient, config.getModel());
+        break;
+      case HUGGINGFACES_REST:
+        String hfKey = System.getenv("huggingfaces.key");
+        String hfModel = config.getModel();
+        embeddingService = new HuggingFaceRestEmbeddingService(hfKey, hfModel);
+        break;
+      case HUGGINGFACES_DJL:
+        AbstractHuggingFaceEmbeddingService.HuggingConfig conf =
+            AbstractHuggingFaceEmbeddingService.HuggingConfig.fromJsonString(
+                config.getConfigJson());
+        embeddingService = new HuggingFaceEmbeddingService(conf);
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported service: " + service);
+    }
+
     return new ComputeAIEmbeddingsStep(
-        config.getText(),
-        config.getEmbeddingsFieldName(),
-        new OpenAIEmbeddingsService(openAIClient, config.getModel()));
+        config.getText(), config.getEmbeddingsFieldName(), embeddingService);
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
