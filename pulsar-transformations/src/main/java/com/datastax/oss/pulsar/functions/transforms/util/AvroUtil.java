@@ -16,6 +16,7 @@
 package com.datastax.oss.pulsar.functions.transforms.util;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -84,7 +86,11 @@ public class AvroUtil {
     // Add computed fields
     for (Map.Entry<Schema.Field, Object> entry : newFields.entrySet()) {
       // set the field by name to preserve field position
-      newRecordBuilder.set(entry.getKey().name(), entry.getValue());
+      Object value = entry.getValue();
+      if ((value instanceof Collection) && !(value instanceof GenericArray)) {
+        value = new GenericData.Array<>(entry.getKey().schema(), (Collection<Object>) value);
+      }
+      newRecordBuilder.set(entry.getKey().name(), value);
     }
     return newRecordBuilder.build();
   }
