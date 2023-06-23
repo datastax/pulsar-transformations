@@ -383,11 +383,10 @@ public class TransformFunction
   }
 
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
-    return ComputeAIEmbeddingsStep.builder()
-        .embeddingsService(new OpenAIEmbeddingsService(openAIClient, config.getModel()))
-        .embeddingsFieldName(config.getEmbeddingsFieldName())
-        .fields(config.getFields())
-        .build();
+    return new ComputeAIEmbeddingsStep(
+        config.getText(),
+        config.getEmbeddingsFieldName(),
+        new OpenAIEmbeddingsService(openAIClient, config.getModel()));
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {

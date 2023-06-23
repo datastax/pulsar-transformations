@@ -21,11 +21,11 @@ import lombok.Getter;
 
 @Getter
 public class ComputeAIEmbeddingsConfig extends StepConfig {
-  @JsonProperty(value = "model", required = true)
+  @JsonProperty(required = true)
   private String model;
 
-  @JsonProperty(value = "fields", required = true)
-  private List<String> fields;
+  @JsonProperty(required = true)
+  private String text;
 
   @JsonProperty(value = "embeddings-field", required = true)
   private String embeddingsFieldName;

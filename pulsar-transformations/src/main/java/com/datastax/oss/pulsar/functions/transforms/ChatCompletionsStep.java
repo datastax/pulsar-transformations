@@ -57,21 +57,7 @@ public class ChatCompletionsStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    JsonRecord jsonRecord = new JsonRecord();
-    if (transformContext.getKeySchema() != null) {
-      jsonRecord.setKey(
-          toJsonSerializable(transformContext.getKeySchema(), transformContext.getKeyObject()));
-    } else {
-      jsonRecord.setKey(transformContext.getKey());
-    }
-    jsonRecord.setValue(
-        toJsonSerializable(transformContext.getValueSchema(), transformContext.getValueObject()));
-    jsonRecord.setDestinationTopic(transformContext.getOutputTopic());
-
-    jsonRecord.setProperties(transformContext.getOutputProperties());
-    Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
-    currentRecord.getEventTime().ifPresent(jsonRecord::setEventTime);
-    currentRecord.getTopicName().ifPresent(jsonRecord::setTopicName);
+    JsonRecord jsonRecord = transformContext.toJsonRecord();
 
     List<ChatMessage> messages =
         config

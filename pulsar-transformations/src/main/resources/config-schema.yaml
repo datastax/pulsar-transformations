@@ -244,18 +244,15 @@ components:
               type:
                 - string
               description: The record field where to inject the computed embeddings value. If the field already exists, it will be used. Note that the field must be a representation of a double's array.
-            fields:
-              type: array
-              minItems: 1
-              items:
-                type:
-                  - string
-              description: The record fields to compute embeddings for. The fields value will be concatened.
+            text:
+              type:
+                - string
+              description: The text to use to compute the embeddings. Fields and metadata from the message can be used using mustache placeholders.
           required:
             - type
             - model
             - embeddings-field
-            - fields
+            - text
         - "$ref": "#/components/schemas/Part"
     AIChatCompletions:
       allOf:

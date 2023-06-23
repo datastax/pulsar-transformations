@@ -43,9 +43,9 @@ import org.apache.pulsar.common.schema.SchemaType;
 public class QueryStep implements TransformStep {
 
   @Builder.Default private final List<String> fields = new ArrayList<>();
-  @Builder.Default private final String outputFieldName;
-  @Builder.Default private final String query;
-  @Builder.Default private final QueryStepDataSource dataSource;
+  private final String outputFieldName;
+  private final String query;
+  private final QueryStepDataSource dataSource;
   private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
 
   @Override
