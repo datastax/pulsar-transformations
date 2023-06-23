@@ -113,6 +113,7 @@ public class JstlPredicateTest {
       // match
       {"value=='test-message'", primitiveStringContext, true},
       {"messageKey=='header-key'", primitiveStringContext, true},
+      {"key=='header-key'", primitiveStringContext, true},
       {"value==33", primitiveIntContext, true},
       {"value eq 33", primitiveIntContext, true},
       {"value eq 32 + 1", primitiveIntContext, true},
@@ -123,21 +124,20 @@ public class JstlPredicateTest {
       {"value mod 10 == 3", primitiveIntContext, true},
       {"value>32", primitiveIntContext, true},
       {"value gt 32", primitiveIntContext, true},
-      {"value<=33 && messageKey=='header-key'", primitiveIntContext, true},
+      {"value<=33 && key=='header-key'", primitiveIntContext, true},
       {"key=='key' && value==42", primitiveKVContext, true},
       {"key=='key' and value==42", primitiveKVContext, true},
       {"key=='key1' || value==42", primitiveKVContext, true},
       {"key=='key1' or value==42", primitiveKVContext, true},
       {"key=='key' && value==42", primitiveKVContext, true},
-      {"key=='key' && messageKey=='header-key'", primitiveKVContext, true},
       // no-match
       {"value=='test-message-'", primitiveStringContext, false},
-      {"messageKey!='header-key'", primitiveStringContext, false},
-      {"messageKey ne 'header-key'", primitiveStringContext, false},
+      {"key!='header-key'", primitiveStringContext, false},
+      {"key ne 'header-key'", primitiveStringContext, false},
       {"value==34", primitiveIntContext, false},
       {"value>33", primitiveIntContext, false},
-      {"value<=20 && messageKey=='test-key'", primitiveIntContext, false},
-      {"value le 20 && messageKey=='test-key'", primitiveIntContext, false},
+      {"value<=20 && key=='test-key'", primitiveIntContext, false},
+      {"value le 20 && key=='test-key'", primitiveIntContext, false},
     };
   }
 

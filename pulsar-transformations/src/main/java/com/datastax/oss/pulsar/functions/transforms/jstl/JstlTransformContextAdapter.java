@@ -103,9 +103,13 @@ public class JstlTransformContextAdapter {
    *     object, or the primitive type itself.
    */
   public Object getKey() {
-    return this.transformContext.getKeyObject() instanceof GenericRecord
+    Object keyObject = this.transformContext.getKeyObject();
+    if (keyObject == null) {
+      return transformContext.getKey();
+    }
+    return keyObject instanceof GenericRecord
         ? lazyKey
-        : this.transformContext.getKeyObject();
+        : keyObject;
   }
 
   /**

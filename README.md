@@ -306,9 +306,8 @@ When a function returns a timestamp, its type is `INSTANT`.
 
 Each step accept an optional `when` configuration that is evaluated at step execution time against current record (i.e. the as seen by
 the current step in the transformation pipeline). The `when` condition supports the [Expression Language](#expression-language) syntax. It provides access to the record attributes as follows:
-* `key`: the key portion of the record in a KeyValue schema. 
+* `key`: the message key or the key portion of the record in a KeyValue schema.
 * `value`: the value portion of the record in a KeyValue schema, or the message payload itself.
-* `messageKey`: the optional key messages are tagged with (aka. Partition Key).
 * `topicName`: the optional name of the topic which the record originated from (aka. Input Topic).
 * `destinationTopic`: the name of the topic on which the transformed record will be sent (aka. Output Topic).
 * `eventTime`: the optional timestamp attached to the record from its source. For example, the original timestamp attached to the pulsar message.
@@ -350,11 +349,11 @@ You can use the `.` operator to access top level or nested properties on a schem
 * User defined k/v: `{"prop1": "p1", "prop2": "p2"}`
 * Payload (String): `Hello world!`
 
-| when                                               | Evaluates to |
-|----------------------------------------------------|--------------|
-| `"messageKey == 'key1' or topicName == 'topic1' "` | True         | 
-| `"value == 'Hello world!'"`                        | True         |
-| `"properties.prop1 == 'p2'"`                       | False        |
+| when                                        | Evaluates to |
+|---------------------------------------------|--------------|
+| `"key == 'key1' or topicName == 'topic1' "` | True         |
+| `"value == 'Hello world!'"`                 | True         |
+| `"properties.prop1 == 'p2'"`                | False        |
 
 ## Deployment
 
