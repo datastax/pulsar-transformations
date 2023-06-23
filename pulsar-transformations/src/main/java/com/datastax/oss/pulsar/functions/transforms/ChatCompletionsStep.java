@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
-import org.apache.pulsar.functions.api.Record;
 
 public class ChatCompletionsStep implements TransformStep {
 

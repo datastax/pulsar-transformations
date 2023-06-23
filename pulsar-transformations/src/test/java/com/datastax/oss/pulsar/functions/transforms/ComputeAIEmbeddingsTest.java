@@ -60,7 +60,8 @@ public class ComputeAIEmbeddingsTest {
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-        new ComputeAIEmbeddingsStep("{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
+        new ComputeAIEmbeddingsStep(
+            "{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
 
     Record<?> outputRecord = Utils.process(record, step);
     GenericData.Record read =
@@ -110,7 +111,8 @@ public class ComputeAIEmbeddingsTest {
     final List<Double> expectedEmbeddings = Arrays.asList(1.0d, 2.0d, 3.0d);
     mockService.setEmbeddingsForText("Jane The Princess ", expectedEmbeddings);
     ComputeAIEmbeddingsStep step =
-        new ComputeAIEmbeddingsStep("{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
+        new ComputeAIEmbeddingsStep(
+            "{{ value.firstName }} {{ value.lastName }}", "newField", mockService);
 
     Record<?> outputRecord = Utils.process(record, step);
 

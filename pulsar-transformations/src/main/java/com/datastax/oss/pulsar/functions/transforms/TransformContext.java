@@ -210,13 +210,11 @@ public class TransformContext {
   public JsonRecord toJsonRecord() {
     JsonRecord jsonRecord = new JsonRecord();
     if (keySchema != null) {
-      jsonRecord.setKey(
-          toJsonSerializable(keySchema, keyObject));
+      jsonRecord.setKey(toJsonSerializable(keySchema, keyObject));
     } else {
       jsonRecord.setKey(key);
     }
-    jsonRecord.setValue(
-        toJsonSerializable(valueSchema, valueObject));
+    jsonRecord.setValue(toJsonSerializable(valueSchema, valueObject));
     jsonRecord.setDestinationTopic(outputTopic);
 
     jsonRecord.setProperties(getOutputProperties());
