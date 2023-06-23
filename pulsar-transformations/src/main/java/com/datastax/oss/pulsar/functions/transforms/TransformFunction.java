@@ -51,6 +51,7 @@ import com.networknt.schema.urn.URNFactory;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +139,8 @@ import org.apache.pulsar.functions.api.Record;
 public class TransformFunction
     implements Function<GenericObject, Record<GenericObject>>, TransformStep {
 
+  private static final List<String> FIELD_NAMES =
+      Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
   private OpenAIClient openAIClient;
   private QueryStepDataSource dataSource;
@@ -402,6 +405,18 @@ public class TransformFunction
   }
 
   private TransformStep newQuery(QueryConfig config) {
+    config
+        .getFields()
+        .forEach(
+            field -> {
+              if (!FIELD_NAMES.contains(field)
+                  && !field.startsWith("value.")
+                  && !field.startsWith("key.")
+                  && !field.startsWith("properties")) {
+                throw new IllegalArgumentException(
+                    String.format("Invalid field name for query step: %s", field));
+              }
+            });
     return QueryStep.builder()
         .outputFieldName(config.getOutputField())
         .query(config.getQuery())

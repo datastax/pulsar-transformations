@@ -42,8 +42,8 @@ components:
           flatten: "#/components/schemas/Flatten"
           drop: "#/components/schemas/Drop"
           compute: "#/components/schemas/Compute"
-          compute-ai-embeddings: "#/components/schemas/ComputeAIEmbeddings"
-          ai-chat-completions: "#/components/schemas/AIChatCompletions"
+          compute-ai-embeddings: "#/components/schemas/ComputeAiEmbeddings"
+          ai-chat-completions: "#/components/schemas/AiChatCompletions"
           query: "#/components/schemas/Query"
     DropFields:
       allOf:
@@ -225,7 +225,7 @@ components:
             - type
             - fields
         - "$ref": "#/components/schemas/Part"
-    ComputeAIEmbeddings:
+    ComputeAiEmbeddings:
       allOf:
         - "$ref": "#/components/schemas/Step"
         - type: object
@@ -257,7 +257,7 @@ components:
             - embeddings-field
             - fields
         - "$ref": "#/components/schemas/Part"
-    AIChatCompletions:
+    AiChatCompletions:
       allOf:
         - "$ref": "#/components/schemas/Step"
         - type: object
@@ -410,8 +410,8 @@ properties:
         - "$ref": "#/components/schemas/Drop"
         - "$ref": "#/components/schemas/Flatten"
         - "$ref": "#/components/schemas/Compute"
-        - "$ref": "#/components/schemas/ComputeAIEmbeddings"
-        - "$ref": "#/components/schemas/AIChatCompletions"
+        - "$ref": "#/components/schemas/ComputeAiEmbeddings"
+        - "$ref": "#/components/schemas/AiChatCompletions"
         - "$ref": "#/components/schemas/Query"
   openai:
     type: object
