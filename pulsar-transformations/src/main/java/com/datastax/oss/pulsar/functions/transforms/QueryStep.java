@@ -20,7 +20,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +32,7 @@ import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
+import org.apache.pulsar.functions.api.Record;
 
 /**
  * Compute AI Embeddings for one or more records fields and put the value into a new or existing
@@ -50,16 +50,94 @@ public class QueryStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) {
-    if (!isSchemaCompatible(transformContext)) {
-      return;
-    }
-
-    Map<String, Object> values = new HashMap<>();
-    collectFieldValuesFromKey(fields, transformContext, values);
-    collectFieldValuesFromValue(fields, transformContext, values);
-    List<Object> params = fields.stream().map(values::get).collect(Collectors.toList());
+    Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
+    List<Object> params = new ArrayList<>();
+    fields.forEach(
+        field -> {
+          if (field.equals("value")) {
+            params.add(transformContext.getValueObject());
+          } else if (field.equals("key")) {
+            params.add(transformContext.getKeyObject());
+          } else if (field.equals("messageKey")) {
+            params.add(transformContext.getKey());
+          } else if (field.startsWith("properties.")) {
+            String propName = field.substring("properties.".length());
+            params.add(transformContext.getOutputProperties().get(propName));
+          } else if (field.equals("destinationTopic")) {
+            params.add(transformContext.getOutputTopic());
+          } else if (field.equals("topicName")) {
+            params.add(currentRecord.getTopicName().orElse(null));
+          } else if (field.equals("eventTime")) {
+            params.add(currentRecord.getEventTime().orElse(null));
+          } else if (field.startsWith("value.")) {
+            params.add(
+                getField(
+                    "value",
+                    field,
+                    transformContext.getValueSchema(),
+                    transformContext.getValueObject()));
+          } else if (field.startsWith("key.")) {
+            params.add(
+                getField(
+                    "key",
+                    field,
+                    transformContext.getKeySchema(),
+                    transformContext.getKeyObject()));
+          }
+        });
     final List<Map<String, String>> results = dataSource.fetchData(query, params);
     applyResultsToRecord(transformContext, results);
+  }
+
+  private Object getField(
+      String key,
+      String field,
+      org.apache.pulsar.client.api.Schema<?> keySchema,
+      Object keyObject) {
+    String fieldName = field.substring((key.length() + 1));
+    SchemaType schemaType = keySchema.getSchemaInfo().getType();
+    switch (schemaType) {
+      case AVRO:
+        GenericRecord avroRecord = (GenericRecord) keyObject;
+        return getAvroField(fieldName, avroRecord);
+      case JSON:
+        JsonNode json = (JsonNode) keyObject;
+        return getJsonField(fieldName, json);
+      default:
+        throw new TransformFunctionException(
+            String.format("%s.* can only be used in query step with AVRO or JSON schema", key));
+    }
+  }
+
+  private static Object getJsonField(String fieldName, JsonNode json) {
+    Object rawValue;
+    JsonNode node = json.get(fieldName);
+    if (node != null && !node.isNull()) {
+      if (node.isNumber()) {
+        rawValue = node.asDouble();
+      } else {
+        rawValue = node.asText();
+      }
+    } else {
+      throw new TransformFunctionException(
+          String.format("Field %s is null in JSON record", fieldName));
+    }
+    return rawValue;
+  }
+
+  private static Object getAvroField(String fieldName, GenericRecord avroRecord) {
+    Object rawValue = avroRecord.get(fieldName);
+    if (rawValue != null) {
+      // TODO: handle numbers...
+      if (rawValue instanceof CharSequence) {
+        // AVRO utf8...
+        rawValue = rawValue.toString();
+      }
+    } else {
+      throw new TransformFunctionException(
+          String.format("Field %s is null in AVRO record", fieldName));
+    }
+    return rawValue;
   }
 
   private void applyResultsToRecord(
@@ -73,7 +151,6 @@ public class QueryStep implements TransformStep {
         applyResultsToJsonRecord(transformContext, results);
         break;
       default:
-        return;
     }
   }
 
@@ -152,93 +229,5 @@ public class QueryStep implements TransformStep {
     jsonNode.set(outputFieldName, arrayNode);
     transformContext.setValueModified(true);
     transformContext.setValueObject(jsonNode);
-  }
-
-  private boolean isSchemaCompatible(TransformContext transformContext) {
-    if (transformContext.getValueObject() == null) {
-      return false;
-    }
-    final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
-    switch (type) {
-      case AVRO:
-      case JSON:
-        return true;
-      default:
-        transformContext
-            .getContext()
-            .getLogger()
-            .debug("Skipping message, schema is not a generic record");
-        return false;
-    }
-  }
-
-  private void collectFieldValuesFromKey(
-      List<String> fields, TransformContext record, Map<String, Object> collect) {
-    collectFieldsFromRecord(fields, record.getKeySchema(), record.getKeyObject(), collect);
-  }
-
-  private void collectFieldValuesFromValue(
-      List<String> fields, TransformContext record, Map<String, Object> collect) {
-    collectFieldsFromRecord(fields, record.getValueSchema(), record.getValueObject(), collect);
-  }
-
-  private void collectFieldsFromRecord(
-      List<String> fields,
-      org.apache.pulsar.client.api.Schema schema,
-      Object object,
-      Map<String, Object> collect) {
-    if (object == null) {
-      return;
-    }
-
-    final SchemaType type = schema.getSchemaInfo().getType();
-    switch (type) {
-      case AVRO:
-        GenericRecord avroRecord = (GenericRecord) object;
-        collectFieldsFromAvro(fields, collect, avroRecord);
-        break;
-      case JSON:
-        final JsonNode json = (JsonNode) object;
-        collectFieldsFromJson(fields, collect, json);
-        break;
-      default:
-        return;
-    }
-  }
-
-  private void collectFieldsFromAvro(
-      List<String> fields, Map<String, Object> collect, GenericRecord avroRecord) {
-    for (String field : fields) {
-      if (!avroRecord.hasField(field)) {
-        continue;
-      }
-      final Object rawValue = avroRecord.get(field);
-      if (rawValue != null) {
-        // TODO: handle numbers...
-        if (rawValue instanceof CharSequence) {
-          // AVRO utf8...
-          collect.put(field, rawValue.toString());
-        } else {
-          collect.put(field, rawValue);
-        }
-      }
-    }
-  }
-
-  private void collectFieldsFromJson(
-      List<String> fields, Map<String, Object> collect, JsonNode json) {
-    for (String field : fields) {
-      if (!json.has(field)) {
-        continue;
-      }
-      final JsonNode node = json.get(field);
-      if (node != null && !node.isNull()) {
-        if (node.isNumber()) {
-          collect.put(field, node.asDouble());
-        } else {
-          collect.put(field, node.asText());
-        }
-      }
-    }
   }
 }

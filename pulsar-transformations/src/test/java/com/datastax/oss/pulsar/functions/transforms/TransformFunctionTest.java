@@ -648,7 +648,7 @@ public class TransformFunctionTest {
         (""
                 + "{'datasource': {'service': 'mock','username': 'test','password': 'testpwd', 'secureBundle':'xx'},"
                 + "   'steps': ["
-                + "    {'type': 'query', 'fields': ['keyField1'], 'query':'select * from products where description like ?', 'output-field':'results'}"
+                + "    {'type': 'query', 'fields': ['key.keyField1'], 'query':'select * from products where description like ?', 'output-field':'results'}"
                 + "]}")
             .replace("'", "\"");
     Map<String, Object> config =
