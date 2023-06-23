@@ -109,7 +109,7 @@ public class JstlTransformContextAdapterTest {
 
     // then
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
-    assertNull(adapter.getKey());
+    assertEquals(adapter.getKey(), "header-key");
 
     assertEquals(adapter.getValue(), "test-message");
     assertEquals(adapter.getValue(), "test-message");
@@ -136,7 +136,7 @@ public class JstlTransformContextAdapterTest {
 
     // then
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
-    assertNull(adapter.getKey());
+    assertEquals(adapter.getKey(), "header-key");
     assertTrue(adapter.getValue() instanceof Map);
     Map<String, Object> valueMap = (Map<String, Object>) adapter.getValue();
     assertNestedRecord(valueMap);
