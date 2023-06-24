@@ -47,6 +47,7 @@
   </properties>
   <modules>
     <module>pulsar-transformations</module>
+    <module>pulsar-ai-functions</module>
     <module>tests</module>
   </modules>
   <dependencyManagement>
