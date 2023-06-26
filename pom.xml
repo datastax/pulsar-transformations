@@ -21,7 +21,7 @@
   <groupId>com.datastax.oss</groupId>
   <artifactId>pulsar-transformations-parent</artifactId>
   <packaging>pom</packaging>
-  <version>3.0.0</version>
+  <version>3.0.1-SNAPSHOT</version>
   <name>Pulsar transformations parent</name>
   <description>A Pulsar Function that provides common basic transformations of the data</description>
   <url>https://github.com/datastax/pulsar-transformations</url>
@@ -300,7 +300,7 @@ limitations under the License.]]></inlineHeader>
     <connection>scm:git:git@github.com:datastax/pulsar-transformations.git</connection>
     <developerConnection>scm:git:git@github.com:datastax/pulsar-transformations.git</developerConnection>
     <url>https://github.com/datastax/spulsar-transformations</url>
-    <tag>v3.0.0</tag>
+    <tag>HEAD</tag>
   </scm>
   <developers>
     <developer>
