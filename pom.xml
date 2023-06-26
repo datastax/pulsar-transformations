@@ -44,10 +44,12 @@
     <avro.version>1.10.2</avro.version>
     <azure-ai-openai.version>1.0.0-beta.2</azure-ai-openai.version>
     <cassandra.driver.version>4.16.0</cassandra.driver.version>
+    <nifi-nar-maven-plugin.version>1.5.1</nifi-nar-maven-plugin.version>
+    <jmustache.version>1.15</jmustache.version>
   </properties>
   <modules>
     <module>pulsar-transformations</module>
-    <module>pulsar-ai-functions</module>
+    <module>pulsar-ai-tools</module>
     <module>tests</module>
   </modules>
   <dependencyManagement>
@@ -78,6 +80,11 @@
         <groupId>com.azure</groupId>
         <artifactId>azure-ai-openai</artifactId>
         <version>${azure-ai-openai.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.samskivert</groupId>
+        <artifactId>jmustache</artifactId>
+        <version>${jmustache.version}</version>
       </dependency>
       <dependency>
         <groupId>com.datastax.oss</groupId>

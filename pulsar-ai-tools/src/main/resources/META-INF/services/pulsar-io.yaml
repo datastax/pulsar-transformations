@@ -17,6 +17,6 @@
 # under the License.
 #
 
-name: ai-functions
-description: AI functions
+name: ai-tools
+description: AI tools
 functionClass: com.datastax.oss.pulsar.functions.transforms.TransformFunction

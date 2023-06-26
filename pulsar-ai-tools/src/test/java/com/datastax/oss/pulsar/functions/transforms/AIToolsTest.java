@@ -47,7 +47,7 @@ import org.mockito.ArgumentCaptor;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public class AIFunctionTest {
+public class AIToolsTest {
 
   @DataProvider(name = "validConfigs")
   public static Object[][] validConfigs() {

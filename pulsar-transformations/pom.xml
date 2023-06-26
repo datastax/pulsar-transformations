@@ -63,15 +63,18 @@
           <artifactId>netty-codec</artifactId>
         </exclusion>
       </exclusions>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.samskivert</groupId>
       <artifactId>jmustache</artifactId>
       <version>1.15</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.testng</groupId>
@@ -125,6 +128,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -137,7 +141,7 @@
       <plugin>
         <groupId>org.apache.nifi</groupId>
         <artifactId>nifi-nar-maven-plugin</artifactId>
-        <version>1.2.0</version>
+        <version>${nifi-nar-maven-plugin.version}</version>
         <extensions>true</extensions>
         <configuration>
           <finalName>${project.artifactId}-${project.version}</finalName>

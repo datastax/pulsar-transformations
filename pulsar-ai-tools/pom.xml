@@ -25,7 +25,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>pulsar-ai-functions</artifactId>
   <packaging>jar</packaging>
-  <name>Pulsar AI functions</name>
+  <name>Pulsar AI tools</name>
   <properties>
     <build.dir>${project.build.directory}</build.dir>
   </properties>
@@ -34,6 +34,24 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>pulsar-transformations</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-ai-openai</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.netty</groupId>
+          <artifactId>netty-codec</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.samskivert</groupId>
+      <artifactId>jmustache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.datastax.oss</groupId>
+      <artifactId>java-driver-core</artifactId>
     </dependency>
     <dependency>
       <groupId>${pulsar.groupId}</groupId>
@@ -87,7 +105,7 @@
       <plugin>
         <groupId>org.apache.nifi</groupId>
         <artifactId>nifi-nar-maven-plugin</artifactId>
-        <version>1.2.0</version>
+        <version>${nifi-nar-maven-plugin.version}</version>
         <extensions>true</extensions>
         <configuration>
           <finalName>${project.artifactId}-${project.version}</finalName>
