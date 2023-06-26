@@ -17,19 +17,13 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericArray;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
@@ -47,6 +41,7 @@ public class QueryStep implements TransformStep {
   private final String query;
   private final QueryStepDataSource dataSource;
   private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
+  private final Map<Schema, Schema> avroKeySchemaCache = new ConcurrentHashMap<>();
 
   @Override
   public void process(TransformContext transformContext) {
@@ -86,7 +81,12 @@ public class QueryStep implements TransformStep {
           }
         });
     final List<Map<String, String>> results = dataSource.fetchData(query, params);
-    applyResultsToRecord(transformContext, results);
+    transformContext.setResultField(
+        results,
+        outputFieldName,
+        Schema.createArray(Schema.createMap(Schema.create(Schema.Type.STRING))),
+        avroKeySchemaCache,
+        avroValueSchemaCache);
   }
 
   private Object getField(
@@ -138,96 +138,5 @@ public class QueryStep implements TransformStep {
           String.format("Field %s is null in AVRO record", fieldName));
     }
     return rawValue;
-  }
-
-  private void applyResultsToRecord(
-      TransformContext transformContext, List<Map<String, String>> results) {
-    final SchemaType type = transformContext.getValueSchema().getSchemaInfo().getType();
-    switch (type) {
-      case AVRO:
-        applyResultsToAvroRecord(transformContext, results);
-        break;
-      case JSON:
-        applyResultsToJsonRecord(transformContext, results);
-        break;
-      default:
-    }
-  }
-
-  private void applyResultsToAvroRecord(
-      TransformContext transformContext, List<Map<String, String>> results) {
-    GenericRecord avroRecord = (GenericRecord) transformContext.getValueObject();
-    Schema avroSchema = avroRecord.getSchema();
-    Schema modified =
-        avroValueSchemaCache.computeIfAbsent(
-            avroSchema,
-            schema -> {
-              AtomicBoolean fieldExists = new AtomicBoolean(false);
-              final List<Schema.Field> newFields =
-                  avroSchema
-                      .getFields()
-                      .stream()
-                      .peek(
-                          f -> {
-                            if (f.name().equals(outputFieldName)) {
-                              fieldExists.set(true);
-                            }
-                          })
-                      .map(
-                          f ->
-                              new Schema.Field(
-                                  f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
-                      .collect(Collectors.toList());
-              if (!fieldExists.get()) {
-                newFields.add(
-                    new Schema.Field(
-                        outputFieldName,
-                        Schema.createArray(Schema.createMap(Schema.create(Schema.Type.STRING))),
-                        "query results",
-                        List.of()));
-              }
-              return Schema.createRecord(
-                  avroSchema.getName(),
-                  avroSchema.getDoc(),
-                  avroSchema.getNamespace(),
-                  avroSchema.isError(),
-                  newFields);
-            });
-
-    GenericRecord newRecord = new GenericData.Record(modified);
-    for (Schema.Field field : modified.getFields()) {
-      if (field.name().equals(outputFieldName)) {
-        GenericArray array = new GenericData.Array<>(results.size(), field.schema());
-        results.forEach(array::add);
-        newRecord.put(field.name(), array);
-      } else {
-        newRecord.put(field.name(), avroRecord.get(field.name()));
-      }
-    }
-    if (avroRecord != newRecord) {
-      transformContext.setValueModified(true);
-    }
-    transformContext.setValueObject(newRecord);
-  }
-
-  private void applyResultsToJsonRecord(
-      TransformContext transformContext, List<Map<String, String>> results) {
-    ObjectNode jsonNode = (ObjectNode) transformContext.getValueObject();
-    final ArrayNode arrayNode =
-        jsonNode
-            .arrayNode()
-            .addAll(
-                results
-                    .stream()
-                    .map(
-                        v -> {
-                          ObjectNode node = jsonNode.objectNode();
-                          v.forEach(node::put);
-                          return node;
-                        })
-                    .collect(Collectors.toList()));
-    jsonNode.set(outputFieldName, arrayNode);
-    transformContext.setValueModified(true);
-    transformContext.setValueObject(jsonNode);
   }
 }

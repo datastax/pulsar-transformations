@@ -247,4 +247,44 @@ public class TransformContext {
   public static String toJson(Object object) throws JsonProcessingException {
     return OBJECT_MAPPER.writeValueAsString(object);
   }
+
+  public void setResultField(
+      Object content,
+      String fieldName,
+      org.apache.avro.Schema fieldSchema,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> avroKeySchemaCache,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> avroValueSchemaCache) {
+    if (fieldName == null || fieldName.equals("value")) {
+      valueSchema = Schema.STRING;
+      valueObject = content;
+    } else if (fieldName.equals("key")) {
+      keySchema = Schema.STRING;
+      keyObject = content;
+    } else if (fieldName.equals("destinationTopic")) {
+      outputTopic = content.toString();
+    } else if (fieldName.equals("messageKey")) {
+      key = content.toString();
+    } else if (fieldName.startsWith("properties.")) {
+      String propertyKey = fieldName.substring("properties.".length());
+      if (properties == null) {
+        properties = new HashMap<>();
+      }
+      properties.put(propertyKey, content.toString());
+    } else if (fieldName.startsWith("value.")) {
+      String valueFieldName = fieldName.substring("value.".length());
+      org.apache.avro.Schema.Field fieldSchemaField =
+          new org.apache.avro.Schema.Field(valueFieldName, fieldSchema, null, null);
+      addOrReplaceAvroValueFields(Map.of(fieldSchemaField, content), avroValueSchemaCache);
+    } else if (fieldName.startsWith("key.")) {
+      String keyFieldName = fieldName.substring("key.".length());
+      org.apache.avro.Schema.Field fieldSchemaField =
+          new org.apache.avro.Schema.Field(keyFieldName, fieldSchema, null, null);
+      addOrReplaceAvroKeyFields(Map.of(fieldSchemaField, content), avroKeySchemaCache);
+    } else {
+      throw new IllegalArgumentException(
+          "Invalid fieldName: "
+              + fieldName
+              + ". fieldName must be one of [value, key, destinationTopic, messageKey, properties.*, value.*, key.*]");
+    }
+  }
 }

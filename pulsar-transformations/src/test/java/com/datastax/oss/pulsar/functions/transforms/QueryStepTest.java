@@ -70,7 +70,7 @@ public class QueryStepTest {
     QueryStep queryStep =
         QueryStep.builder()
             .dataSource(dataSource)
-            .outputFieldName("result")
+            .outputFieldName("value.result")
             .query("select 1")
             .fields(fields)
             .build();
@@ -126,7 +126,7 @@ public class QueryStepTest {
     QueryStep queryStep =
         QueryStep.builder()
             .dataSource(dataSource)
-            .outputFieldName("result")
+            .outputFieldName("value.result")
             .query("select 1")
             .fields(fields)
             .build();
@@ -151,7 +151,7 @@ public class QueryStepTest {
     QueryStep queryStep =
         QueryStep.builder()
             .dataSource(dataSource)
-            .outputFieldName("result")
+            .outputFieldName("value.result")
             .query("select 1")
             .fields(fields)
             .build();

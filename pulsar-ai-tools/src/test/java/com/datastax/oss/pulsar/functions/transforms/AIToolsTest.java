@@ -261,7 +261,7 @@ public class AIToolsTest {
         (""
                 + "{'datasource': {'service': 'mock','username': 'test','password': 'testpwd', 'secureBundle':'xx'},"
                 + "   'steps': ["
-                + "    {'type': 'query', 'fields': ['key.keyField1'], 'query':'select * from products where description like ?', 'output-field':'results'}"
+                + "    {'type': 'query', 'fields': ['key.keyField1'], 'query':'select * from products where description like ?', 'output-field':'value.results'}"
                 + "]}")
             .replace("'", "\"");
     Map<String, Object> config =
