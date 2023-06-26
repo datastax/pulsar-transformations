@@ -20,5 +20,5 @@ jobs:
         run: mvn -B package -DskipTests
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "pulsar-transformations/**/*.nar"
+          artifacts: "pulsar-transformations/**/*.nar,pulsar-ai-tools/**/*.nar"
           token: ${{ secrets.GITHUB_TOKEN }}
