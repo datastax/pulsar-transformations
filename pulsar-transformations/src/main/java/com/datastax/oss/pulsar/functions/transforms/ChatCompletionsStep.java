@@ -21,9 +21,6 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
 import com.datastax.oss.pulsar.functions.transforms.model.JsonRecord;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
-import com.datastax.oss.pulsar.functions.transforms.util.JsonConverter;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samskivert.mustache.Mustache;
 import com.samskivert.mustache.Template;
 import java.util.HashMap;
@@ -84,70 +81,25 @@ public class ChatCompletionsStep implements TransformStep {
         client.getChatCompletions(config.getModel(), chatCompletionsOptions);
 
     String content = chatCompletions.getChoices().get(0).getMessage().getContent();
-    // TODO: At the moment, we only support outputing the value with STRING schema.
-
     String fieldName = config.getFieldName();
-    storeField(transformContext, content, fieldName);
+    transformContext.setResultField(
+        content,
+        fieldName,
+        org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING),
+        avroKeySchemaCache,
+        avroValueSchemaCache);
 
     String logField = config.getLogField();
     if (logField != null && !logField.isEmpty()) {
       Map<String, Object> logMap = new HashMap<>();
       logMap.put("model", config.getModel());
       logMap.put("options", chatCompletionsOptions);
-      storeField(transformContext, TransformContext.toJson(logMap), logField);
-    }
-  }
-
-  private void storeField(TransformContext transformContext, String content, String fieldName) {
-    if (fieldName == null || fieldName.equals("value")) {
-      transformContext.setValueSchema(org.apache.pulsar.client.api.Schema.STRING);
-      transformContext.setValueObject(content);
-    } else if (fieldName.equals("key")) {
-      transformContext.setKeySchema(org.apache.pulsar.client.api.Schema.STRING);
-      transformContext.setKeyObject(content);
-    } else if (fieldName.equals("destinationTopic")) {
-      transformContext.setOutputTopic(content);
-    } else if (fieldName.equals("messageKey")) {
-      transformContext.setKey(content);
-    } else if (fieldName.startsWith("properties.")) {
-      String propertyKey = fieldName.substring("properties.".length());
-      transformContext.addProperty(propertyKey, content);
-    } else if (fieldName.startsWith("value.")) {
-      String valueFieldName = fieldName.substring("value.".length());
-      Schema.Field fieldSchema =
-          new Schema.Field(valueFieldName, Schema.create(Schema.Type.STRING), null, null);
-      transformContext.addOrReplaceAvroValueFields(
-          Map.of(fieldSchema, content), avroValueSchemaCache);
-    } else if (fieldName.startsWith("key.")) {
-      String keyFieldName = fieldName.substring("key.".length());
-      Schema.Field fieldSchema =
-          new Schema.Field(keyFieldName, Schema.create(Schema.Type.STRING), null, null);
-      transformContext.addOrReplaceAvroKeyFields(Map.of(fieldSchema, content), avroKeySchemaCache);
-    } else {
-      throw new IllegalArgumentException(
-          "Invalid fieldName: "
-              + fieldName
-              + ". fieldName must be one of [value, key, destinationTopic, messageKey, properties.*, value.*, key.*]");
-    }
-  }
-
-  private static Object toJsonSerializable(
-      org.apache.pulsar.client.api.Schema<?> schema, Object val) {
-    if (schema == null || schema.getSchemaInfo().getType().isPrimitive()) {
-      return val;
-    }
-    switch (schema.getSchemaInfo().getType()) {
-      case AVRO:
-        ObjectMapper mapper = new ObjectMapper();
-        // TODO: do better than the double conversion AVRO -> JSON -> Map
-        return mapper.convertValue(
-            JsonConverter.toJson((org.apache.avro.generic.GenericRecord) val),
-            new TypeReference<Map<String, Object>>() {});
-      case JSON:
-        return val;
-      default:
-        throw new UnsupportedOperationException(
-            "Unsupported schemaType " + schema.getSchemaInfo().getType());
+      transformContext.setResultField(
+          TransformContext.toJson(logMap),
+          logField,
+          org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING),
+          avroKeySchemaCache,
+          avroValueSchemaCache);
     }
   }
 }
