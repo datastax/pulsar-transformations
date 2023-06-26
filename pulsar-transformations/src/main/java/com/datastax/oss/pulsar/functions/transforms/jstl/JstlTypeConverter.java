@@ -40,7 +40,7 @@ import org.apache.el.util.MessageFactory;
 import org.apache.pulsar.client.api.Schema;
 
 /**
- * Overrides the default TypeConverter coerce to support null values & non-EL coercions (e.g.
+ * Overrides the default TypeConverter coerce to support null values and non-EL coercions (e.g.
  * date/time types) schemas.
  */
 public class JstlTypeConverter extends TypeConverter {
