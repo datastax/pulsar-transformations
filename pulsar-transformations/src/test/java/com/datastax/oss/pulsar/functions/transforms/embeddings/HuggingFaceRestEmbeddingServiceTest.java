@@ -17,12 +17,10 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import java.util.List;
 import junit.framework.TestCase;
-import org.junit.Ignore;
 
-public class HuggingFaceRestEmbeddingServiceTest extends TestCase {
+// disabled, just for experiments/usage demo
+public abstract class HuggingFaceRestEmbeddingServiceTest extends TestCase {
 
-  // disabled, just for experiments/usage demo
-  @Ignore
   public void testMain() throws Exception {
     HuggingFaceRestEmbeddingService.HuggingFaceApiConfig conf =
         HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
