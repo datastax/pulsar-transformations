@@ -17,12 +17,11 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +62,8 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
   private final URL modelUrl;
 
+  private final HttpClient httpClient;
+
   @Data
   @Builder
   public static class HuggingPojo {
@@ -79,8 +80,26 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     this.token = conf.accesKey;
     this.modelUrl = new URL(conf.hfUrl + model);
 
+    this.httpClient = HttpClient.newHttpClient();
+
     try {
-      Map check = om.readValue(query("GET", new URL(HF_CHECK_URL + model), null), Map.class);
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(new URL(HF_CHECK_URL + model).toURI())
+              .header("Authorization", "Bearer " + token)
+              .GET()
+              .build();
+      HttpResponse<String> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      if (log.isDebugEnabled()) {
+        log.debug("Model {} check http response is {} {}", model, response, response.body());
+      }
+      if (response.statusCode() != 200) {
+        log.warn("Model {} check http response is {} {}", model, response, response.body());
+        throw new IllegalArgumentException("Model " + model + " is not found");
+      }
+
+      Map check = om.readValue(response.body(), Map.class);
       log.info("Model {} check response is {}", model, check);
       if (check == null) {
         throw new IllegalArgumentException("Model " + model + " is not found");
@@ -95,6 +114,9 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
                 + model
                 + " is not a sentence-transformers model and not suitable for embeddings");
       }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -107,7 +129,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     try {
       String jsonContent = om.writeValueAsString(pojo);
 
-      String body = query("POST", modelUrl, jsonContent);
+      String body = query(jsonContent);
 
       Object result = om.readValue(body, Object.class);
       return (List<List<Double>>) result;
@@ -116,29 +138,25 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     }
   }
 
-  // TODO: use some HTTP client library with better performance, if needed
-  private String query(String method, URL url, String jsonPayload) throws Exception {
-    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-    connection.setRequestMethod(method);
-    connection.setRequestProperty("Authorization", "Bearer " + token);
-    connection.setDoOutput(true);
+  private String query(String jsonPayload) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(modelUrl.toURI())
+            .header("Authorization", "Bearer " + token)
+            .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+            .build();
+    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-    if (jsonPayload != null) {
-      java.io.OutputStream outputStream = connection.getOutputStream();
-      outputStream.write(jsonPayload.getBytes("UTF-8"));
-      outputStream.close();
+    if (log.isDebugEnabled()) {
+      log.debug("Model {} query response is {} {}", model, response, response.body());
     }
 
-    BufferedReader reader =
-        new BufferedReader(
-            new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
-    StringBuilder response = new StringBuilder();
-    String line;
-    while ((line = reader.readLine()) != null) {
-      response.append(line);
+    if (response.statusCode() != 200) {
+      log.warn("Model {} query failed with {} {}", model, response, response.body());
+      throw new RuntimeException(
+          "Model " + model + " query failed with status " + response.statusCode());
     }
-    reader.close();
 
-    return response.toString();
+    return response.body();
   }
 }

@@ -27,8 +27,9 @@ import java.util.List;
  *
  * <p>The model requested there should be trained for "sentence similarity" task. See
  * https://github.com/deepjavalibrary/djl/blob/master/extensions/tokenizers/README.md for model
- * conversion steps. E.g.: python3 -m pip install -r
- * ./extensions/tokenizers/src/main/python/requirements.txt python3
+ * conversion steps. E.g.:
+ *
+ * <p>python3 -m pip install -r ./extensions/tokenizers/src/main/python/requirements.txt python3
  * ./extensions/tokenizers/src/main/python/model_zoo_importer.py -m kmariunas/bert-uncased-triplet50
  * find . | grep /bert-uncased-triplet50.zip
  */
