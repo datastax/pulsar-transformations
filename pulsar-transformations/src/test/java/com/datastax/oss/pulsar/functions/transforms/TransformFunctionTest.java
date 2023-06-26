@@ -615,6 +615,65 @@ public class TransformFunctionTest {
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
   }
 
+  @Test
+  void testChatCompletionsWithLogField() throws Exception {
+    String userConfig =
+        (""
+                + "{"
+                + "  'steps': ["
+                + "    {"
+                + "      'type': 'ai-chat-completions',"
+                + "      'model': 'test-model',"
+                + "      'completion-field': 'value.completion',"
+                + "      'log-field': 'value.log',"
+                + "      'messages': ["
+                + "        {"
+                + "          'role': 'user',"
+                + "          'content': '{{ value.valueField1 }} {{ key.keyField2 }}'"
+                + "        }"
+                + "      ]"
+                + "    }"
+                + "  ]"
+                + "}")
+            .replace("'", "\"");
+    Map<String, Object> config =
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+    TransformFunction transformFunction = spy(new TransformFunction());
+
+    OpenAIClient client = mock(OpenAIClient.class);
+
+    String completion =
+        (""
+                + "{"
+                + "  'choices': ["
+                + "    {"
+                + "      'message': {"
+                + "        'content': 'result',"
+                + "        'role': 'user'"
+                + "      }"
+                + "    }"
+                + "  ]"
+                + "}")
+            .replace("'", "\"");
+    when(client.getChatCompletions(eq("test-model"), any()))
+        .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
+    when(transformFunction.buildOpenAIClient(any())).thenReturn(client);
+
+    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
+    Utils.TestContext context = new Utils.TestContext(record, config);
+    transformFunction.initialize(context);
+    Record<?> outputRecord = transformFunction.process(record.getValue(), context);
+
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+    GenericData.Record valueAvroRecord =
+        Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
+    assertEquals("result", valueAvroRecord.get("completion").toString());
+    assertEquals(
+        "{\"options\":{\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":null},\"model\":\"test-model\"}",
+        valueAvroRecord.get("log").toString());
+  }
+
   // TODO: just for demo. To be removed
   @Test
   void testRemoveMergeAndToString() throws Exception {

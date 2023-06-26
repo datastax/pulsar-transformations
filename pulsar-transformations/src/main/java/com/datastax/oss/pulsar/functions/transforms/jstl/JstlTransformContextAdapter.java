@@ -107,9 +107,7 @@ public class JstlTransformContextAdapter {
     if (keyObject == null) {
       return transformContext.getKey();
     }
-    return keyObject instanceof GenericRecord
-        ? lazyKey
-        : keyObject;
+    return keyObject instanceof GenericRecord ? lazyKey : keyObject;
   }
 
   /**
