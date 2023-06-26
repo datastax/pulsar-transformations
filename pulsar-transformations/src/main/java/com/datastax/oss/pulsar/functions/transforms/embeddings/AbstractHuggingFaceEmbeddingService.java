@@ -22,13 +22,12 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.Builder;
 import lombok.Data;
@@ -38,7 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
     implements EmbeddingsService, AutoCloseable {
 
-  private static final ObjectMapper om = EmbeddingsService.createObjectMapper();
+  public static final Set<String> allowedUrlPrefixes = Set.of("file://");
 
   @Override
   public void close() throws Exception {
@@ -56,12 +55,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
 
   @Data
   @Builder
-  public static class HuggingConfig {
-
-    public static HuggingConfig fromJsonString(String jsonStr) throws JsonProcessingException {
-      return om.readValue(jsonStr, HuggingConfig.class);
-    }
-
+  public static class HuggingFaceConfig {
     String engine;
 
     @Builder.Default Map<String, String> options = Map.of();
@@ -81,10 +75,12 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   private static final ConcurrentLinkedQueue<Predictor<?, ?>> predictorList =
       new ConcurrentLinkedQueue<>();
 
-  public AbstractHuggingFaceEmbeddingService(HuggingConfig conf)
-      throws IOException, ModelNotFoundException, MalformedModelException {
+  public AbstractHuggingFaceEmbeddingService(HuggingFaceConfig conf)
+      throws IOException, ModelNotFoundException, MalformedModelException, IllegalAccessException {
     Objects.requireNonNull(conf);
     Objects.requireNonNull(conf.modelUrl);
+
+    checkIfUrlIsAllowed(conf.modelUrl);
 
     // https://stackoverflow.com/a/1901275/2237794
     // https://github.com/deepjavalibrary/djl/blob/master/extensions/tokenizers/src/test/java/ai/djl/huggingface/tokenizers/TextEmbeddingTranslatorTest.java
@@ -120,6 +116,15 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
     Criteria<IN, OUT> criteria = builder.build();
 
     model = criteria.loadModel();
+  }
+
+  private void checkIfUrlIsAllowed(String modelUrl) throws IllegalAccessException {
+    for (String prefix : allowedUrlPrefixes) {
+      if (modelUrl.startsWith(prefix)) {
+        return;
+      }
+    }
+    throw new IllegalAccessException("modelUrl is not allowed: " + modelUrl);
   }
 
   public List<OUT> compute(List<IN> texts) throws TranslateException {

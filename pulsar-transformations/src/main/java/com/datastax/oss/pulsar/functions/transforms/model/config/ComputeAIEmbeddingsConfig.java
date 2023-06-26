@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
+import com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceRestEmbeddingService;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
@@ -23,8 +25,8 @@ public class ComputeAIEmbeddingsConfig extends StepConfig {
 
   public enum SupportedServices {
     OPENAI,
-    HUGGINGFACES_REST,
-    HUGGINGFACES_DJL
+    HUGGINGFACE_API,
+    HUGGINGFACE
   }
 
   @JsonProperty(required = true)
@@ -39,6 +41,9 @@ public class ComputeAIEmbeddingsConfig extends StepConfig {
   @JsonProperty(value = "compute-service")
   private String service;
 
-  @JsonProperty(value = "compute-config-json")
-  private String configJson;
+  @JsonProperty(value = "huggingface-api-config")
+  private HuggingFaceRestEmbeddingService.HuggingFaceApiConfig hfApiConfig;
+
+  @JsonProperty(value = "huggingface-config")
+  private AbstractHuggingFaceEmbeddingService.HuggingFaceConfig hfConfig;
 }

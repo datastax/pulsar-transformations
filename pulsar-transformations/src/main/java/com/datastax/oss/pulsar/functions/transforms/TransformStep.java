@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-public interface TransformStep {
+public interface TransformStep extends AutoCloseable {
+  default void close() throws Exception {}
+
   void process(TransformContext transformContext) throws Exception;
 }

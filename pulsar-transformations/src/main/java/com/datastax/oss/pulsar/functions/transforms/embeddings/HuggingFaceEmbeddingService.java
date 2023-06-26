@@ -34,8 +34,8 @@ import java.util.List;
  */
 public class HuggingFaceEmbeddingService
     extends AbstractHuggingFaceEmbeddingService<String, float[]> {
-  public HuggingFaceEmbeddingService(HuggingConfig conf)
-      throws IOException, ModelNotFoundException, MalformedModelException {
+  public HuggingFaceEmbeddingService(HuggingFaceConfig conf)
+      throws IOException, ModelNotFoundException, MalformedModelException, IllegalAccessException {
     super(conf);
   }
 
@@ -55,20 +55,5 @@ public class HuggingFaceEmbeddingService
       out.add(l);
     }
     return out;
-  }
-
-  public static void main(String[] args) throws Exception {
-    HuggingConfig conf =
-        HuggingConfig.builder()
-            .engine("PyTorch")
-            .modelUrl(
-                "file:///Users/andreyyegorov/src/djl/model/nlp/text_embedding/ai/djl/huggingface/pytorch/sentence-transformers/all-MiniLM-L6-v2/0.0.1/all-MiniLM-L6-v2.zip")
-            .build();
-
-    try (EmbeddingsService service = new HuggingFaceEmbeddingService(conf)) {
-      List<List<Double>> result =
-          service.computeEmbeddings(List.of("hello world", "stranger things"));
-      result.forEach(System.out::println);
-    }
   }
 }

@@ -279,6 +279,9 @@ public class TransformFunction
     if (dataSource != null) {
       dataSource.close();
     }
+    for (StepPredicatePair pair : steps) {
+      pair.getTransformStep().close();
+    }
   }
 
   @Override
@@ -394,7 +397,7 @@ public class TransformFunction
   @SneakyThrows
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
     String targetSvc = config.getService();
-    if (targetSvc == null || Strings.isNullOrEmpty(targetSvc)) {
+    if (Strings.isNullOrEmpty(targetSvc)) {
       targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
     }
 
@@ -406,15 +409,12 @@ public class TransformFunction
       case OPENAI:
         embeddingService = new OpenAIEmbeddingsService(openAIClient, config.getModel());
         break;
-      case HUGGINGFACES_REST:
-        String hfKey = System.getenv("huggingfaces.key");
-        String hfModel = config.getModel();
-        embeddingService = new HuggingFaceRestEmbeddingService(hfKey, hfModel);
+      case HUGGINGFACE_API:
+        HuggingFaceRestEmbeddingService.HuggingFaceApiConfig confApi = config.getHfApiConfig();
+        embeddingService = new HuggingFaceRestEmbeddingService(confApi);
         break;
-      case HUGGINGFACES_DJL:
-        AbstractHuggingFaceEmbeddingService.HuggingConfig conf =
-            AbstractHuggingFaceEmbeddingService.HuggingConfig.fromJsonString(
-                config.getConfigJson());
+      case HUGGINGFACE:
+        AbstractHuggingFaceEmbeddingService.HuggingFaceConfig conf = config.getHfConfig();
         embeddingService = new HuggingFaceEmbeddingService(conf);
         break;
       default:

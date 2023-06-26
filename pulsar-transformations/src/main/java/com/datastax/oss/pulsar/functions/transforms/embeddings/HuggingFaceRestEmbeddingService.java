@@ -23,8 +23,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -40,17 +42,22 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   // https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task
   @Data
   @Builder
-  public static class HuggingRestConfig {
+  public static class HuggingFaceApiConfig {
+    public String accesKey;
+    public String model;
+
     @Builder.Default public String hfUrl = HF_URL;
 
-    @Builder.Default Map<String, Object> options = Map.of("wait_for_model", true);
+    @Builder.Default public Map<String, Object> options = Map.of("wait_for_model", true);
   }
 
   private static final String HF_URL =
       "https://api-inference.huggingface.co/pipeline/feature-extraction/";
+  private static final String HF_CHECK_URL = "https://huggingface.co/api/models/";
+
   private static final ObjectMapper om = EmbeddingsService.createObjectMapper();
 
-  private final HuggingRestConfig conf;
+  private final HuggingFaceApiConfig conf;
   private final String model;
   private final String token;
 
@@ -66,19 +73,31 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     public Map<String, Object> options;
   }
 
-  public HuggingFaceRestEmbeddingService(String token, String model) throws MalformedURLException {
-    this(HuggingRestConfig.builder().build(), token, model);
-  }
-
-  public HuggingFaceRestEmbeddingService(HuggingRestConfig conf, String token, String model)
-      throws MalformedURLException {
+  public HuggingFaceRestEmbeddingService(HuggingFaceApiConfig conf) throws MalformedURLException {
     this.conf = conf;
-    this.model = model;
-    this.token = token;
+    this.model = conf.model;
+    this.token = conf.accesKey;
     this.modelUrl = new URL(conf.hfUrl + model);
 
-    // TODO: try checking if model is valid https://huggingface.co/docs/datasets-server/valid
-    // TODO: check if model is suitable for "sentence similarity" task
+    try {
+      Map check = om.readValue(query("GET", new URL(HF_CHECK_URL + model), null), Map.class);
+      log.info("Model {} check response is {}", model, check);
+      if (check == null) {
+        throw new IllegalArgumentException("Model " + model + " is not found");
+      }
+      if (!check.get("modelId").equals(model)) {
+        throw new IllegalArgumentException("Model " + model + " is not found");
+      }
+      Set<String> tags = new HashSet<>((List) check.get("tags"));
+      if (!tags.contains("sentence-transformers")) {
+        throw new IllegalArgumentException(
+            "Model "
+                + model
+                + " is not a sentence-transformers model and not suitable for embeddings");
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -88,7 +107,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     try {
       String jsonContent = om.writeValueAsString(pojo);
 
-      String body = query(jsonContent);
+      String body = query("POST", modelUrl, jsonContent);
 
       Object result = om.readValue(body, Object.class);
       return (List<List<Double>>) result;
@@ -98,15 +117,17 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   }
 
   // TODO: use some HTTP client library with better performance, if needed
-  private String query(String jsonPayload) throws Exception {
-    HttpURLConnection connection = (HttpURLConnection) modelUrl.openConnection();
-    connection.setRequestMethod("POST");
+  private String query(String method, URL url, String jsonPayload) throws Exception {
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+    connection.setRequestMethod(method);
     connection.setRequestProperty("Authorization", "Bearer " + token);
     connection.setDoOutput(true);
 
-    java.io.OutputStream outputStream = connection.getOutputStream();
-    outputStream.write(jsonPayload.getBytes("UTF-8"));
-    outputStream.close();
+    if (jsonPayload != null) {
+      java.io.OutputStream outputStream = connection.getOutputStream();
+      outputStream.write(jsonPayload.getBytes("UTF-8"));
+      outputStream.close();
+    }
 
     BufferedReader reader =
         new BufferedReader(
@@ -119,14 +140,5 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     reader.close();
 
     return response.toString();
-  }
-
-  public static void main(String[] args) throws Exception {
-    try (EmbeddingsService service =
-        new HuggingFaceRestEmbeddingService(args[0], "sentence-transformers/all-MiniLM-L6-v2")) {
-      List<List<Double>> result =
-          service.computeEmbeddings(List.of("hello world", "stranger things"));
-      result.forEach(System.out::println);
-    }
   }
 }
