@@ -16,6 +16,8 @@
 package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import java.util.List;
+import java.util.Map;
+
 import junit.framework.TestCase;
 
 // disabled, just for experiments/usage demo
@@ -26,6 +28,7 @@ public abstract class HuggingFaceRestEmbeddingServiceTest extends TestCase {
         HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
             .accesKey(System.getenv("HF_API_KEY"))
             .model("sentence-transformers/all-MiniLM-L6-v2")
+            .options(Map.of("wait_for_model", "true"))
             .build();
     try (EmbeddingsService service = new HuggingFaceRestEmbeddingService(conf)) {
       List<List<Double>> result =

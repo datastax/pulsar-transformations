@@ -16,34 +16,10 @@
 package com.datastax.oss.pulsar.functions.transforms.model.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Map;
-import lombok.Builder;
-import lombok.Getter;
 
-@Getter
-public class ComputeAIEmbeddingsConfig extends StepConfig {
-
-  public enum SupportedServices {
-    OPENAI,
-    HUGGINGFACE
-  }
-
-  @JsonProperty(required = true)
-  private String model;
-
-  @JsonProperty(required = true)
-  private String text;
-
-  @JsonProperty(value = "embeddings-field", required = true)
-  private String embeddingsFieldName;
-
-  @JsonProperty(value = "compute-service")
-  private String service;
-
-  @JsonProperty Map<String, String> options = Map.of();
-
-  @JsonProperty @Builder.Default Map<String, String> arguments = Map.of();
-
-  @JsonProperty(value = "model-url")
-  String modelUrl;
+public enum ComputeProvider {
+  @JsonProperty("local")
+  LOCAL,
+  @JsonProperty("api")
+  API
 }

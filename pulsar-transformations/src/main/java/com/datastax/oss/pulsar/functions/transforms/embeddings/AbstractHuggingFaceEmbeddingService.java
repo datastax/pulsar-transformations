@@ -22,6 +22,7 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
+import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
@@ -36,8 +37,21 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
     implements EmbeddingsService, AutoCloseable {
+  /**
+   * comma-separated list of allowed url prefixes, like
+   * file://,s3://,djl://,https://models.datastax.com/
+   */
+  public static final String URL_PREFIXES_SYSTEM_PROP = "ALLOWED_HF_URLS";
 
-  public static final Set<String> allowedUrlPrefixes = Set.of("file://");
+  public static final Set<String> allowedUrlPrefixes = getHuggingFaceAllowedUrlPrefixes();
+
+  private static Set<String> getHuggingFaceAllowedUrlPrefixes() {
+    String prop = System.getenv(URL_PREFIXES_SYSTEM_PROP);
+    if (Strings.isNullOrEmpty(prop)) {
+      prop = "file://";
+    }
+    return Set.of(prop.split(","));
+  }
 
   @Override
   public void close() throws Exception {
@@ -56,7 +70,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   @Data
   @Builder
   public static class HuggingFaceConfig {
-    String engine;
+    @Builder.Default String engine = "PyTorch";
 
     @Builder.Default Map<String, String> options = Map.of();
 
@@ -102,7 +116,10 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
 
     if (conf.engine != null) {
       builder.optEngine(conf.engine);
+    } else {
+      builder.optEngine("PyTorch");
     }
+
     if (conf.options != null && !conf.options.isEmpty()) {
       conf.options.forEach(builder::optOption);
     }

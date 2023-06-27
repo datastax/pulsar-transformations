@@ -26,5 +26,7 @@ public class TransformStepConfig {
 
   @JsonProperty private OpenAIConfig openai;
 
+  @JsonProperty private HuggingFaceConfig huggingface;
+
   @JsonProperty private DataSourceConfig datasource;
 }

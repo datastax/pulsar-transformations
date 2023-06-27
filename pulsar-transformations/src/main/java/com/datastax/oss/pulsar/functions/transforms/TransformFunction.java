@@ -38,6 +38,7 @@ import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.HuggingFaceConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIProvider;
 import com.datastax.oss.pulsar.functions.transforms.model.config.QueryConfig;
@@ -60,6 +61,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -149,6 +151,7 @@ public class TransformFunction
       Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
   private OpenAIClient openAIClient;
+  private HuggingFaceConfig huggingConfig;
   private QueryStepDataSource dataSource;
 
   @Override
@@ -231,6 +234,7 @@ public class TransformFunction
     TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
 
     openAIClient = buildOpenAIClient(config.getOpenai());
+    huggingConfig = config.getHuggingface();
     dataSource = buildDataSource(config.getDatasource());
 
     for (StepConfig step : config.getSteps()) {
@@ -409,13 +413,45 @@ public class TransformFunction
       case OPENAI:
         embeddingService = new OpenAIEmbeddingsService(openAIClient, config.getModel());
         break;
-      case HUGGINGFACE_API:
-        HuggingFaceRestEmbeddingService.HuggingFaceApiConfig confApi = config.getHfApiConfig();
-        embeddingService = new HuggingFaceRestEmbeddingService(confApi);
-        break;
       case HUGGINGFACE:
-        AbstractHuggingFaceEmbeddingService.HuggingFaceConfig conf = config.getHfConfig();
-        embeddingService = new HuggingFaceEmbeddingService(conf);
+        Objects.requireNonNull(huggingConfig, "huggingface config is required");
+        switch (huggingConfig.getProvider()) {
+          case LOCAL:
+            Objects.requireNonNull(config.getModelUrl(), "model URL is required");
+            AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
+                AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
+                    .options(config.getOptions())
+                    .arguments(config.getArguments())
+                    .modelUrl(config.getModelUrl());
+            if (!Strings.isNullOrEmpty(config.getModel())) {
+              builder.modelName(config.getModel());
+            }
+
+            embeddingService = new HuggingFaceEmbeddingService(builder.build());
+            break;
+          case API:
+            Objects.requireNonNull(config.getModel(), "model name is required");
+            HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.HuggingFaceApiConfigBuilder
+                apiBuilder =
+                    HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
+                        .accesKey(huggingConfig.getAccessKey())
+                        .model(config.getModel());
+
+            if (!Strings.isNullOrEmpty(huggingConfig.getApiUrl())) {
+              apiBuilder.hfUrl(huggingConfig.getApiUrl());
+            }
+            if (config.getOptions() != null && config.getOptions().size() > 0) {
+              apiBuilder.options(config.getOptions());
+            } else {
+                apiBuilder.options(Map.of("wait_for_model", "true"));
+            }
+
+            embeddingService = new HuggingFaceRestEmbeddingService(apiBuilder.build());
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unsupported HuggingFace service type: " + huggingConfig.getProvider());
+        }
         break;
       default:
         throw new IllegalArgumentException("Unsupported service: " + service);

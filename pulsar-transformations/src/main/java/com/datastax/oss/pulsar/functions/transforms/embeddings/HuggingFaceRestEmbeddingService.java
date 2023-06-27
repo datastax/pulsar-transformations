@@ -47,7 +47,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
     @Builder.Default public String hfUrl = HF_URL;
 
-    @Builder.Default public Map<String, Object> options = Map.of("wait_for_model", true);
+    @Builder.Default public Map<String, String> options = Map.of("wait_for_model", "true");
   }
 
   private static final String HF_URL =
@@ -71,7 +71,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     public List<String> inputs;
 
     @JsonAlias("options")
-    public Map<String, Object> options;
+    public Map<String, String> options;
   }
 
   public HuggingFaceRestEmbeddingService(HuggingFaceApiConfig conf) throws MalformedURLException {
