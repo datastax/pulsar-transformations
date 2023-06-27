@@ -43,26 +43,26 @@ public class DropFieldStep implements TransformStep {
     dropValueFields(valueFields, transformContext);
   }
 
-  public void dropValueFields(List<String> fields, TransformContext record) {
-    if (record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord avroRecord = (GenericRecord) record.getValueObject();
+  public void dropValueFields(List<String> fields, TransformContext context) {
+    if (context.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
+      GenericRecord avroRecord = (GenericRecord) context.getValueObject();
       GenericRecord newRecord = dropFields(fields, avroRecord, valueSchemaCache);
       if (avroRecord != newRecord) {
-        record.setValueModified(true);
+        context.setValueModified(true);
       }
-      record.setValueObject(newRecord);
+      context.setValueObject(newRecord);
     }
   }
 
-  public void dropKeyFields(List<String> fields, TransformContext record) {
-    if (record.getKeyObject() != null
-        && record.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord avroRecord = (GenericRecord) record.getKeyObject();
+  public void dropKeyFields(List<String> fields, TransformContext context) {
+    if (context.getKeyObject() != null
+        && context.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
+      GenericRecord avroRecord = (GenericRecord) context.getKeyObject();
       GenericRecord newRecord = dropFields(fields, avroRecord, keySchemaCache);
       if (avroRecord != newRecord) {
-        record.setKeyModified(true);
+        context.setKeyModified(true);
       }
-      record.setKeyObject(newRecord);
+      context.setKeyObject(newRecord);
     }
   }
 

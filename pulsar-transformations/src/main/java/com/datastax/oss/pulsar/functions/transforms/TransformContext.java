@@ -187,7 +187,8 @@ public class TransformContext {
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
     if (valueSchema.getSchemaInfo().getType() == AVRO) {
       GenericRecord avroRecord = (GenericRecord) valueObject;
-      GenericRecord newRecord = AvroUtil.addOrReplaceAvroFields(avroRecord, newFields, schemaCache);
+      GenericRecord newRecord =
+          AvroUtil.addOrReplaceAvroRecordFields(avroRecord, newFields, schemaCache);
       if (avroRecord != newRecord) {
         valueModified = true;
       }
@@ -200,7 +201,8 @@ public class TransformContext {
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
     if (keySchema.getSchemaInfo().getType() == AVRO) {
       GenericRecord avroRecord = (GenericRecord) keyObject;
-      GenericRecord newRecord = AvroUtil.addOrReplaceAvroFields(avroRecord, newFields, schemaCache);
+      GenericRecord newRecord =
+          AvroUtil.addOrReplaceAvroRecordFields(avroRecord, newFields, schemaCache);
       if (avroRecord != newRecord) {
         keyModified = true;
       }
