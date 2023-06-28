@@ -17,11 +17,10 @@ package com.datastax.oss.pulsar.functions.transforms.util;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
@@ -49,49 +48,49 @@ public class AvroUtil {
         .orElse(null);
   }
 
-  public static GenericData.Record addOrReplaceAvroFields(
+  public static GenericData.Record addOrReplaceAvroRecordFields(
       GenericRecord record, Map<Schema.Field, Object> newFields, Map<Schema, Schema> schemaCache) {
-    Schema avroSchema = record.getSchema();
-    Set<String> computedFieldNames =
-        newFields.keySet().stream().map(Schema.Field::name).collect(Collectors.toSet());
-    // original fields - overwritten fields
-    List<Schema.Field> nonOverwrittenFields =
-        avroSchema
-            .getFields()
-            .stream()
-            .filter(f -> !computedFieldNames.contains(f.name()))
-            .map(f -> new Schema.Field(f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
-            .collect(Collectors.toList());
+    Schema newSchema = addOrReplaceAvroSchemaFields(newFields, schemaCache, record.getSchema());
+    GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
+    for (Schema.Field f : newSchema.getFields()) {
+      if (newFields.containsKey(f)) {
+        Object value = newFields.get(f);
+        if ((value instanceof Collection) && !(value instanceof GenericArray)) {
+          value = new GenericData.Array<>(f.schema(), (Collection<Object>) value);
+        }
+        newRecordBuilder.set(f.name(), value);
+      } else {
+        newRecordBuilder.set(f.name(), record.get(f.name()));
+      }
+    }
+    return newRecordBuilder.build();
+  }
+
+  public static Schema addOrReplaceAvroSchemaFields(
+      Map<Schema.Field, Object> newFields, Map<Schema, Schema> schemaCache, Schema avroSchema) {
+    Map<String, Schema.Field> newFieldsByName = new LinkedHashMap<>();
+    newFields.keySet().forEach(k -> newFieldsByName.put(k.name(), k));
+
     // allFields is the intersection between existing fields and computed fields. Computed fields
     // take precedence.
     List<Schema.Field> allFields = new ArrayList<>();
-    allFields.addAll(nonOverwrittenFields);
-    allFields.addAll(new ArrayList<>(newFields.keySet()));
-    Schema newSchema =
-        schemaCache.computeIfAbsent(
-            avroSchema,
-            schema ->
-                Schema.createRecord(
-                    avroSchema.getName(),
-                    avroSchema.getDoc(),
-                    avroSchema.getNamespace(),
-                    avroSchema.isError(),
-                    allFields));
-
-    GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
-    // Add original fields
-    for (Schema.Field field : nonOverwrittenFields) {
-      newRecordBuilder.set(field.name(), record.get(field.name()));
-    }
-    // Add computed fields
-    for (Map.Entry<Schema.Field, Object> entry : newFields.entrySet()) {
-      // set the field by name to preserve field position
-      Object value = entry.getValue();
-      if ((value instanceof Collection) && !(value instanceof GenericArray)) {
-        value = new GenericData.Array<>(entry.getKey().schema(), (Collection<Object>) value);
+    for (Schema.Field f : avroSchema.getFields()) {
+      if (newFieldsByName.containsKey(f.name())) {
+        allFields.add(newFieldsByName.get(f.name()));
+        newFieldsByName.remove(f.name());
+      } else {
+        allFields.add(new Schema.Field(f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()));
       }
-      newRecordBuilder.set(entry.getKey().name(), value);
     }
-    return newRecordBuilder.build();
+    allFields.addAll(newFieldsByName.values());
+    return schemaCache.computeIfAbsent(
+        avroSchema,
+        schema ->
+            Schema.createRecord(
+                avroSchema.getName(),
+                avroSchema.getDoc(),
+                avroSchema.getNamespace(),
+                avroSchema.isError(),
+                allFields));
   }
 }
