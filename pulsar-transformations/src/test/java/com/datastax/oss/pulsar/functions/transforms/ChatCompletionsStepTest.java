@@ -28,6 +28,7 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
 import com.azure.ai.openai.models.ChatRole;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -259,7 +260,7 @@ public class ChatCompletionsStepTest {
   }
 
   @Test
-  void testValueFieldOutput() throws Exception {
+  void testAvroValueFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
@@ -276,7 +277,25 @@ public class ChatCompletionsStepTest {
   }
 
   @Test
-  void testKeyFieldOutput() throws Exception {
+  void testJsonValueFieldOutput() throws Exception {
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("value.chat");
+    Record<?> outputRecord =
+        Utils.process(
+            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    org.apache.avro.Schema schema =
+        (org.apache.avro.Schema) messageSchema.getValueSchema().getNativeSchema().orElseThrow();
+    assertEquals(schema.getField("chat").schema().getType(), org.apache.avro.Schema.Type.STRING);
+    assertEquals(((JsonNode) messageValue.getValue()).get("chat").asText(), "result");
+  }
+
+  @Test
+  void testAvroKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
@@ -290,5 +309,23 @@ public class ChatCompletionsStepTest {
     GenericData.Record keyAvroRecord =
         Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
     assertEquals(keyAvroRecord.get("chat"), new Utf8("result"));
+  }
+
+  @Test
+  void testJsonKeyFieldOutput() throws Exception {
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("key.chat");
+    Record<?> outputRecord =
+        Utils.process(
+            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    org.apache.avro.Schema schema =
+        (org.apache.avro.Schema) messageSchema.getKeySchema().getNativeSchema().orElseThrow();
+    assertEquals(schema.getField("chat").schema().getType(), org.apache.avro.Schema.Type.STRING);
+    assertEquals(((JsonNode) messageValue.getKey()).get("chat").asText(), "result");
   }
 }

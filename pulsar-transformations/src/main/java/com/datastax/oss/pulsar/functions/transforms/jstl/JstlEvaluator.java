@@ -109,7 +109,7 @@ public class JstlEvaluator<T> {
         .setValue(expressionContext, adapter.getKey());
     FACTORY
         .createValueExpression(expressionContext, "${value}", Object.class)
-        .setValue(expressionContext, adapter.getValue());
+        .setValue(expressionContext, adapter.adaptValue());
 
     // Register message headers as top level fields
     FACTORY

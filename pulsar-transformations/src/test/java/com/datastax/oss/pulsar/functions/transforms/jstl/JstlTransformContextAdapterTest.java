@@ -70,8 +70,8 @@ public class JstlTransformContextAdapterTest {
     assertEquals(keyMap.get("keyField3"), "key3");
     assertNull(keyMap.get("keyField4"));
 
-    assertTrue(adapter.getValue() instanceof Map);
-    Map<String, Object> valueMap = (Map<String, Object>) adapter.getValue();
+    assertTrue(adapter.adaptValue() instanceof Map);
+    Map<String, Object> valueMap = (Map<String, Object>) adapter.adaptValue();
     assertEquals(valueMap.get("valueField1"), "value1");
     assertEquals(valueMap.get("valueField2"), "value2");
     assertEquals(valueMap.get("valueField3"), "value3");
@@ -94,7 +94,7 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     assertEquals(adapter.getKey(), "key");
-    assertEquals(adapter.getValue(), 42);
+    assertEquals(adapter.adaptValue(), 42);
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
   }
 
@@ -111,8 +111,8 @@ public class JstlTransformContextAdapterTest {
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
     assertEquals(adapter.getKey(), "header-key");
 
-    assertEquals(adapter.getValue(), "test-message");
-    assertEquals(adapter.getValue(), "test-message");
+    assertEquals(adapter.adaptValue(), "test-message");
+    assertEquals(adapter.adaptValue(), "test-message");
   }
 
   @Test
@@ -137,8 +137,8 @@ public class JstlTransformContextAdapterTest {
     // then
     assertEquals(adapter.getHeader().get("messageKey"), "header-key");
     assertEquals(adapter.getKey(), "header-key");
-    assertTrue(adapter.getValue() instanceof Map);
-    Map<String, Object> valueMap = (Map<String, Object>) adapter.getValue();
+    assertTrue(adapter.adaptValue() instanceof Map);
+    Map<String, Object> valueMap = (Map<String, Object>) adapter.adaptValue();
     assertNestedRecord(valueMap);
   }
 
@@ -168,8 +168,8 @@ public class JstlTransformContextAdapterTest {
     assertTrue(adapter.getKey() instanceof Map);
     assertNestedRecord((Map<String, Object>) adapter.getKey());
 
-    assertTrue(adapter.getValue() instanceof Map);
-    assertNestedRecord((Map<String, Object>) adapter.getValue());
+    assertTrue(adapter.adaptValue() instanceof Map);
+    assertNestedRecord((Map<String, Object>) adapter.adaptValue());
   }
 
   @Test
@@ -239,8 +239,8 @@ public class JstlTransformContextAdapterTest {
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
 
     // then
-    assertTrue(adapter.getValue() instanceof Map);
-    Map<String, Object> map = (Map) adapter.getValue();
+    assertTrue(adapter.adaptValue() instanceof Map);
+    Map<String, Object> map = (Map) adapter.adaptValue();
     assertEquals(map.get("dateField"), date);
     assertEquals(map.get("optionalDateField"), optionalDate);
   }

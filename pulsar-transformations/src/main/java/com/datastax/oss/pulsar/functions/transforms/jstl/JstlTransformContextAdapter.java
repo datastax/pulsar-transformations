@@ -17,6 +17,10 @@ package com.datastax.oss.pulsar.functions.transforms.jstl;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
 import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
@@ -60,9 +65,17 @@ public class JstlTransformContextAdapter {
    */
   private final Transformer<String, Object> valueTransformer =
       (fieldName) -> {
-        if (this.transformContext.getValueObject() instanceof GenericRecord) {
-          GenericRecord genericRecord = (GenericRecord) this.transformContext.getValueObject();
+        Object valueObject = this.transformContext.getValueObject();
+        if (valueObject instanceof GenericRecord) {
+          GenericRecord genericRecord = (GenericRecord) valueObject;
           GenericRecordTransformer transformer = new GenericRecordTransformer(genericRecord);
+          return transformer.transform(fieldName);
+        }
+        if (valueObject instanceof JsonNode) {
+          JsonNode jsonNode = (JsonNode) valueObject;
+          Schema schema =
+              (Schema) this.transformContext.getValueSchema().getNativeSchema().orElseThrow();
+          JsonNodeTransformer transformer = new JsonNodeTransformer(jsonNode, schema);
           return transformer.transform(fieldName);
         }
         return null;
@@ -114,10 +127,11 @@ public class JstlTransformContextAdapter {
    * @return either a lazily evaluated map to access top-level and nested fields on a generic
    *     object, or the primitive type itself.
    */
-  public Object getValue() {
-    return this.transformContext.getValueObject() instanceof GenericRecord
+  public Object adaptValue() {
+    Object valueObject = this.transformContext.getValueObject();
+    return valueObject instanceof GenericRecord || valueObject instanceof JsonNode
         ? lazyValue
-        : this.transformContext.getValueObject();
+        : valueObject;
   }
 
   public Map<String, Object> getHeader() {
@@ -127,7 +141,7 @@ public class JstlTransformContextAdapter {
   /** Enables {@link LazyMap} lookup on {@link GenericRecord}. */
   static class GenericRecordTransformer implements Transformer<String, Object> {
 
-    GenericRecord genericRecord;
+    private final GenericRecord genericRecord;
 
     public GenericRecordTransformer(GenericRecord genericRecord) {
       this.genericRecord = genericRecord;
@@ -135,38 +149,71 @@ public class JstlTransformContextAdapter {
 
     @Override
     public Object transform(String key) {
-      Object value = null;
-      if (genericRecord.hasField(key)) {
-        value = genericRecord.get(key);
-        LogicalType logicalType =
-            AvroUtil.getLogicalType(genericRecord.getSchema().getField(key).schema());
-        if (LogicalTypes.date().equals(logicalType)) {
-          return LocalDate.ofEpochDay((int) value);
-        } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
-          return Instant.ofEpochMilli((long) value);
-        } else if (LogicalTypes.timestampMicros().equals(logicalType)) {
-          long micros = (long) value;
-          return Instant.ofEpochSecond(micros / 1_000_000, (micros % 1_000_000) * 1000);
-        } else if (LogicalTypes.timeMillis().equals(logicalType)) {
-          return LocalTime.ofNanoOfDay((int) value * 1_000_000L);
-        } else if (LogicalTypes.timeMicros().equals(logicalType)) {
-          return LocalTime.ofNanoOfDay((long) value * 1_000);
-        } else if (LogicalTypes.localTimestampMillis().equals(logicalType)) {
-          long millis = (long) value;
-          return LocalDateTime.ofEpochSecond(
-              millis / 1_000, (int) ((millis % 1_000) * 1_000_000), ZoneOffset.UTC);
-        } else if (LogicalTypes.localTimestampMicros().equals(logicalType)) {
-          long micros = (long) value;
-          return LocalDateTime.ofEpochSecond(
-              micros / 1_000_000, (int) ((micros % 1_000_000) * 1_000), ZoneOffset.UTC);
-        }
-        if (value instanceof GenericRecord) {
-          return LazyMap.lazyMap(
-              new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
-        }
+      if (!genericRecord.hasField(key)) {
+        return null;
       }
-
-      return value;
+      Object value = genericRecord.get(key);
+      if (value instanceof GenericRecord) {
+        return LazyMap.lazyMap(
+            new HashMap<>(), new GenericRecordTransformer((GenericRecord) value));
+      }
+      return adaptValue(genericRecord.getSchema(), key, value);
     }
+  }
+
+  static class JsonNodeTransformer implements Transformer<String, Object> {
+
+    public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final JsonNode jsonNode;
+    private final org.apache.avro.Schema schema;
+
+    public JsonNodeTransformer(JsonNode jsonNode, org.apache.avro.Schema schema) {
+      this.jsonNode = jsonNode;
+      this.schema = schema;
+    }
+
+    @Override
+    public Object transform(String key) {
+      if (!jsonNode.has(key)) {
+        return null;
+      }
+      JsonNode node = jsonNode.get(key);
+
+      if (node instanceof ObjectNode) {
+        return LazyMap.lazyMap(
+            new HashMap<>(), new JsonNodeTransformer(node, schema.getField(key).schema()));
+      }
+      try {
+        Object value = OBJECT_MAPPER.treeToValue(node, Object.class);
+        return adaptValue(schema, key, value);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private static Object adaptValue(Schema schema, String key, Object value) {
+    LogicalType logicalType = AvroUtil.getLogicalType(schema.getField(key).schema());
+    if (LogicalTypes.date().equals(logicalType)) {
+      return LocalDate.ofEpochDay((int) value);
+    } else if (LogicalTypes.timestampMillis().equals(logicalType)) {
+      return Instant.ofEpochMilli((long) value);
+    } else if (LogicalTypes.timestampMicros().equals(logicalType)) {
+      long micros = (long) value;
+      return Instant.ofEpochSecond(micros / 1_000_000, (micros % 1_000_000) * 1000);
+    } else if (LogicalTypes.timeMillis().equals(logicalType)) {
+      return LocalTime.ofNanoOfDay((int) value * 1_000_000L);
+    } else if (LogicalTypes.timeMicros().equals(logicalType)) {
+      return LocalTime.ofNanoOfDay((long) value * 1_000);
+    } else if (LogicalTypes.localTimestampMillis().equals(logicalType)) {
+      long millis = (long) value;
+      return LocalDateTime.ofEpochSecond(
+          millis / 1_000, (int) ((millis % 1_000) * 1_000_000), ZoneOffset.UTC);
+    } else if (LogicalTypes.localTimestampMicros().equals(logicalType)) {
+      long micros = (long) value;
+      return LocalDateTime.ofEpochSecond(
+          micros / 1_000_000, (int) ((micros % 1_000_000) * 1_000), ZoneOffset.UTC);
+    }
+    return value;
   }
 }

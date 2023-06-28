@@ -50,7 +50,8 @@ public class AvroUtil {
 
   public static GenericData.Record addOrReplaceAvroRecordFields(
       GenericRecord record, Map<Schema.Field, Object> newFields, Map<Schema, Schema> schemaCache) {
-    Schema newSchema = addOrReplaceAvroSchemaFields(newFields, schemaCache, record.getSchema());
+    Schema newSchema =
+        addOrReplaceAvroSchemaFields(record.getSchema(), newFields.keySet(), schemaCache);
     GenericRecordBuilder newRecordBuilder = new GenericRecordBuilder(newSchema);
     for (Schema.Field f : newSchema.getFields()) {
       if (newFields.containsKey(f)) {
@@ -67,9 +68,9 @@ public class AvroUtil {
   }
 
   public static Schema addOrReplaceAvroSchemaFields(
-      Map<Schema.Field, Object> newFields, Map<Schema, Schema> schemaCache, Schema avroSchema) {
+      Schema avroSchema, Collection<Schema.Field> newFields, Map<Schema, Schema> schemaCache) {
     Map<String, Schema.Field> newFieldsByName = new LinkedHashMap<>();
-    newFields.keySet().forEach(k -> newFieldsByName.put(k.name(), k));
+    newFields.forEach(k -> newFieldsByName.put(k.name(), k));
 
     // allFields is the intersection between existing fields and computed fields. Computed fields
     // take precedence.

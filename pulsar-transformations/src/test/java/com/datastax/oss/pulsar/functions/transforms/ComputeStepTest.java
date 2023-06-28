@@ -29,6 +29,7 @@ import static org.testng.Assert.assertTrue;
 
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -42,6 +43,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -279,6 +281,106 @@ public class ComputeStepTest {
 
     assertEquals(read.getSchema().getField("age").schema(), STRING_SCHEMA);
     assertEquals(read.get("age"), new Utf8("43"));
+  }
+
+  @Test
+  void testJson() throws Exception {
+    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("age").type(SchemaType.INT32);
+    recordSchemaBuilder.field("date").type(SchemaType.DATE);
+    recordSchemaBuilder.field("timestamp").type(SchemaType.TIMESTAMP);
+    recordSchemaBuilder.field("time").type(SchemaType.TIME);
+    recordSchemaBuilder.field("integerStr").type(SchemaType.STRING);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.JSON);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord =
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "Doe")
+            .set("age", 42)
+            .set("date", (int) LocalDate.of(2023, 1, 2).toEpochDay())
+            .set("timestamp", Instant.parse("2023-01-02T23:04:05.006Z").toEpochMilli())
+            .set("time", (int) (LocalTime.parse("23:04:05.006").toNanoOfDay() / 1_000_000))
+            .set("integerStr", "13360")
+            .build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    List<ComputeField> fields = buildComputeFields("value", false, false, false);
+    // List<ComputeField> fields = new ArrayList<>();
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.age")
+            .expression("value.age + 1")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.dateStr")
+            .expression("value.date")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.timestampStr")
+            .expression("value.timestamp")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.timeStr")
+            .expression("value.time")
+            .type(ComputeFieldType.STRING)
+            .build());
+    fields.add(
+        ComputeField.builder()
+            .scopedName("value.integer")
+            .expression("value.integerStr")
+            .type(ComputeFieldType.INT32)
+            .build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    assertEquals(outputRecord.getKey().orElse(null), "test-key");
+    JsonNode read = (JsonNode) outputRecord.getValue();
+    assertEquals(read.get("firstName").asText(), "Jane");
+    assertEquals(read.get("dateStr").asText(), "2023-01-02");
+    assertEquals(read.get("timestampStr").asText(), "2023-01-02T23:04:05.006Z");
+    assertEquals(read.get("timeStr").asText(), "23:04:05.006");
+    assertEquals(read.get("integer").asInt(), 13360);
+    assertEquals(read.get("newStringField").asText(), "Hotaru");
+    assertEquals(read.get("newInt8Field").asInt(), 127);
+    assertEquals(read.get("newInt16Field").asInt(), 32767);
+    assertEquals(read.get("newInt32Field").asInt(), 2147483647);
+    assertEquals(read.get("newInt64Field").asLong(), 9223372036854775807L);
+    assertEquals(
+        read.get("newFloatField").asDouble(), 340282346638528859999999999999999999999.999999F);
+    assertEquals(read.get("newDoubleField").asDouble(), 1.79769313486231570e+308D);
+    assertTrue(read.get("newBooleanField").asBoolean());
+    assertEquals(
+        read.get("newBytesField").asText(),
+        Base64.getEncoder().encodeToString("Hotaru".getBytes(StandardCharsets.UTF_8)));
+    assertEquals(read.get("newDateField").asInt(), 13850); // 13850 days since 1970-01-01
+    assertEquals(read.get("newDateField2").asInt(), 13850); // 13850 days since 1970-01-01
+    assertEquals(read.get("newLocalDateField").asInt(), 13850); // 13850 days since 1970-01-01
+    assertEquals(read.get("newLocalDateField2").asInt(), 13850); // 13850 days since 1970-01-01
+    assertEquals(read.get("newTimeField").asInt(), 36930000); // 36930000 ms since 00:00:00
+    assertEquals(read.get("newTimeField2").asInt(), 36930000); // 36930000 ms since 00:00:00
+    assertEquals(read.get("newLocalTimeField").asInt(), 36930000); // 36930000 ms since 00:00:00
+    assertEquals(read.get("newLocalTimeField2").asInt(), 36930000); // 36930000 ms since 00:00:00
+    assertEquals(read.get("newDateTimeField").asLong(), 1196676930000L);
+    assertEquals(read.get("newInstantField").asLong(), 1196676930000L);
+    assertEquals(read.get("newInstantField2").asLong(), 1196676930000L);
+    assertEquals(read.get("newTimestampField").asLong(), 1196676930000L);
+    assertEquals(read.get("newTimestampField2").asLong(), 1196676930000L);
+    assertEquals(read.get("newLocalDateTimeField").asLong(), 1196676930000L);
+    assertEquals(read.get("newLocalDateTimeField2").asLong(), 1196676930000L);
+    assertEquals(read.get("age").asText(), "43");
   }
 
   @Test
