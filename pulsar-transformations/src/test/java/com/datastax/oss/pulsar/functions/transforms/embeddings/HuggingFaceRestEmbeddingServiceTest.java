@@ -17,7 +17,6 @@ package com.datastax.oss.pulsar.functions.transforms.embeddings;
 
 import java.util.List;
 import java.util.Map;
-
 import junit.framework.TestCase;
 
 // disabled, just for experiments/usage demo

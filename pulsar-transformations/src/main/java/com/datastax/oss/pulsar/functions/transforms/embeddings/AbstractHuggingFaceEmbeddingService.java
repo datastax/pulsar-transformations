@@ -48,6 +48,9 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   private static Set<String> getHuggingFaceAllowedUrlPrefixes() {
     String prop = System.getenv(URL_PREFIXES_SYSTEM_PROP);
     if (Strings.isNullOrEmpty(prop)) {
+      prop = System.getProperty(URL_PREFIXES_SYSTEM_PROP);
+    }
+    if (Strings.isNullOrEmpty(prop)) {
       prop = "file://";
     }
     return Set.of(prop.split(","));

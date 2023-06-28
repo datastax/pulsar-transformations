@@ -35,6 +35,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -47,6 +48,7 @@ import org.mockito.ArgumentCaptor;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+@Slf4j
 public class AIToolsTest {
 
   @DataProvider(name = "validConfigs")
@@ -55,7 +57,17 @@ public class AIToolsTest {
       {"{'steps': [], 'openai': {'access-key': 'qwerty', 'url': 'some-url', 'provider': 'azure'}}"},
       {"{'steps': [], 'openai': {'access-key': 'qwerty'}}"},
       {
+        "{'steps': [], 'openai': {'access-key': 'qwerty'}, 'huggingface': {'access-key': 'asdf', 'provider': 'api'} }"
+      },
+      {"{'steps': [], 'openai': {'access-key': 'qwerty'}, 'huggingface': {'provider': 'local'} }"},
+      {
         "{'steps': [{'type': 'compute-ai-embeddings', 'text': '{{ value }}', 'embeddings-field': 'emb', 'model': 'the-new-model'}]}"
+      },
+      {
+        "{'steps': [{'type': 'compute-ai-embeddings', 'text': '{{ value }}', 'embeddings-field': 'emb', 'model': 'ConGen-BERT-Mini'"
+            + ", 'compute-service': 'huggingface', 'model-url': 'jar:///ConGen-BERT-Mini.zip'"
+            + "}],"
+            + " 'openai': {'access-key': 'qwerty'}, 'huggingface': {'provider': 'local'}}"
       },
       {
         "{"
@@ -92,6 +104,8 @@ public class AIToolsTest {
 
   @Test(dataProvider = "validConfigs")
   void testValidConfig(String validConfig) {
+    System.setProperty("ALLOWED_HF_URLS", "jar://");
+    log.info("testing valid config: {}", validConfig);
     String userConfig = validConfig.replace("'", "\"");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
@@ -134,6 +148,7 @@ public class AIToolsTest {
 
   @Test(dataProvider = "invalidConfigs")
   void testInvalidConfig(String invalidConfig) {
+
     String userConfig = invalidConfig.replace("'", "\"");
     Map<String, Object> config =
         new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());

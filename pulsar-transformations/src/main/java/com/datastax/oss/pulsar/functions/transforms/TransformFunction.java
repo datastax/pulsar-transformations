@@ -443,7 +443,7 @@ public class TransformFunction
             if (config.getOptions() != null && config.getOptions().size() > 0) {
               apiBuilder.options(config.getOptions());
             } else {
-                apiBuilder.options(Map.of("wait_for_model", "true"));
+              apiBuilder.options(Map.of("wait_for_model", "true"));
             }
 
             embeddingService = new HuggingFaceRestEmbeddingService(apiBuilder.build());

@@ -17,7 +17,6 @@ package com.datastax.oss.pulsar.functions.transforms.model.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
-import lombok.Builder;
 import lombok.Getter;
 
 @Getter
@@ -40,9 +39,9 @@ public class ComputeAIEmbeddingsConfig extends StepConfig {
   @JsonProperty(value = "compute-service")
   private String service;
 
-  @JsonProperty Map<String, String> options = Map.of();
+  @JsonProperty Map<String, String> options;
 
-  @JsonProperty @Builder.Default Map<String, String> arguments = Map.of();
+  @JsonProperty Map<String, String> arguments;
 
   @JsonProperty(value = "model-url")
   String modelUrl;
