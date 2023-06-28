@@ -17,7 +17,7 @@ package com.datastax.oss.pulsar.functions.transforms.tests;
 
 public class DockerTest {
 
-  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_4.8";
+  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_4.7";
   private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.1";
   private static final String IMAGE_PULSAR30 = "apachepulsar/pulsar:3.0.0";
 
