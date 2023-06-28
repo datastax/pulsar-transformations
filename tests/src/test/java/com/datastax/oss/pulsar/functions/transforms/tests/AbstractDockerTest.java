@@ -32,11 +32,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.ReflectData;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.admin.PulsarAdmin;
 import org.apache.pulsar.client.admin.PulsarAdminException;
 import org.apache.pulsar.client.api.Consumer;
@@ -59,6 +61,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+@Slf4j
 public abstract class AbstractDockerTest {
   private static final GenericData[] GD_INSTANCES = {
     ReflectData.AllowNull.get(), ReflectData.get(), GenericData.get()
@@ -104,7 +107,7 @@ public abstract class AbstractDockerTest {
             .build();
   }
 
-  @AfterClass
+  @AfterClass(alwaysRun = true)
   public void teardown() {
     if (client != null) {
       client.closeAsync();
@@ -549,6 +552,16 @@ public abstract class AbstractDockerTest {
       if (functionStatus.getNumRunning() == 1) {
         break;
       }
+      log.info("Function status: {}", functionStatus);
+      functionStatus
+          .getInstances()
+          .forEach(
+              f -> {
+                log.info("Function instance status: {}", f);
+                if (!StringUtils.isEmpty(f.getStatus().getError())) {
+                  fail("Function errored out " + f);
+                }
+              });
       Thread.sleep(100);
     }
 
