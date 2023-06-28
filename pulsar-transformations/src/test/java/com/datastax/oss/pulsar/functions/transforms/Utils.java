@@ -88,21 +88,27 @@ public class Utils {
   }
 
   public static Record<GenericObject> createTestAvroKeyValueRecord() {
+    return createTestStructKeyValueRecord(SchemaType.AVRO);
+  }
+
+  public static Record<GenericObject> createTestJsonKeyValueRecord() {
+    return createTestStructKeyValueRecord(SchemaType.JSON);
+  }
+
+  private static Record<GenericObject> createTestStructKeyValueRecord(SchemaType schemaType) {
     RecordSchemaBuilder keySchemaBuilder =
         org.apache.pulsar.client.api.schema.SchemaBuilder.record("record");
     keySchemaBuilder.field("keyField1").type(SchemaType.STRING);
     keySchemaBuilder.field("keyField2").type(SchemaType.STRING);
     keySchemaBuilder.field("keyField3").type(SchemaType.STRING);
-    GenericSchema<GenericRecord> keySchema =
-        Schema.generic(keySchemaBuilder.build(SchemaType.AVRO));
+    GenericSchema<GenericRecord> keySchema = Schema.generic(keySchemaBuilder.build(schemaType));
 
     RecordSchemaBuilder valueSchemaBuilder =
         org.apache.pulsar.client.api.schema.SchemaBuilder.record("record");
     valueSchemaBuilder.field("valueField1").type(SchemaType.STRING);
     valueSchemaBuilder.field("valueField2").type(SchemaType.STRING);
     valueSchemaBuilder.field("valueField3").type(SchemaType.STRING);
-    GenericSchema<GenericRecord> valueSchema =
-        Schema.generic(valueSchemaBuilder.build(SchemaType.AVRO));
+    GenericSchema<GenericRecord> valueSchema = Schema.generic(valueSchemaBuilder.build(schemaType));
 
     GenericRecord keyRecord =
         keySchema

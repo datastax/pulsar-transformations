@@ -186,6 +186,24 @@ public abstract class AbstractDockerTest {
   }
 
   @Test
+  public void testJson() throws Exception {
+    String expression = "'c'";
+    String userConfig =
+        String.format(
+            (""
+                    + "{'steps': ["
+                    + "    {'type': 'compute', 'fields': [{'name': 'value.c', 'expression' :'%s', 'type' : 'STRING'}]}"
+                    + "]}")
+                .replace("'", "\""),
+            expression);
+
+    GenericRecord value =
+        testTransformFunction(userConfig, Schema.JSON(Pojo1.class), new Pojo1("a", "b"));
+    assertEquals(value.getSchemaType(), SchemaType.JSON);
+    assertEquals(value.getNativeObject().toString(), "{\"a\":\"a\",\"b\":\"b\",\"c\":\"c\"}");
+  }
+
+  @Test
   public void testKVAvro() throws Exception {
     String keyExpression = "'k'";
     String valueExpression = "'v'";
@@ -215,6 +233,39 @@ public abstract class AbstractDockerTest {
     assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\", \"k\": \"k\"}");
     assertEquals(keyValue.getValue().getSchemaType(), SchemaType.AVRO);
     assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\", \"v\": \"v\"}");
+  }
+
+  @Test
+  public void testKVJson() throws Exception {
+    String keyExpression = "'k'";
+    String valueExpression = "'v'";
+    String userConfig =
+        String.format(
+            (""
+                    + "{'steps': ["
+                    + "    {'type': 'compute', 'fields': ["
+                    + "        {'name': 'key.k', 'expression' :'%s', 'type' : 'STRING'},"
+                    + "        {'name': 'value.v', 'expression' :'%s', 'type' : 'STRING'}]}"
+                    + "]}")
+                .replace("'", "\""),
+            keyExpression,
+            valueExpression);
+
+    GenericRecord value =
+        testTransformFunction(
+            userConfig,
+            Schema.KeyValue(Schema.JSON(Pojo1.class), Schema.JSON(Pojo2.class)),
+            new KeyValue<>(new Pojo1("a", "b"), new Pojo2("c", "d")));
+    assertEquals(value.getSchemaType(), SchemaType.KEY_VALUE);
+    KeyValue<GenericObject, GenericObject> keyValue =
+        (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
+
+    assertEquals(keyValue.getKey().getSchemaType(), SchemaType.JSON);
+    assertEquals(
+        keyValue.getKey().getNativeObject().toString(), "{\"a\":\"a\",\"b\":\"b\",\"k\":\"k\"}");
+    assertEquals(keyValue.getValue().getSchemaType(), SchemaType.JSON);
+    assertEquals(
+        keyValue.getValue().getNativeObject().toString(), "{\"c\":\"c\",\"d\":\"d\",\"v\":\"v\"}");
   }
 
   @Test

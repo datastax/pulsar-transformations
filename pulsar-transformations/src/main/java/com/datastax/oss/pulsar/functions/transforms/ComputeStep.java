@@ -15,8 +15,6 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import static org.apache.pulsar.common.schema.SchemaType.AVRO;
-
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
@@ -42,6 +40,7 @@ import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.pulsar.common.schema.SchemaType;
 
 /** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
@@ -79,9 +78,10 @@ public class ComputeStep implements TransformStep {
   }
 
   public void computeValueFields(List<ComputeField> fields, TransformContext context) {
-    if (context.getValueSchema().getSchemaInfo().getType() == AVRO) {
+    SchemaType schemaType = context.getValueSchema().getSchemaInfo().getType();
+    if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
       Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
-      context.addOrReplaceAvroValueFields(evaluatedFields, valueSchemaCache);
+      context.addOrReplaceValueFields(schemaType, evaluatedFields, valueSchemaCache);
     }
   }
 
@@ -127,10 +127,12 @@ public class ComputeStep implements TransformStep {
   }
 
   public void computeKeyFields(List<ComputeField> fields, TransformContext context) {
-    if (context.getKeyObject() != null
-        && context.getKeySchema().getSchemaInfo().getType() == AVRO) {
-      Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
-      context.addOrReplaceAvroKeyFields(evaluatedFields, keySchemaCache);
+    if (context.getKeyObject() != null) {
+      SchemaType schemaType = context.getKeySchema().getSchemaInfo().getType();
+      if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
+        Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
+        context.addOrReplaceKeyFields(schemaType, evaluatedFields, keySchemaCache);
+      }
     }
   }
 
