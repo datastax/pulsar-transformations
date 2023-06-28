@@ -19,8 +19,13 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
+import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.pulsar.functions.transforms.datasource.AstraDBDataSource;
 import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceEmbeddingService;
+import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceRestEmbeddingService;
 import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
@@ -33,6 +38,7 @@ import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
+import com.datastax.oss.pulsar.functions.transforms.model.config.HuggingFaceConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIProvider;
 import com.datastax.oss.pulsar.functions.transforms.model.config.QueryConfig;
@@ -55,9 +61,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.common.schema.SchemaType;
@@ -143,6 +151,7 @@ public class TransformFunction
       Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
   private OpenAIClient openAIClient;
+  private HuggingFaceConfig huggingConfig;
   private QueryStepDataSource dataSource;
 
   @Override
@@ -225,6 +234,7 @@ public class TransformFunction
     TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
 
     openAIClient = buildOpenAIClient(config.getOpenai());
+    huggingConfig = config.getHuggingface();
     dataSource = buildDataSource(config.getDatasource());
 
     for (StepConfig step : config.getSteps()) {
@@ -272,6 +282,9 @@ public class TransformFunction
   public void close() throws Exception {
     if (dataSource != null) {
       dataSource.close();
+    }
+    for (StepPredicatePair pair : steps) {
+      pair.getTransformStep().close();
     }
   }
 
@@ -385,11 +398,67 @@ public class TransformFunction
     return ComputeStep.builder().fields(fieldList).build();
   }
 
+  @SneakyThrows
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
+    String targetSvc = config.getService();
+    if (Strings.isNullOrEmpty(targetSvc)) {
+      targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
+    }
+
+    ComputeAIEmbeddingsConfig.SupportedServices service =
+        ComputeAIEmbeddingsConfig.SupportedServices.valueOf(targetSvc.toUpperCase());
+
+    final EmbeddingsService embeddingService;
+    switch (service) {
+      case OPENAI:
+        embeddingService = new OpenAIEmbeddingsService(openAIClient, config.getModel());
+        break;
+      case HUGGINGFACE:
+        Objects.requireNonNull(huggingConfig, "huggingface config is required");
+        switch (huggingConfig.getProvider()) {
+          case LOCAL:
+            Objects.requireNonNull(config.getModelUrl(), "model URL is required");
+            AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
+                AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
+                    .options(config.getOptions())
+                    .arguments(config.getArguments())
+                    .modelUrl(config.getModelUrl());
+            if (!Strings.isNullOrEmpty(config.getModel())) {
+              builder.modelName(config.getModel());
+            }
+
+            embeddingService = new HuggingFaceEmbeddingService(builder.build());
+            break;
+          case API:
+            Objects.requireNonNull(config.getModel(), "model name is required");
+            HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.HuggingFaceApiConfigBuilder
+                apiBuilder =
+                    HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
+                        .accesKey(huggingConfig.getAccessKey())
+                        .model(config.getModel());
+
+            if (!Strings.isNullOrEmpty(huggingConfig.getApiUrl())) {
+              apiBuilder.hfUrl(huggingConfig.getApiUrl());
+            }
+            if (config.getOptions() != null && config.getOptions().size() > 0) {
+              apiBuilder.options(config.getOptions());
+            } else {
+              apiBuilder.options(Map.of("wait_for_model", "true"));
+            }
+
+            embeddingService = new HuggingFaceRestEmbeddingService(apiBuilder.build());
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unsupported HuggingFace service type: " + huggingConfig.getProvider());
+        }
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported service: " + service);
+    }
+
     return new ComputeAIEmbeddingsStep(
-        config.getText(),
-        config.getEmbeddingsFieldName(),
-        new OpenAIEmbeddingsService(openAIClient, config.getModel()));
+        config.getText(), config.getEmbeddingsFieldName(), embeddingService);
   }
 
   private static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {

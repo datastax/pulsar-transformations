@@ -47,6 +47,13 @@ public class ComputeAIEmbeddingsStep implements TransformStep {
   }
 
   @Override
+  public void close() throws Exception {
+    if (embeddingsService != null) {
+      embeddingsService.close();
+    }
+  }
+
+  @Override
   public void process(TransformContext transformContext) {
     JsonRecord jsonRecord = transformContext.toJsonRecord();
     String text = template.execute(jsonRecord);

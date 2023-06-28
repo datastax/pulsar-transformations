@@ -45,6 +45,7 @@
     <azure-ai-openai.version>1.0.0-beta.2</azure-ai-openai.version>
     <cassandra.driver.version>4.16.0</cassandra.driver.version>
     <nifi-nar-maven-plugin.version>1.5.1</nifi-nar-maven-plugin.version>
+    <djl.version>0.22.1</djl.version>
     <jmustache.version>1.15</jmustache.version>
   </properties>
   <modules>
@@ -54,6 +55,13 @@
   </modules>
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>ai.djl</groupId>
+        <artifactId>bom</artifactId>
+        <version>${djl.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar</artifactId>
