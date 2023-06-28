@@ -402,7 +402,11 @@ public class TransformFunction
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
     String targetSvc = config.getService();
     if (Strings.isNullOrEmpty(targetSvc)) {
+
       targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
+      if (openAIClient == null && huggingConfig != null) {
+        targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.HUGGINGFACE.name();
+      }
     }
 
     ComputeAIEmbeddingsConfig.SupportedServices service =
@@ -417,7 +421,6 @@ public class TransformFunction
         Objects.requireNonNull(huggingConfig, "huggingface config is required");
         switch (huggingConfig.getProvider()) {
           case LOCAL:
-            Objects.requireNonNull(config.getModelUrl(), "model URL is required");
             AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
                 AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
                     .options(config.getOptions())
@@ -434,7 +437,7 @@ public class TransformFunction
             HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.HuggingFaceApiConfigBuilder
                 apiBuilder =
                     HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
-                        .accesKey(huggingConfig.getAccessKey())
+                        .accessKey(huggingConfig.getAccessKey())
                         .model(config.getModel());
 
             if (!Strings.isNullOrEmpty(huggingConfig.getApiUrl())) {

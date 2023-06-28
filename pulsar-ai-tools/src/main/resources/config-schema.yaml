@@ -244,6 +244,14 @@ components:
               type:
                 - string
               description: The record field where to inject the computed embeddings value. If the field already exists, it will be used. Note that the field must be a representation of a double's array.
+            compute-service:
+              type:
+                - string
+              description: Service type to use to compute the embeddings. Currently only OpenAI and HuggingFace are supported.
+            model-url:
+              type:
+                - string
+              description: URL of the Hugging Face Model to use. Only used if `compute-service` is set to `huggingface`.
             text:
               type:
                 - string

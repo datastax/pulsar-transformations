@@ -25,7 +25,7 @@ public abstract class HuggingFaceRestEmbeddingServiceTest extends TestCase {
   public void testMain() throws Exception {
     HuggingFaceRestEmbeddingService.HuggingFaceApiConfig conf =
         HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
-            .accesKey(System.getenv("HF_API_KEY"))
+            .accessKey(System.getenv("HF_API_KEY"))
             .model("sentence-transformers/all-MiniLM-L6-v2")
             .options(Map.of("wait_for_model", "true"))
             .build();
