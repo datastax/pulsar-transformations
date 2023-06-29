@@ -328,12 +328,18 @@ public class TransformContext {
       String valueFieldName = fieldName.substring("value.".length());
       org.apache.avro.Schema.Field fieldSchemaField =
           new org.apache.avro.Schema.Field(valueFieldName, fieldSchema, null, null);
-      addOrReplaceValueFields(valueSchema.getSchemaInfo().getType(), Map.of(fieldSchemaField, content), avroValueSchemaCache);
+      addOrReplaceValueFields(
+          valueSchema.getSchemaInfo().getType(),
+          Map.of(fieldSchemaField, content),
+          avroValueSchemaCache);
     } else if (fieldName.startsWith("key.")) {
       String keyFieldName = fieldName.substring("key.".length());
       org.apache.avro.Schema.Field fieldSchemaField =
           new org.apache.avro.Schema.Field(keyFieldName, fieldSchema, null, null);
-      addOrReplaceKeyFields(keySchema.getSchemaInfo().getType(), Map.of(fieldSchemaField, content), avroKeySchemaCache);
+      addOrReplaceKeyFields(
+          keySchema.getSchemaInfo().getType(),
+          Map.of(fieldSchemaField, content),
+          avroKeySchemaCache);
     }
   }
 }
