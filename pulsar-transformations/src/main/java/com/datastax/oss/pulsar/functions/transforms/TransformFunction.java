@@ -152,8 +152,8 @@ public class TransformFunction
   private static final List<String> FIELD_NAMES =
       Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
+  private TransformStepConfig transformConfig;
   private OpenAIClient openAIClient;
-  private HuggingFaceConfig huggingConfig;
   private QueryStepDataSource dataSource;
 
   @Override
@@ -231,21 +231,19 @@ public class TransformFunction
               });
     }
 
+    transformConfig = mapper.convertValue(userConfigMap, TransformStepConfig.class);
+    openAIClient = buildOpenAIClient(transformConfig.getOpenai());
+    dataSource = buildDataSource(transformConfig.getDatasource());
+
     TransformStep transformStep;
-
-    TransformStepConfig config = mapper.convertValue(userConfigMap, TransformStepConfig.class);
-
-    openAIClient = buildOpenAIClient(config.getOpenai());
-    huggingConfig = config.getHuggingface();
-    dataSource = buildDataSource(config.getDatasource());
-
-    for (StepConfig step : config.getSteps()) {
+    for (StepConfig step : transformConfig.getSteps()) {
       switch (step.getType()) {
         case "drop-fields":
           transformStep = newRemoveFieldFunction((DropFieldsConfig) step);
           break;
         case "cast":
-          transformStep = newCastFunction((CastConfig) step);
+          transformStep =
+              newCastFunction((CastConfig) step, transformConfig.isAttemptJsonConversion());
           break;
         case "merge-key-value":
           transformStep = new MergeKeyValueStep();
@@ -303,7 +301,8 @@ public class TransformFunction
           currentRecord);
     }
 
-    TransformContext transformContext = new TransformContext(context, nativeObject);
+    TransformContext transformContext =
+        new TransformContext(context, nativeObject, transformConfig.isAttemptJsonConversion());
     process(transformContext);
     return transformContext.send();
   }
@@ -337,10 +336,11 @@ public class TransformFunction
     return builder.build();
   }
 
-  public static CastStep newCastFunction(CastConfig config) {
+  public static CastStep newCastFunction(CastConfig config, boolean attemptJsonConversion) {
     String schemaTypeParam = config.getSchemaType();
     SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
-    CastStep.CastStepBuilder builder = CastStep.builder();
+    CastStep.CastStepBuilder builder =
+        CastStep.builder().attemptJsonConversion(attemptJsonConversion);
     if (config.getPart() != null) {
       if (config.getPart().equals("key")) {
         builder.keySchemaType(schemaType);
@@ -403,8 +403,8 @@ public class TransformFunction
   @SneakyThrows
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
     String targetSvc = config.getService();
+    HuggingFaceConfig huggingConfig = transformConfig.getHuggingface();
     if (Strings.isNullOrEmpty(targetSvc)) {
-
       targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
       if (openAIClient == null && huggingConfig != null) {
         targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.HUGGINGFACE.name();

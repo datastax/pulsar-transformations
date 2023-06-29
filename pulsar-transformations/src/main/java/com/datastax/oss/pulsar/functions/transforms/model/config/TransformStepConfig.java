@@ -29,4 +29,6 @@ public class TransformStepConfig {
   @JsonProperty private HuggingFaceConfig huggingface;
 
   @JsonProperty private DataSourceConfig datasource;
+
+  @JsonProperty private boolean attemptJsonConversion = true;
 }

@@ -382,6 +382,97 @@ public class ComputeStepTest {
     assertEquals(read.get("age").asText(), "43");
   }
 
+  @DataProvider(name = "jsonStringSchemas")
+  public static Object[][] jsonStringSchemas() {
+    return new Object[][] {{Schema.STRING}, {Schema.BYTES}};
+  }
+
+  @Test(dataProvider = "jsonStringSchemas")
+  void testStringJson(Schema schema) throws Exception {
+    SchemaType schemaType = schema.getSchemaInfo().getType();
+    Object json =
+        "{\"name\":\"Jane\",\"age\":42,\"date\":18999,\"timestamp\":1672525445006,\"time\":83085006,\"integerStr\":\"13360\"}";
+    if (schemaType == SchemaType.BYTES) {
+      json = ((String) json).getBytes(StandardCharsets.UTF_8);
+    }
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(json, schemaType, new byte[] {}),
+            "test-key");
+
+    List<ComputeField> fields =
+        Collections.singletonList(
+            ComputeField.builder()
+                .scopedName("value.age")
+                .expression("value.age + 1")
+                .type(ComputeFieldType.STRING)
+                .build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+    Record<?> outputRecord = Utils.process(record, step);
+
+    assertEquals(outputRecord.getSchema(), schema);
+
+    Object expected =
+        "{\"name\":\"Jane\",\"age\":\"43\",\"date\":18999,\"timestamp\":1672525445006,\"time\":83085006,"
+            + "\"integerStr\":\"13360\"}";
+    if (schemaType == SchemaType.BYTES) {
+      expected = ((String) expected).getBytes(StandardCharsets.UTF_8);
+    }
+    assertEquals(outputRecord.getValue(), expected);
+  }
+
+  @Test(dataProvider = "jsonStringSchemas")
+  void testKVStringJson(Schema<?> schema) throws Exception {
+    SchemaType schemaType = schema.getSchemaInfo().getType();
+    Object json =
+        "{\"name\":\"Jane\",\"age\":42,\"date\":18999,\"timestamp\":1672525445006,\"time\":83085006,\"integerStr\":\"13360\"}";
+    if (schemaType == SchemaType.BYTES) {
+      json = ((String) json).getBytes(StandardCharsets.UTF_8);
+    }
+
+    Schema<? extends KeyValue<?, Integer>> keyValueSchema =
+        Schema.KeyValue(schema, Schema.INT32, KeyValueEncodingType.SEPARATED);
+
+    KeyValue<Object, Integer> keyValue = new KeyValue<>(json, 42);
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            "test-key");
+
+    List<ComputeField> fields =
+        List.of(
+            ComputeField.builder()
+                .scopedName("value.age")
+                .expression("value.age + 1")
+                .type(ComputeFieldType.STRING)
+                .build(),
+            ComputeField.builder()
+                .scopedName("key.age")
+                .expression("key.age + 2")
+                .type(ComputeFieldType.STRING)
+                .build());
+    ComputeStep step = ComputeStep.builder().fields(fields).build();
+
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(messageSchema.getKeySchema(), schema);
+    assertEquals(messageSchema.getValueSchema(), Schema.INT32);
+
+    assertEquals(messageValue.getValue(), 42);
+    Object expected =
+        "{\"name\":\"Jane\",\"age\":\"44\",\"date\":18999,\"timestamp\":1672525445006,\"time\":83085006,"
+            + "\"integerStr\":\"13360\"}";
+    if (schemaType == SchemaType.BYTES) {
+      expected = ((String) expected).getBytes(StandardCharsets.UTF_8);
+    }
+    assertEquals(messageValue.getKey(), expected);
+  }
+
   @Test
   void testAvroInferredType() throws Exception {
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");

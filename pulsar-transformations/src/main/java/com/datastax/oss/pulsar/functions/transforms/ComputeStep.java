@@ -79,7 +79,10 @@ public class ComputeStep implements TransformStep {
 
   public void computeValueFields(List<ComputeField> fields, TransformContext context) {
     SchemaType schemaType = context.getValueSchema().getSchemaInfo().getType();
-    if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
+    if (context.getValueObject() instanceof Map) {
+      getEvaluatedFields(fields, context)
+          .forEach((field, value) -> ((Map) context.getValueObject()).put(field.name(), value));
+    } else if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
       Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
       context.addOrReplaceValueFields(evaluatedFields, valueSchemaCache);
     }
@@ -127,11 +130,17 @@ public class ComputeStep implements TransformStep {
   }
 
   public void computeKeyFields(List<ComputeField> fields, TransformContext context) {
-    if (context.getKeyObject() != null) {
-      SchemaType schemaType = context.getKeySchema().getSchemaInfo().getType();
-      if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
-        Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
-        context.addOrReplaceKeyFields(evaluatedFields, keySchemaCache);
+    Object keyObject = context.getKeyObject();
+    if (keyObject != null) {
+      if (keyObject instanceof Map) {
+        getEvaluatedFields(fields, context)
+            .forEach((field, value) -> ((Map) keyObject).put(field.name(), value));
+      } else {
+        SchemaType schemaType = context.getKeySchema().getSchemaInfo().getType();
+        if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
+          Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
+          context.addOrReplaceKeyFields(evaluatedFields, keySchemaCache);
+        }
       }
     }
   }

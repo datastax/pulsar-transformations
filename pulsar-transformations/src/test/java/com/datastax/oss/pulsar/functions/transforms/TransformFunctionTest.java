@@ -410,10 +410,10 @@ public class TransformFunctionTest {
     Record<GenericObject> outputRecord = transformFunction.process(record.getValue(), context);
 
     KeyValue<?, ?> kv = (KeyValue<?, ?>) outputRecord.getValue();
-    assertEquals(kv.getKey(), "{\"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
+    assertEquals(kv.getKey(), "{\"keyField2\":\"key2\",\"keyField3\":\"key3\"}");
     assertEquals(
         kv.getValue(),
-        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+        "{\"valueField1\":\"value1\",\"valueField2\":\"value2\",\"valueField3\":\"value3\"}");
   }
 
   @Test(dataProvider = "dropStepConfigs")
@@ -510,7 +510,7 @@ public class TransformFunctionTest {
 
     assertEquals(
         outputRecord.getValue(),
-        "{\"keyField2\": \"key2\", \"keyField3\": \"key3\", \"valueField1\": "
-            + "\"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+        "{\"keyField2\":\"key2\",\"keyField3\":\"key3\",\"valueField1\":"
+            + "\"value1\",\"valueField2\":\"value2\",\"valueField3\":\"value3\"}");
   }
 }
