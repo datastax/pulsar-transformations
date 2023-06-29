@@ -43,6 +43,8 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
    */
   public static final String URL_PREFIXES_SYSTEM_PROP = "ALLOWED_HF_URLS";
 
+  public static final String DLJ_BASE_URL = "djl://ai.djl.huggingface.pytorch";
+
   public static final Set<String> allowedUrlPrefixes = getHuggingFaceAllowedUrlPrefixes();
 
   private static Set<String> getHuggingFaceAllowedUrlPrefixes() {
@@ -51,7 +53,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
       prop = System.getProperty(URL_PREFIXES_SYSTEM_PROP);
     }
     if (Strings.isNullOrEmpty(prop)) {
-      prop = "file://";
+      prop = "file://," + DLJ_BASE_URL;
     }
     return Set.of(prop.split(","));
   }
@@ -95,7 +97,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   public AbstractHuggingFaceEmbeddingService(HuggingFaceConfig conf)
       throws IOException, ModelNotFoundException, MalformedModelException, IllegalAccessException {
     Objects.requireNonNull(conf);
-    Objects.requireNonNull(conf.modelUrl);
+    Objects.requireNonNull(conf.modelName);
 
     checkIfUrlIsAllowed(conf.modelUrl);
 

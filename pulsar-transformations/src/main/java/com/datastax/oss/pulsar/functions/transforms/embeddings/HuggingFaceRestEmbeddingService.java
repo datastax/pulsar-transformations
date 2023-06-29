@@ -42,7 +42,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   @Data
   @Builder
   public static class HuggingFaceApiConfig {
-    public String accesKey;
+    public String accessKey;
     public String model;
 
     @Builder.Default public String hfUrl = HF_URL;
@@ -77,7 +77,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   public HuggingFaceRestEmbeddingService(HuggingFaceApiConfig conf) throws MalformedURLException {
     this.conf = conf;
     this.model = conf.model;
-    this.token = conf.accesKey;
+    this.token = conf.accessKey;
     this.modelUrl = new URL(conf.hfUrl + model);
 
     this.httpClient = HttpClient.newHttpClient();

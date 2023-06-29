@@ -73,6 +73,8 @@ import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
 import org.apache.pulsar.functions.api.Record;
 
+import static com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
+
 /**
  * <code>TransformFunction</code> is a {@link Function} that provides an easy way to apply a set of
  * usual basic transformations to the data.
@@ -402,7 +404,11 @@ public class TransformFunction
   private TransformStep newComputeAIEmbeddings(ComputeAIEmbeddingsConfig config) {
     String targetSvc = config.getService();
     if (Strings.isNullOrEmpty(targetSvc)) {
+
       targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
+      if (openAIClient == null && huggingConfig != null) {
+        targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.HUGGINGFACE.name();
+      }
     }
 
     ComputeAIEmbeddingsConfig.SupportedServices service =
@@ -417,15 +423,22 @@ public class TransformFunction
         Objects.requireNonNull(huggingConfig, "huggingface config is required");
         switch (huggingConfig.getProvider()) {
           case LOCAL:
-            Objects.requireNonNull(config.getModelUrl(), "model URL is required");
             AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
                 AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
                     .options(config.getOptions())
                     .arguments(config.getArguments())
                     .modelUrl(config.getModelUrl());
+            String modelUrl = config.getModelUrl();
             if (!Strings.isNullOrEmpty(config.getModel())) {
               builder.modelName(config.getModel());
+
+              // automatically build the model URL if not provided
+              if (!Strings.isNullOrEmpty(modelUrl)) {
+                modelUrl = DLJ_BASE_URL + config.getModel();
+                log.info("Automatically computed model URL {}", modelUrl);
+              }
             }
+            builder.modelUrl(modelUrl);
 
             embeddingService = new HuggingFaceEmbeddingService(builder.build());
             break;
@@ -434,7 +447,7 @@ public class TransformFunction
             HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.HuggingFaceApiConfigBuilder
                 apiBuilder =
                     HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
-                        .accesKey(huggingConfig.getAccessKey())
+                        .accessKey(huggingConfig.getAccessKey())
                         .model(config.getModel());
 
             if (!Strings.isNullOrEmpty(huggingConfig.getApiUrl())) {
