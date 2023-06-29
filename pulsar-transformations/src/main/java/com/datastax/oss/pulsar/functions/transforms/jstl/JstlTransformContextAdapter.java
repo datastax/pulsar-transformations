@@ -49,9 +49,17 @@ public class JstlTransformContextAdapter {
    */
   private final Transformer<String, Object> keyTransformer =
       (fieldName) -> {
-        if (this.transformContext.getKeyObject() instanceof GenericRecord) {
-          GenericRecord genericRecord = (GenericRecord) this.transformContext.getKeyObject();
+        Object keyObject = this.transformContext.getKeyObject();
+        if (keyObject instanceof GenericRecord) {
+          GenericRecord genericRecord = (GenericRecord) keyObject;
           GenericRecordTransformer transformer = new GenericRecordTransformer(genericRecord);
+          return transformer.transform(fieldName);
+        }
+        if (keyObject instanceof JsonNode) {
+          JsonNode jsonNode = (JsonNode) keyObject;
+          Schema schema =
+              (Schema) this.transformContext.getKeySchema().getNativeSchema().orElseThrow();
+          JsonNodeTransformer transformer = new JsonNodeTransformer(jsonNode, schema);
           return transformer.transform(fieldName);
         }
         return null;
@@ -120,7 +128,9 @@ public class JstlTransformContextAdapter {
     if (keyObject == null) {
       return transformContext.getKey();
     }
-    return keyObject instanceof GenericRecord ? lazyKey : keyObject;
+    return keyObject instanceof GenericRecord || keyObject instanceof JsonNode
+        ? lazyKey
+        : keyObject;
   }
 
   /**
