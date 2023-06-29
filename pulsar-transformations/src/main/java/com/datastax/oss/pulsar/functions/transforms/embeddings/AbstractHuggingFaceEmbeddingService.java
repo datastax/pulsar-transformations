@@ -43,7 +43,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
    */
   public static final String URL_PREFIXES_SYSTEM_PROP = "ALLOWED_HF_URLS";
 
-  private static final String DLJ_BASE_URL = "djl://ai.djl.huggingface.pytorch/sentence-transformers/";
+  public static final String DLJ_BASE_URL = "djl://ai.djl.huggingface.pytorch";
 
   public static final Set<String> allowedUrlPrefixes = getHuggingFaceAllowedUrlPrefixes();
 
@@ -97,11 +97,7 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
   public AbstractHuggingFaceEmbeddingService(HuggingFaceConfig conf)
       throws IOException, ModelNotFoundException, MalformedModelException, IllegalAccessException {
     Objects.requireNonNull(conf);
-
-    if (conf.modelUrl == null) {
-      conf.modelUrl = DLJ_BASE_URL + conf.modelName;
-      log.info("Automatically computed model URL {}", conf.modelUrl);
-    }
+    Objects.requireNonNull(conf.modelName);
 
     checkIfUrlIsAllowed(conf.modelUrl);
 

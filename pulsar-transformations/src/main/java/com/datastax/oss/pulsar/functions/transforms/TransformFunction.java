@@ -73,6 +73,8 @@ import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
 import org.apache.pulsar.functions.api.Record;
 
+import static com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
+
 /**
  * <code>TransformFunction</code> is a {@link Function} that provides an easy way to apply a set of
  * usual basic transformations to the data.
@@ -426,9 +428,17 @@ public class TransformFunction
                     .options(config.getOptions())
                     .arguments(config.getArguments())
                     .modelUrl(config.getModelUrl());
+            String modelUrl = config.getModelUrl();
             if (!Strings.isNullOrEmpty(config.getModel())) {
               builder.modelName(config.getModel());
+
+              // automatically build the model URL if not provided
+              if (!Strings.isNullOrEmpty(modelUrl)) {
+                modelUrl = DLJ_BASE_URL + config.getModel();
+                log.info("Automatically computed model URL {}", modelUrl);
+              }
             }
+            builder.modelUrl(modelUrl);
 
             embeddingService = new HuggingFaceEmbeddingService(builder.build());
             break;
