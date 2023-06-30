@@ -20,6 +20,7 @@ import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.avro.generic.GenericData;
@@ -74,6 +75,37 @@ public class DropFieldStepTest {
   }
 
   @Test
+  void testJson() throws Exception {
+    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
+    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
+    recordSchemaBuilder.field("age").type(SchemaType.INT32);
+
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.JSON);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
+
+    GenericRecord genericRecord =
+        genericSchema
+            .newRecordBuilder()
+            .set("firstName", "Jane")
+            .set("lastName", "Doe")
+            .set("age", 42)
+            .build();
+
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
+
+    DropFieldStep step =
+        DropFieldStep.builder().valueFields(Arrays.asList("firstName", "lastName")).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    assertEquals(outputRecord.getKey().orElse(null), "test-key");
+
+    JsonNode read = (JsonNode) outputRecord.getValue();
+    assertEquals(read.get("age").asInt(), 42);
+    assertNull(read.get("firstName"));
+    assertNull(read.get("lastName"));
+  }
+
+  @Test
   void testKeyValueAvro() throws Exception {
     DropFieldStep step =
         DropFieldStep.builder()
@@ -95,6 +127,30 @@ public class DropFieldStepTest {
     assertEquals(valueAvroRecord.get("valueField3"), new Utf8("value3"));
     assertNull(valueAvroRecord.getSchema().getField("valueField1"));
     assertNull(valueAvroRecord.getSchema().getField("valueField2"));
+
+    assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+  }
+
+  @Test
+  void testKeyValueJson() throws Exception {
+    DropFieldStep step =
+        DropFieldStep.builder()
+            .keyFields(Arrays.asList("keyField1", "keyField2"))
+            .valueFields(Arrays.asList("valueField1", "valueField2"))
+            .build();
+    Record<?> outputRecord = Utils.process(Utils.createTestJsonKeyValueRecord(), step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    JsonNode key = (JsonNode) messageValue.getKey();
+    assertEquals(key.get("keyField3").asText(), "key3");
+    assertNull(key.get("keyField1"));
+    assertNull(key.get("keyField2"));
+
+    JsonNode value = (JsonNode) messageValue.getValue();
+    assertEquals(value.get("valueField3").asText(), "value3");
+    assertNull(value.get("valueField1"));
+    assertNull(value.get("valueField2"));
 
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
   }

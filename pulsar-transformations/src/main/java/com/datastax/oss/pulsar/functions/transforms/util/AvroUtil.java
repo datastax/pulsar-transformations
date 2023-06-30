@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericArray;
@@ -46,6 +47,44 @@ public class AvroUtil {
         .filter(Objects::nonNull)
         .findAny()
         .orElse(null);
+  }
+
+  public static GenericRecord dropAvroRecordFields(
+      GenericRecord record,
+      Collection<String> fields,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    org.apache.avro.Schema avroSchema = record.getSchema();
+    if (schemaCache.get(avroSchema) != null
+        || fields.stream().anyMatch(field -> avroSchema.getField(field) != null)) {
+      org.apache.avro.Schema modified = dropAvroSchemaFields(avroSchema, fields, schemaCache);
+      GenericRecord newRecord = new GenericData.Record(modified);
+      for (org.apache.avro.Schema.Field field : modified.getFields()) {
+        newRecord.put(field.name(), record.get(field.name()));
+      }
+      return newRecord;
+    }
+    return record;
+  }
+
+  public static Schema dropAvroSchemaFields(
+      Schema avroSchema, Collection<String> fields, Map<Schema, Schema> schemaCache) {
+    return schemaCache.computeIfAbsent(
+        avroSchema,
+        schema ->
+            Schema.createRecord(
+                avroSchema.getName(),
+                avroSchema.getDoc(),
+                avroSchema.getNamespace(),
+                avroSchema.isError(),
+                avroSchema
+                    .getFields()
+                    .stream()
+                    .filter(f -> !fields.contains(f.name()))
+                    .map(
+                        f ->
+                            new Schema.Field(
+                                f.name(), f.schema(), f.doc(), f.defaultVal(), f.order()))
+                    .collect(Collectors.toList())));
   }
 
   public static GenericData.Record addOrReplaceAvroRecordFields(
