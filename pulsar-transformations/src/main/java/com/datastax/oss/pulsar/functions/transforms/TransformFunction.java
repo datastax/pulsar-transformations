@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
+
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
@@ -72,8 +74,6 @@ import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
 import org.apache.pulsar.functions.api.Record;
-
-import static com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
 
 /**
  * <code>TransformFunction</code> is a {@link Function} that provides an easy way to apply a set of

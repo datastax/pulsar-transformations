@@ -81,7 +81,7 @@ public class ComputeStep implements TransformStep {
     SchemaType schemaType = context.getValueSchema().getSchemaInfo().getType();
     if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
       Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
-      context.addOrReplaceValueFields(schemaType, evaluatedFields, valueSchemaCache);
+      context.addOrReplaceValueFields(evaluatedFields, valueSchemaCache);
     }
   }
 
@@ -131,7 +131,7 @@ public class ComputeStep implements TransformStep {
       SchemaType schemaType = context.getKeySchema().getSchemaInfo().getType();
       if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
         Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
-        context.addOrReplaceKeyFields(schemaType, evaluatedFields, keySchemaCache);
+        context.addOrReplaceKeyFields(evaluatedFields, keySchemaCache);
       }
     }
   }

@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Data;
@@ -181,10 +182,74 @@ public class TransformContext {
     return oo.toByteArray();
   }
 
+  public void dropValueFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    SchemaType schemaType = valueSchema.getSchemaInfo().getType();
+    if (schemaType == SchemaType.AVRO) {
+      dropAvroValueFields(fields, schemaCache);
+    } else if (schemaType == SchemaType.JSON) {
+      dropJsonValueFields(fields, schemaCache);
+    }
+  }
+
+  private void dropAvroValueFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    GenericRecord avroRecord = (GenericRecord) valueObject;
+    GenericRecord newRecord = AvroUtil.dropAvroRecordFields(avroRecord, fields, schemaCache);
+    if (avroRecord != newRecord) {
+      valueModified = true;
+    }
+    valueObject = newRecord;
+  }
+
+  private void dropJsonValueFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    org.apache.avro.Schema schema =
+        AvroUtil.dropAvroSchemaFields(
+            (org.apache.avro.Schema) valueSchema.getNativeSchema().orElseThrow(),
+            fields,
+            schemaCache);
+    valueSchema = new JsonNodeSchema(schema);
+    valueObject = ((ObjectNode) valueObject).remove(fields);
+    valueModified = true;
+  }
+
+  public void dropKeyFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    SchemaType schemaType = keySchema.getSchemaInfo().getType();
+    if (schemaType == SchemaType.AVRO) {
+      dropAvroKeyFields(fields, schemaCache);
+    } else if (schemaType == SchemaType.JSON) {
+      dropJsonKeyFields(fields, schemaCache);
+    }
+  }
+
+  private void dropAvroKeyFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    GenericRecord avroRecord = (GenericRecord) keyObject;
+    GenericRecord newRecord = AvroUtil.dropAvroRecordFields(avroRecord, fields, schemaCache);
+    if (avroRecord != newRecord) {
+      keyModified = true;
+    }
+    keyObject = newRecord;
+  }
+
+  private void dropJsonKeyFields(
+      Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    org.apache.avro.Schema schema =
+        AvroUtil.dropAvroSchemaFields(
+            (org.apache.avro.Schema) keySchema.getNativeSchema().orElseThrow(),
+            fields,
+            schemaCache);
+    keySchema = new JsonNodeSchema(schema);
+    keyObject = ((ObjectNode) keyObject).remove(fields);
+    keyModified = true;
+  }
+
   public void addOrReplaceValueFields(
-      SchemaType schemaType,
       Map<org.apache.avro.Schema.Field, Object> newFields,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    SchemaType schemaType = valueSchema.getSchemaInfo().getType();
     if (schemaType == SchemaType.AVRO) {
       addOrReplaceAvroValueFields(newFields, schemaCache);
     } else if (schemaType == SchemaType.JSON) {
@@ -195,14 +260,38 @@ public class TransformContext {
   private void addOrReplaceAvroValueFields(
       Map<org.apache.avro.Schema.Field, Object> newFields,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    if (valueSchema.getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord avroRecord = (GenericRecord) valueObject;
-      GenericRecord newRecord =
-          AvroUtil.addOrReplaceAvroRecordFields(avroRecord, newFields, schemaCache);
-      if (avroRecord != newRecord) {
-        valueModified = true;
-      }
-      valueObject = newRecord;
+    GenericRecord avroRecord = (GenericRecord) valueObject;
+    GenericRecord newRecord =
+        AvroUtil.addOrReplaceAvroRecordFields(avroRecord, newFields, schemaCache);
+    if (avroRecord != newRecord) {
+      valueModified = true;
+    }
+    valueObject = newRecord;
+  }
+
+  private void addOrReplaceJsonValueFields(
+      Map<org.apache.avro.Schema.Field, Object> newFields,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    org.apache.avro.Schema schema =
+        AvroUtil.addOrReplaceAvroSchemaFields(
+            (org.apache.avro.Schema) valueSchema.getNativeSchema().orElseThrow(),
+            newFields.keySet(),
+            schemaCache);
+    valueSchema = new JsonNodeSchema(schema);
+    ObjectNode json = (ObjectNode) valueObject;
+    newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
+    valueObject = json;
+    valueModified = true;
+  }
+
+  public void addOrReplaceKeyFields(
+      Map<org.apache.avro.Schema.Field, Object> newFields,
+      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
+    SchemaType schemaType = keySchema.getSchemaInfo().getType();
+    if (schemaType == SchemaType.AVRO) {
+      addOrReplaceAvroKeyFields(newFields, schemaCache);
+    } else if (schemaType == SchemaType.JSON) {
+      addOrReplaceJsonKeyFields(newFields, schemaCache);
     }
   }
 
@@ -220,49 +309,19 @@ public class TransformContext {
     }
   }
 
-  public void addOrReplaceKeyFields(
-      SchemaType schemaType,
-      Map<org.apache.avro.Schema.Field, Object> newFields,
-      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    if (schemaType == SchemaType.AVRO) {
-      addOrReplaceAvroKeyFields(newFields, schemaCache);
-    } else if (schemaType == SchemaType.JSON) {
-      addOrReplaceJsonKeyFields(newFields, schemaCache);
-    }
-  }
-
-  private void addOrReplaceJsonValueFields(
-      Map<org.apache.avro.Schema.Field, Object> newFields,
-      Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    if (valueSchema.getSchemaInfo().getType() == SchemaType.JSON) {
-      org.apache.avro.Schema schema =
-          AvroUtil.addOrReplaceAvroSchemaFields(
-              (org.apache.avro.Schema) valueSchema.getNativeSchema().orElseThrow(),
-              newFields.keySet(),
-              schemaCache);
-      valueSchema = new JsonNodeSchema(schema);
-      ObjectNode json = (ObjectNode) valueObject;
-      newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
-      valueObject = json;
-      valueModified = true;
-    }
-  }
-
   private void addOrReplaceJsonKeyFields(
       Map<org.apache.avro.Schema.Field, Object> newFields,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    if (keySchema.getSchemaInfo().getType() == SchemaType.JSON) {
-      org.apache.avro.Schema schema =
-          AvroUtil.addOrReplaceAvroSchemaFields(
-              (org.apache.avro.Schema) keySchema.getNativeSchema().orElseThrow(),
-              newFields.keySet(),
-              schemaCache);
-      keySchema = new JsonNodeSchema(schema);
-      ObjectNode json = (ObjectNode) keyObject;
-      newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
-      keyObject = json;
-      keyModified = true;
-    }
+    org.apache.avro.Schema schema =
+        AvroUtil.addOrReplaceAvroSchemaFields(
+            (org.apache.avro.Schema) keySchema.getNativeSchema().orElseThrow(),
+            newFields.keySet(),
+            schemaCache);
+    keySchema = new JsonNodeSchema(schema);
+    ObjectNode json = (ObjectNode) keyObject;
+    newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
+    keyObject = json;
+    keyModified = true;
   }
 
   public JsonRecord toJsonRecord() {
@@ -328,18 +387,12 @@ public class TransformContext {
       String valueFieldName = fieldName.substring("value.".length());
       org.apache.avro.Schema.Field fieldSchemaField =
           new org.apache.avro.Schema.Field(valueFieldName, fieldSchema, null, null);
-      addOrReplaceValueFields(
-          valueSchema.getSchemaInfo().getType(),
-          Map.of(fieldSchemaField, content),
-          avroValueSchemaCache);
+      addOrReplaceValueFields(Map.of(fieldSchemaField, content), avroValueSchemaCache);
     } else if (fieldName.startsWith("key.")) {
       String keyFieldName = fieldName.substring("key.".length());
       org.apache.avro.Schema.Field fieldSchemaField =
           new org.apache.avro.Schema.Field(keyFieldName, fieldSchema, null, null);
-      addOrReplaceKeyFields(
-          keySchema.getSchemaInfo().getType(),
-          Map.of(fieldSchemaField, content),
-          avroKeySchemaCache);
+      addOrReplaceKeyFields(Map.of(fieldSchemaField, content), avroKeySchemaCache);
     }
   }
 }
