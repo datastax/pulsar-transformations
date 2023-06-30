@@ -313,7 +313,6 @@ public class ComputeStepTest {
     Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
 
     List<ComputeField> fields = buildComputeFields("value", false, false, false);
-    // List<ComputeField> fields = new ArrayList<>();
     fields.add(
         ComputeField.builder()
             .scopedName("value.age")
@@ -638,12 +637,12 @@ public class ComputeStepTest {
                 Arrays.asList(
                     ComputeField.builder()
                         .scopedName("value.newValueStringField")
-                        .expression("'Hotaru'")
+                        .expression("value.valueField1")
                         .type(ComputeFieldType.STRING)
                         .build(),
                     ComputeField.builder()
                         .scopedName("key.newKeyStringField")
-                        .expression("'Hotaru'")
+                        .expression("key.keyField1")
                         .type(ComputeFieldType.STRING)
                         .build()))
             .build();
@@ -662,7 +661,7 @@ public class ComputeStepTest {
     assertTrue(keyAvroRecord.hasField("newKeyStringField"));
     assertEquals(
         keyAvroRecord.getSchema().getField("newKeyStringField").schema().getType(), STRING);
-    assertEquals(keyAvroRecord.get("newKeyStringField"), new Utf8("Hotaru"));
+    assertEquals(keyAvroRecord.get("newKeyStringField"), new Utf8("key1"));
 
     GenericData.Record valueAvroRecord =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
@@ -674,7 +673,44 @@ public class ComputeStepTest {
     assertTrue(valueAvroRecord.hasField("newValueStringField"));
     assertEquals(
         valueAvroRecord.getSchema().getField("newValueStringField").schema().getType(), STRING);
-    assertEquals(valueAvroRecord.get("newValueStringField"), new Utf8("Hotaru"));
+    assertEquals(valueAvroRecord.get("newValueStringField"), new Utf8("value1"));
+
+    assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+  }
+
+  @Test
+  void testKeyValueJson() throws Exception {
+    ComputeStep step =
+        ComputeStep.builder()
+            .fields(
+                Arrays.asList(
+                    ComputeField.builder()
+                        .scopedName("value.newValueStringField")
+                        .expression("value.valueField1")
+                        .type(ComputeFieldType.STRING)
+                        .build(),
+                    ComputeField.builder()
+                        .scopedName("key.newKeyStringField")
+                        .expression("key.keyField1")
+                        .type(ComputeFieldType.STRING)
+                        .build()))
+            .build();
+
+    Record<?> outputRecord = Utils.process(Utils.createTestJsonKeyValueRecord(), step);
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    JsonNode key = (JsonNode) messageValue.getKey();
+    assertEquals(key.get("keyField1").asText(), "key1");
+    assertEquals(key.get("keyField2").asText(), "key2");
+    assertEquals(key.get("keyField3").asText(), "key3");
+    assertEquals(key.get("newKeyStringField").asText(), "key1");
+
+    JsonNode value = (JsonNode) messageValue.getValue();
+    assertEquals(value.get("valueField1").asText(), "value1");
+    assertEquals(value.get("valueField2").asText(), "value2");
+    assertEquals(value.get("valueField3").asText(), "value3");
+    assertEquals(value.get("newValueStringField").asText(), "value1");
 
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
   }

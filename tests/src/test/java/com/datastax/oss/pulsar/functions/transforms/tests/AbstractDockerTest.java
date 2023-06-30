@@ -208,8 +208,8 @@ public abstract class AbstractDockerTest {
 
   @Test
   public void testKVAvro() throws Exception {
-    String keyExpression = "'k'";
-    String valueExpression = "'v'";
+    String keyExpression = "key.b";
+    String valueExpression = "value.d";
     String userConfig =
         String.format(
             (""
@@ -233,15 +233,15 @@ public abstract class AbstractDockerTest {
         (KeyValue<GenericObject, GenericObject>) value.getNativeObject();
 
     assertEquals(keyValue.getKey().getSchemaType(), SchemaType.AVRO);
-    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\", \"k\": \"k\"}");
+    assertEquals(keyValue.getKey().getNativeObject().toString(), "{\"b\": \"b\", \"k\": \"b\"}");
     assertEquals(keyValue.getValue().getSchemaType(), SchemaType.AVRO);
-    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\", \"v\": \"v\"}");
+    assertEquals(keyValue.getValue().getNativeObject().toString(), "{\"d\": \"d\", \"v\": \"d\"}");
   }
 
   @Test
   public void testKVJson() throws Exception {
-    String keyExpression = "'k'";
-    String valueExpression = "'v'";
+    String keyExpression = "key.a";
+    String valueExpression = "value.c";
     String userConfig =
         String.format(
             (""
@@ -265,10 +265,10 @@ public abstract class AbstractDockerTest {
 
     assertEquals(keyValue.getKey().getSchemaType(), SchemaType.JSON);
     assertEquals(
-        keyValue.getKey().getNativeObject().toString(), "{\"a\":\"a\",\"b\":\"b\",\"k\":\"k\"}");
+        keyValue.getKey().getNativeObject().toString(), "{\"a\":\"a\",\"b\":\"b\",\"k\":\"a\"}");
     assertEquals(keyValue.getValue().getSchemaType(), SchemaType.JSON);
     assertEquals(
-        keyValue.getValue().getNativeObject().toString(), "{\"c\":\"c\",\"d\":\"d\",\"v\":\"v\"}");
+        keyValue.getValue().getNativeObject().toString(), "{\"c\":\"c\",\"d\":\"d\",\"v\":\"c\"}");
   }
 
   @Test
