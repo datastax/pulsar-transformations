@@ -63,6 +63,10 @@ public class TransformContext {
   private boolean dropCurrentRecord;
 
   public TransformContext(Context context, Object value) {
+    this(context, value, true);
+  }
+
+  public TransformContext(Context context, Object value, boolean attemptJsonConversion) {
     Record<?> currentRecord = context.getCurrentRecord();
     this.context = context;
     this.outputTopic = context.getOutputTopic();
@@ -86,26 +90,33 @@ public class TransformContext {
       this.valueObject = value;
       this.key = currentRecord.getKey().orElse(null);
     }
+    if (attemptJsonConversion) {
+      this.keyObject = attemptJsonConversion(this.keyObject);
+      this.valueObject = attemptJsonConversion(this.valueObject);
+    }
+  }
+
+  public static Object attemptJsonConversion(Object value) {
+    try {
+      if (value instanceof String) {
+        return OBJECT_MAPPER.readValue((String) value, new TypeReference<Map<String, Object>>() {});
+      } else if (value instanceof byte[]) {
+        return OBJECT_MAPPER.readValue((byte[]) value, new TypeReference<Map<String, Object>>() {});
+      }
+    } catch (IOException e) {
+      if (log.isDebugEnabled()) {
+        log.debug("Cannot convert value to json", e);
+      }
+    }
+    return value;
   }
 
   public Record<GenericObject> send() throws IOException {
     if (dropCurrentRecord) {
       return null;
     }
-    if (keyModified
-        && keySchema != null
-        && keySchema.getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord genericRecord = (GenericRecord) keyObject;
-      keySchema = Schema.NATIVE_AVRO(genericRecord.getSchema());
-      keyObject = serializeGenericRecord(genericRecord);
-    }
-    if (valueModified
-        && valueSchema != null
-        && valueSchema.getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord genericRecord = (GenericRecord) valueObject;
-      valueSchema = Schema.NATIVE_AVRO(genericRecord.getSchema());
-      valueObject = serializeGenericRecord(genericRecord);
-    }
+    convertToNativeAvroIfNeeded();
+    convertMapToStringOrBytesIfNeeded();
 
     Schema outputSchema;
     Object outputObject;
@@ -145,6 +156,40 @@ public class TransformContext {
     }
 
     return recordBuilder.build();
+  }
+
+  private void convertMapToStringOrBytesIfNeeded() throws JsonProcessingException {
+    if (valueObject instanceof Map && valueSchema != null) {
+      if (valueSchema.getSchemaInfo().getType() == SchemaType.STRING) {
+        valueObject = OBJECT_MAPPER.writeValueAsString(valueObject);
+      } else if (valueSchema.getSchemaInfo().getType() == SchemaType.BYTES) {
+        valueObject = OBJECT_MAPPER.writeValueAsBytes(valueObject);
+      }
+    }
+    if (keyObject instanceof Map && keySchema != null) {
+      if (keySchema.getSchemaInfo().getType() == SchemaType.STRING) {
+        keyObject = OBJECT_MAPPER.writeValueAsString(keyObject);
+      } else if (keySchema.getSchemaInfo().getType() == SchemaType.BYTES) {
+        keyObject = OBJECT_MAPPER.writeValueAsBytes(keyObject);
+      }
+    }
+  }
+
+  private void convertToNativeAvroIfNeeded() throws IOException {
+    if (keyModified
+        && keySchema != null
+        && keySchema.getSchemaInfo().getType() == SchemaType.AVRO) {
+      GenericRecord genericRecord = (GenericRecord) keyObject;
+      keySchema = Schema.NATIVE_AVRO(genericRecord.getSchema());
+      keyObject = serializeGenericRecord(genericRecord);
+    }
+    if (valueModified
+        && valueSchema != null
+        && valueSchema.getSchemaInfo().getType() == SchemaType.AVRO) {
+      GenericRecord genericRecord = (GenericRecord) valueObject;
+      valueSchema = Schema.NATIVE_AVRO(genericRecord.getSchema());
+      valueObject = serializeGenericRecord(genericRecord);
+    }
   }
 
   public void addProperty(String key, String value) {
@@ -385,14 +430,22 @@ public class TransformContext {
       addProperty(propertyKey, content.toString());
     } else if (fieldName.startsWith("value.")) {
       String valueFieldName = fieldName.substring("value.".length());
-      org.apache.avro.Schema.Field fieldSchemaField =
-          new org.apache.avro.Schema.Field(valueFieldName, fieldSchema, null, null);
-      addOrReplaceValueFields(Map.of(fieldSchemaField, content), avroValueSchemaCache);
+      if (valueObject instanceof Map) {
+        ((Map<String, Object>) valueObject).put(valueFieldName, content);
+      } else {
+        org.apache.avro.Schema.Field fieldSchemaField =
+            new org.apache.avro.Schema.Field(valueFieldName, fieldSchema, null, null);
+        addOrReplaceValueFields(Map.of(fieldSchemaField, content), avroValueSchemaCache);
+      }
     } else if (fieldName.startsWith("key.")) {
       String keyFieldName = fieldName.substring("key.".length());
-      org.apache.avro.Schema.Field fieldSchemaField =
-          new org.apache.avro.Schema.Field(keyFieldName, fieldSchema, null, null);
-      addOrReplaceKeyFields(Map.of(fieldSchemaField, content), avroKeySchemaCache);
+      if (keyObject instanceof Map) {
+        ((Map<String, Object>) keyObject).put(keyFieldName, content);
+      } else {
+        org.apache.avro.Schema.Field fieldSchemaField =
+            new org.apache.avro.Schema.Field(keyFieldName, fieldSchema, null, null);
+        addOrReplaceKeyFields(Map.of(fieldSchemaField, content), avroKeySchemaCache);
+      }
     }
   }
 }

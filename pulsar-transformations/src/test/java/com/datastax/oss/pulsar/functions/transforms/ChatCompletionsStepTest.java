@@ -30,6 +30,7 @@ import com.azure.ai.openai.models.ChatRole;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -48,11 +49,13 @@ import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.mockito.ArgumentCaptor;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 public class ChatCompletionsStepTest {
@@ -111,8 +114,13 @@ public class ChatCompletionsStepTest {
         "test-message test-key 42 test-input-topic test-context-topic test-value");
   }
 
-  @Test
-  void testAvro() throws Exception {
+  @DataProvider(name = "structuredSchemaTypes")
+  public static Object[][] structuredSchemaTypes() {
+    return new Object[][] {{SchemaType.AVRO}, {SchemaType.JSON}};
+  }
+
+  @Test(dataProvider = "structuredSchemaTypes")
+  void testStructured(SchemaType schemaType) throws Exception {
     TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
     RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
     recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
@@ -122,7 +130,7 @@ public class ChatCompletionsStepTest {
     recordSchemaBuilder.field("timestamp").type(SchemaType.TIMESTAMP);
     recordSchemaBuilder.field("time").type(SchemaType.TIME);
 
-    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
+    SchemaInfo schemaInfo = recordSchemaBuilder.build(schemaType);
     GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
 
     GenericRecord genericRecord =
@@ -144,7 +152,7 @@ public class ChatCompletionsStepTest {
         List.of(
             new ChatMessage(ChatRole.USER)
                 .setContent(
-                    "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key}}")));
+                    "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
     Utils.process(record, new ChatCompletionsStep(openAIClient, config));
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
@@ -155,8 +163,46 @@ public class ChatCompletionsStepTest {
         "Jane Doe 42 19359 1672700645006 83045006 test-key");
   }
 
-  @Test
-  void testKVAvro() throws Exception {
+  @DataProvider(name = "jsonStringSchemas")
+  public static Object[][] jsonStringSchemas() {
+    return new Object[][] {{Schema.STRING}, {Schema.BYTES}};
+  }
+
+  @Test(dataProvider = "jsonStringSchemas")
+  void testJsonString(Schema<?> schema) throws Exception {
+    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
+    Object json =
+        "{\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"age\":42,\"date\":19359,\"timestamp\":1672700645006,\"time\":83045006}";
+    if (schema.getSchemaInfo().getType() == SchemaType.BYTES) {
+      json = ((String) json).getBytes(StandardCharsets.UTF_8);
+    }
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                json, schema.getSchemaInfo().getType(), new byte[] {}),
+            "test-key");
+
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(
+        List.of(
+            new ChatMessage(ChatRole.USER)
+                .setContent(
+                    "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
+    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+
+    ArgumentCaptor<ChatCompletionsOptions> captor =
+        ArgumentCaptor.forClass(ChatCompletionsOptions.class);
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
+
+    assertEquals(
+        captor.getValue().getMessages().get(0).getContent(),
+        "Jane Doe 42 19359 1672700645006 83045006 test-key");
+  }
+
+  @Test(dataProvider = "structuredSchemaTypes")
+  void testKVStructured(SchemaType schemaType) throws Exception {
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     ChatCompletionsConfig config = new ChatCompletionsConfig();
@@ -166,10 +212,45 @@ public class ChatCompletionsStepTest {
             new ChatMessage(ChatRole.USER)
                 .setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
     Utils.process(
-        Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+        Utils.createTestStructKeyValueRecord(schemaType),
+        new ChatCompletionsStep(openAIClient, config));
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
+  }
+
+  @Test(dataProvider = "jsonStringSchemas")
+  void testKVJsonString(Schema<?> schema) throws Exception {
+    TimeZone.setDefault(TimeZone.getTimeZone(ZoneOffset.UTC));
+    Object json =
+        "{\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"age\":42,\"date\":19359,\"timestamp\":1672700645006,\"time\":83045006}";
+    if (schema.getSchemaInfo().getType() == SchemaType.BYTES) {
+      json = ((String) json).getBytes(StandardCharsets.UTF_8);
+    }
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                json, schema.getSchemaInfo().getType(), new byte[] {}),
+            "test-key");
+
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(
+        List.of(
+            new ChatMessage(ChatRole.USER)
+                .setContent(
+                    "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
+    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+
+    ArgumentCaptor<ChatCompletionsOptions> captor =
+        ArgumentCaptor.forClass(ChatCompletionsOptions.class);
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
+
+    assertEquals(
+        captor.getValue().getMessages().get(0).getContent(),
+        "Jane Doe 42 19359 1672700645006 83045006 test-key");
   }
 
   @Test
@@ -294,6 +375,38 @@ public class ChatCompletionsStepTest {
     assertEquals(((JsonNode) messageValue.getValue()).get("chat").asText(), "result");
   }
 
+  @DataProvider(name = "jsonStringFieldOutput")
+  public static Object[][] jsonStringFieldOutput() {
+    return new Object[][] {
+      {Schema.STRING, "{\"name\":\"Jane\"}", "{\"name\":\"Jane\",\"chat\":\"result\"}"},
+      {
+        Schema.BYTES,
+        "{\"name\":\"Jane\"}".getBytes(StandardCharsets.UTF_8),
+        "{\"name\":\"Jane\",\"chat\":\"result\"}".getBytes(StandardCharsets.UTF_8)
+      }
+    };
+  }
+
+  @Test(dataProvider = "jsonStringFieldOutput")
+  void testJsonStringValueFieldOutput(Schema<?> schema, Object input, Object expected)
+      throws Exception {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                input, schema.getSchemaInfo().getType(), new byte[] {}),
+            "test-key");
+
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("value.chat");
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+
+    assertEquals(outputRecord.getSchema(), schema);
+    assertEquals(outputRecord.getValue(), expected);
+  }
+
   @Test
   void testAvroKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
@@ -327,5 +440,31 @@ public class ChatCompletionsStepTest {
         (org.apache.avro.Schema) messageSchema.getKeySchema().getNativeSchema().orElseThrow();
     assertEquals(schema.getField("chat").schema().getType(), org.apache.avro.Schema.Type.STRING);
     assertEquals(((JsonNode) messageValue.getKey()).get("chat").asText(), "result");
+  }
+
+  @Test(dataProvider = "jsonStringFieldOutput")
+  void testJsonStringKeyFieldOutput(Schema<?> schema, Object input, Object expected)
+      throws Exception {
+    Schema<? extends KeyValue<?, Integer>> keyValueSchema =
+        Schema.KeyValue(schema, Schema.INT32, KeyValueEncodingType.SEPARATED);
+
+    KeyValue<Object, Integer> keyValue = new KeyValue<>(input, 42);
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            "test-key");
+
+    ChatCompletionsConfig config = new ChatCompletionsConfig();
+    config.setModel("test-model");
+    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setFieldName("key.chat");
+    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(messageSchema.getKeySchema(), schema);
+    assertEquals(messageValue.getKey(), expected);
   }
 }

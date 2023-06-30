@@ -238,5 +238,14 @@ properties:
         - "$ref": "#/components/schemas/Drop"
         - "$ref": "#/components/schemas/Flatten"
         - "$ref": "#/components/schemas/Compute"
+  attemptJsonConversion:
+    type: boolean
+    description: |
+      If true, the transformation will attempt to convert internally the record to JSON when the schema is 
+      STRING or BYTES before applying the steps. 
+      The schema will still be STRING or BYTES after the transformation. 
+      This allows to use references to fields in the steps with STRING and BYTES schema payloads.
+      Defaults is true. Use this parameter to disable the JSON conversion for performance reason if you don't need it.
+    default: true
 required:
   - steps

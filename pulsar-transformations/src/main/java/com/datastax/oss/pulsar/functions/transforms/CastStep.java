@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import static com.datastax.oss.pulsar.functions.transforms.TransformContext.attemptJsonConversion;
+
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -31,6 +33,8 @@ import org.apache.pulsar.common.schema.SchemaType;
 public class CastStep implements TransformStep {
   private final SchemaType keySchemaType;
   private final SchemaType valueSchemaType;
+
+  private final boolean attemptJsonConversion;
 
   @Override
   public void process(TransformContext transformContext) {
@@ -50,7 +54,8 @@ public class CastStep implements TransformStep {
   }
 
   private Object convertValue(Object originalValue, SchemaType schemaType) {
-    return JstlTypeConverter.INSTANCE.coerceToType(originalValue, getJavaType(schemaType));
+    Object result = JstlTypeConverter.INSTANCE.coerceToType(originalValue, getJavaType(schemaType));
+    return attemptJsonConversion ? attemptJsonConversion(result) : result;
   }
 
   private Class<?> getJavaType(SchemaType type) {

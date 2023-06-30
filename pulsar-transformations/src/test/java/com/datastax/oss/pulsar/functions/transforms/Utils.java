@@ -95,7 +95,7 @@ public class Utils {
     return createTestStructKeyValueRecord(SchemaType.JSON);
   }
 
-  private static Record<GenericObject> createTestStructKeyValueRecord(SchemaType schemaType) {
+  public static Record<GenericObject> createTestStructKeyValueRecord(SchemaType schemaType) {
     RecordSchemaBuilder keySchemaBuilder =
         org.apache.pulsar.client.api.schema.SchemaBuilder.record("record");
     keySchemaBuilder.field("keyField1").type(SchemaType.STRING);
