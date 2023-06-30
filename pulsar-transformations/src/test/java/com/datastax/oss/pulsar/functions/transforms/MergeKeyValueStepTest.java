@@ -19,6 +19,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertSame;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -45,6 +46,27 @@ public class MergeKeyValueStepTest {
         read.toString(),
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\", "
             + "\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
+
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
+    assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
+    assertSame(messageValue.getKey(), recordValue.getKey());
+  }
+
+  @Test
+  void testKeyValueJson() throws Exception {
+    Record<GenericObject> record = Utils.createTestJsonKeyValueRecord();
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    JsonNode read = (JsonNode) messageValue.getValue();
+    assertEquals(read.get("keyField1").asText(), "key1");
+    assertEquals(read.get("keyField2").asText(), "key2");
+    assertEquals(read.get("keyField3").asText(), "key3");
+    assertEquals(read.get("valueField1").asText(), "value1");
+    assertEquals(read.get("valueField2").asText(), "value2");
+    assertEquals(read.get("valueField3").asText(), "value3");
 
     KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
     KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
