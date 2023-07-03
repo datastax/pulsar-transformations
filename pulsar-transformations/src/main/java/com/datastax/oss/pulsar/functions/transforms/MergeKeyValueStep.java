@@ -15,6 +15,8 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +28,7 @@ import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.common.schema.SchemaType;
 
 public class MergeKeyValueStep implements TransformStep {
-
+  public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private final Map<org.apache.avro.Schema, Map<org.apache.avro.Schema, org.apache.avro.Schema>>
       schemaCache = new ConcurrentHashMap<>();
 
@@ -36,12 +38,19 @@ public class MergeKeyValueStep implements TransformStep {
     if (keySchema == null) {
       return;
     }
-    if (keySchema.getSchemaInfo().getType() == SchemaType.AVRO
+    Object keyObject = transformContext.getKeyObject();
+    Object valueObject = transformContext.getValueObject();
+    if (keyObject instanceof Map && valueObject instanceof Map) {
+      Map<Object, Object> value = (Map<Object, Object>) valueObject;
+      Map<String, Object> keyCopy =
+          OBJECT_MAPPER.convertValue(keyObject, new TypeReference<>() {});
+      keyCopy.forEach(value::putIfAbsent);
+    } else if (keySchema.getSchemaInfo().getType() == SchemaType.AVRO
         && transformContext.getValueSchema().getSchemaInfo().getType() == SchemaType.AVRO) {
-      GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
+      GenericRecord avroKeyRecord = (GenericRecord) keyObject;
       org.apache.avro.Schema avroKeySchema = avroKeyRecord.getSchema();
 
-      GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
+      GenericRecord avroValueRecord = (GenericRecord) valueObject;
       org.apache.avro.Schema avroValueSchema = avroValueRecord.getSchema();
 
       org.apache.avro.Schema mergedSchema = getMergedSchema(avroKeySchema, avroValueSchema);
@@ -59,20 +68,15 @@ public class MergeKeyValueStep implements TransformStep {
     } else if (keySchema.getSchemaInfo().getType() == SchemaType.JSON
         && transformContext.getValueSchema().getSchemaInfo().getType() == SchemaType.JSON) {
       org.apache.avro.Schema avroKeySchema =
-          (org.apache.avro.Schema) transformContext.getKeySchema().getNativeSchema().orElseThrow();
+          (org.apache.avro.Schema) keySchema.getNativeSchema().orElseThrow();
       org.apache.avro.Schema avroValueSchema =
           (org.apache.avro.Schema)
               transformContext.getValueSchema().getNativeSchema().orElseThrow();
       org.apache.avro.Schema mergedSchema = getMergedSchema(avroKeySchema, avroValueSchema);
       transformContext.setValueSchema(new JsonNodeSchema(mergedSchema));
-      ObjectNode key = (ObjectNode) transformContext.getKeyObject();
-      ObjectNode value = ((ObjectNode) transformContext.getValueObject()).deepCopy();
-      for (org.apache.avro.Schema.Field field : avroKeySchema.getFields()) {
-        if (avroValueSchema.getField(field.name()) == null) {
-          value.set(field.name(), key.get(field.name()));
-        }
-      }
-      transformContext.setValueObject(value);
+      ObjectNode newValue = ((ObjectNode) keyObject).deepCopy();
+      newValue.setAll(((ObjectNode) valueObject).deepCopy());
+      transformContext.setValueObject(newValue);
       transformContext.setValueModified(true);
     }
   }
