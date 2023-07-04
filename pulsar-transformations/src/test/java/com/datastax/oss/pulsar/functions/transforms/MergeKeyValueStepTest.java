@@ -19,6 +19,8 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotSame;
 import static org.testng.Assert.assertSame;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import org.apache.avro.generic.GenericData;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -50,6 +52,81 @@ public class MergeKeyValueStepTest {
     KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
     assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
     assertSame(messageValue.getKey(), recordValue.getKey());
+  }
+
+  @Test
+  void testKeyValueJson() throws Exception {
+    Record<GenericObject> record = Utils.createTestJsonKeyValueRecord();
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    JsonNode read = (JsonNode) messageValue.getValue();
+    assertEquals(read.get("keyField1").asText(), "key1");
+    assertEquals(read.get("keyField2").asText(), "key2");
+    assertEquals(read.get("keyField3").asText(), "key3");
+    assertEquals(read.get("valueField1").asText(), "value1");
+    assertEquals(read.get("valueField2").asText(), "value2");
+    assertEquals(read.get("valueField3").asText(), "value3");
+
+    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
+    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
+    assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
+    assertSame(messageValue.getKey(), recordValue.getKey());
+  }
+
+  @Test
+  void testKeyValueStringJson() throws Exception {
+    Schema<KeyValue<String, String>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED);
+
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+
+    KeyValue<String, String> keyValue = new KeyValue<>(key, value);
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            null);
+
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(
+        messageValue.getValue(),
+        "{\"valueField1\":\"value1\",\"valueField2\":\"value2\","
+            + "\"valueField3\":\"value3\",\"keyField1\":\"key1\",\"keyField2\":\"key2\",\"keyField3\":\"key3\"}");
+  }
+
+  @Test
+  void testKeyValueBytesJson() throws Exception {
+    Schema<KeyValue<byte[], byte[]>> keyValueSchema =
+        Schema.KeyValue(Schema.BYTES, Schema.BYTES, KeyValueEncodingType.SEPARATED);
+
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+
+    KeyValue<byte[], byte[]> keyValue =
+        new KeyValue<>(
+            key.getBytes(StandardCharsets.UTF_8), value.getBytes(StandardCharsets.UTF_8));
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            null);
+
+    Record<?> outputRecord = Utils.process(record, new MergeKeyValueStep());
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(
+        new String((byte[]) messageValue.getValue(), StandardCharsets.UTF_8),
+        "{\"valueField1\":\"value1\",\"valueField2\":\"value2\",\"valueField3\":\"value3\","
+            + "\"keyField1\":\"key1\",\"keyField2\":\"key2\",\"keyField3\":\"key3\"}");
   }
 
   @Test

@@ -128,7 +128,7 @@ Output: `{name: value1} (AVRO)`
 
 ### Merge KeyValue
 
-Merges the fields of KeyValue records where both the key and value are structured types of the same schema type. (Currently only AVRO is supported).
+Merges the fields of KeyValue records where both the key and value are structured types of the same schema type. (Currently only AVRO and JSON are supported).
 
 Step name: `merge-key-value`
 
