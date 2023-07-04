@@ -230,7 +230,9 @@ public class TransformContext {
   public void dropValueFields(
       Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
     SchemaType schemaType = valueSchema.getSchemaInfo().getType();
-    if (schemaType == SchemaType.AVRO) {
+    if (valueObject instanceof Map) {
+      fields.forEach(((Map<?, ?>) valueObject)::remove);
+    } else if (schemaType == SchemaType.AVRO) {
       dropAvroValueFields(fields, schemaCache);
     } else if (schemaType == SchemaType.JSON) {
       dropJsonValueFields(fields, schemaCache);
@@ -262,7 +264,9 @@ public class TransformContext {
   public void dropKeyFields(
       Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
     SchemaType schemaType = keySchema.getSchemaInfo().getType();
-    if (schemaType == SchemaType.AVRO) {
+    if (keyObject instanceof Map) {
+      fields.forEach(((Map<?, ?>) keyObject)::remove);
+    } else if (schemaType == SchemaType.AVRO) {
       dropAvroKeyFields(fields, schemaCache);
     } else if (schemaType == SchemaType.JSON) {
       dropJsonKeyFields(fields, schemaCache);

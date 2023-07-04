@@ -21,6 +21,7 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertSame;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.avro.generic.GenericData;
@@ -106,6 +107,43 @@ public class DropFieldStepTest {
   }
 
   @Test
+  void testStringJson() throws Exception {
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            Schema.STRING,
+            AutoConsumeSchema.wrapPrimitiveObject(value, SchemaType.STRING, new byte[] {}),
+            "test-key");
+
+    DropFieldStep step =
+        DropFieldStep.builder().valueFields(Collections.singletonList("value1")).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    assertEquals(
+        outputRecord.getValue(),
+        "{\"valueField1\":\"value1\",\"valueField2\":\"value2\"," + "\"valueField3\":\"value3\"}");
+  }
+
+  @Test
+  void testBytesJson() throws Exception {
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            Schema.BYTES,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                value.getBytes(StandardCharsets.UTF_8), SchemaType.BYTES, new byte[] {}),
+            "test-key");
+
+    DropFieldStep step =
+        DropFieldStep.builder().valueFields(Collections.singletonList("valueField1")).build();
+    Record<?> outputRecord = Utils.process(record, step);
+    assertEquals(
+        new String((byte[]) outputRecord.getValue(), StandardCharsets.UTF_8),
+        "{\"valueField2\":\"value2\",\"valueField3\":\"value3\"}");
+  }
+
+  @Test
   void testKeyValueAvro() throws Exception {
     DropFieldStep step =
         DropFieldStep.builder()
@@ -153,6 +191,71 @@ public class DropFieldStepTest {
     assertNull(value.get("valueField2"));
 
     assertEquals(messageSchema.getKeyValueEncodingType(), KeyValueEncodingType.SEPARATED);
+  }
+
+  @Test
+  void testKeyValueStringJson() throws Exception {
+    Schema<KeyValue<String, String>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED);
+
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                new KeyValue<>(key, value), SchemaType.KEY_VALUE, new byte[] {}),
+            null);
+
+    DropFieldStep step =
+        DropFieldStep.builder()
+            .keyFields(Arrays.asList("keyField1", "keyField2"))
+            .valueFields(Arrays.asList("valueField1", "valueField2"))
+            .build();
+
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(messageValue.getKey(), "{\"keyField3\":\"key3\"}");
+    assertEquals(messageValue.getValue(), "{\"valueField3\":\"value3\"}");
+  }
+
+  @Test
+  void testKeyValueBytesJson() throws Exception {
+    Schema<KeyValue<byte[], byte[]>> keyValueSchema =
+        Schema.KeyValue(Schema.BYTES, Schema.BYTES, KeyValueEncodingType.SEPARATED);
+
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                new KeyValue<>(
+                    key.getBytes(StandardCharsets.UTF_8), value.getBytes(StandardCharsets.UTF_8)),
+                SchemaType.KEY_VALUE,
+                new byte[] {}),
+            null);
+
+    DropFieldStep step =
+        DropFieldStep.builder()
+            .keyFields(Arrays.asList("keyField1", "keyField2"))
+            .valueFields(Arrays.asList("valueField1", "valueField2"))
+            .build();
+
+    Record<?> outputRecord = Utils.process(record, step);
+    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
+
+    assertEquals(
+        new String((byte[]) messageValue.getKey(), StandardCharsets.UTF_8),
+        "{\"keyField3\":\"key3\"}");
+    assertEquals(
+        new String((byte[]) messageValue.getValue(), StandardCharsets.UTF_8),
+        "{\"valueField3\":\"value3\"}");
   }
 
   @Test
