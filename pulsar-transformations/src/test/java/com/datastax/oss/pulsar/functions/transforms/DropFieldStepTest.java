@@ -259,54 +259,6 @@ public class DropFieldStepTest {
   }
 
   @Test
-  void testAvroNotModified() throws Exception {
-    RecordSchemaBuilder recordSchemaBuilder = SchemaBuilder.record("record");
-    recordSchemaBuilder.field("firstName").type(SchemaType.STRING);
-    recordSchemaBuilder.field("lastName").type(SchemaType.STRING);
-    recordSchemaBuilder.field("age").type(SchemaType.INT32);
-
-    SchemaInfo schemaInfo = recordSchemaBuilder.build(SchemaType.AVRO);
-    GenericSchema<GenericRecord> genericSchema = Schema.generic(schemaInfo);
-
-    GenericRecord genericRecord =
-        genericSchema
-            .newRecordBuilder()
-            .set("firstName", "Jane")
-            .set("lastName", "Doe")
-            .set("age", 42)
-            .build();
-
-    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericRecord, "test-key");
-
-    DropFieldStep step =
-        DropFieldStep.builder().valueFields(Collections.singletonList("other")).build();
-    Record<GenericObject> outputRecord = Utils.process(record, step);
-    assertSame(outputRecord.getSchema(), record.getSchema());
-    assertSame(outputRecord.getValue(), record.getValue());
-  }
-
-  @Test
-  void testKeyValueAvroNotModified() throws Exception {
-    Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
-
-    DropFieldStep step =
-        DropFieldStep.builder()
-            .keyFields(Collections.singletonList("otherKey"))
-            .valueFields(Collections.singletonList("otherValue"))
-            .build();
-    Record<?> outputRecord = Utils.process(record, step);
-    KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
-    KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
-
-    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
-    assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
-    assertSame(messageSchema.getValueSchema(), recordSchema.getValueSchema());
-    assertSame(messageValue.getKey(), recordValue.getKey());
-    assertSame(messageValue.getValue(), recordValue.getValue());
-  }
-
-  @Test
   void testKeyValueAvroCached() throws Exception {
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
 

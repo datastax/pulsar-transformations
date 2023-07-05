@@ -33,6 +33,7 @@ import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate
 import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
 import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
@@ -47,6 +48,7 @@ import com.datastax.oss.pulsar.functions.transforms.model.config.QueryConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
 import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -56,10 +58,12 @@ import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.ValidationMessage;
 import com.networknt.schema.urn.URNFactory;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,11 +73,15 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
-import org.apache.pulsar.common.schema.SchemaType;
+import org.apache.pulsar.client.api.schema.KeyValueSchema;
+import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.functions.api.Context;
 import org.apache.pulsar.functions.api.Function;
 import org.apache.pulsar.functions.api.Record;
+import org.apache.pulsar.functions.api.utils.FunctionRecord;
 
 /**
  * <code>TransformFunction</code> is a {@link Function} that provides an easy way to apply a set of
@@ -149,6 +157,7 @@ import org.apache.pulsar.functions.api.Record;
 public class TransformFunction
     implements Function<GenericObject, Record<GenericObject>>, TransformStep {
 
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final List<String> FIELD_NAMES =
       Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
@@ -302,9 +311,9 @@ public class TransformFunction
     }
 
     TransformContext transformContext =
-        new TransformContext(context, nativeObject, transformConfig.isAttemptJsonConversion());
+        newTransformContext(context, nativeObject, transformConfig.isAttemptJsonConversion());
     process(transformContext);
-    return transformContext.send();
+    return send(context, transformContext);
   }
 
   @Override
@@ -315,6 +324,97 @@ public class TransformFunction
       if (predicate == null || predicate.test(transformContext)) {
         step.process(transformContext);
       }
+    }
+  }
+
+  public static Record<GenericObject> send(Context context, TransformContext transformContext)
+      throws IOException {
+    if (transformContext.isDropCurrentRecord()) {
+      return null;
+    }
+    transformContext.convertAvroToBytes();
+    transformContext.convertMapToStringOrBytes();
+
+    Schema outputSchema;
+    Object outputObject;
+    if (transformContext.getKeySchemaType() != null) {
+      KeyValueEncodingType keyValueEncodingType =
+          (KeyValueEncodingType) transformContext.getCustomContext().get("keyValueEncodingType");
+      outputSchema =
+          Schema.KeyValue(
+              buildSchema(
+                  transformContext.getKeySchemaType(), transformContext.getKeyNativeSchema()),
+              buildSchema(
+                  transformContext.getValueSchemaType(), transformContext.getValueNativeSchema()),
+              keyValueEncodingType != null ? keyValueEncodingType : KeyValueEncodingType.INLINE);
+      Object outputKeyObject = transformContext.getKeyObject();
+      Object outputValueObject = transformContext.getValueObject();
+      outputObject = new KeyValue<>(outputKeyObject, outputValueObject);
+    } else {
+      outputSchema =
+          buildSchema(
+              transformContext.getValueSchemaType(), transformContext.getValueNativeSchema());
+      outputObject = transformContext.getValueObject();
+    }
+
+    if (log.isDebugEnabled()) {
+      log.debug("output {} schema {}", outputObject, outputSchema);
+    }
+
+    FunctionRecord.FunctionRecordBuilder<GenericObject> recordBuilder =
+        context
+            .newOutputRecordBuilder(outputSchema)
+            .destinationTopic(transformContext.getOutputTopic())
+            .value(outputObject)
+            .properties(transformContext.getProperties());
+
+    if (transformContext.getKeySchemaType() == null && transformContext.getKey() != null) {
+      recordBuilder.key(transformContext.getKey());
+    }
+
+    return recordBuilder.build();
+  }
+
+  private static Schema<?> buildSchema(TransformSchemaType schemaType, Object nativeSchema) {
+    switch (schemaType) {
+      case INT8:
+        return Schema.INT8;
+      case INT16:
+        return Schema.INT16;
+      case INT32:
+        return Schema.INT32;
+      case INT64:
+        return Schema.INT64;
+      case FLOAT:
+        return Schema.FLOAT;
+      case DOUBLE:
+        return Schema.DOUBLE;
+      case BOOLEAN:
+        return Schema.BOOL;
+      case STRING:
+        return Schema.STRING;
+      case BYTES:
+        return Schema.BYTES;
+      case DATE:
+        return Schema.DATE;
+      case TIME:
+        return Schema.TIME;
+      case TIMESTAMP:
+        return Schema.TIMESTAMP;
+      case INSTANT:
+        return Schema.INSTANT;
+      case LOCAL_DATE:
+        return Schema.LOCAL_DATE;
+      case LOCAL_TIME:
+        return Schema.LOCAL_TIME;
+      case LOCAL_DATE_TIME:
+        return Schema.LOCAL_DATE_TIME;
+      case AVRO:
+        return Schema.NATIVE_AVRO(nativeSchema);
+      case JSON:
+        return new JsonNodeSchema((org.apache.avro.Schema) nativeSchema);
+      default:
+        throw new IllegalArgumentException("Unsupported schema type " + schemaType);
     }
   }
 
@@ -338,7 +438,7 @@ public class TransformFunction
 
   public static CastStep newCastFunction(CastConfig config, boolean attemptJsonConversion) {
     String schemaTypeParam = config.getSchemaType();
-    SchemaType schemaType = SchemaType.valueOf(schemaTypeParam);
+    TransformSchemaType schemaType = TransformSchemaType.valueOf(schemaTypeParam);
     CastStep.CastStepBuilder builder =
         CastStep.builder().attemptJsonConversion(attemptJsonConversion);
     if (config.getPart() != null) {
@@ -536,5 +636,116 @@ public class TransformFunction
     }
     dataSource.initialize(dataSourceConfig);
     return dataSource;
+  }
+
+  public static TransformContext newTransformContext(Context context, Object value) {
+    return newTransformContext(context, value, true);
+  }
+
+  public static TransformContext newTransformContext(
+      Context context, Object value, boolean attemptJsonConversion) {
+    Record<?> currentRecord = context.getCurrentRecord();
+    TransformContext transformContext = new TransformContext();
+    transformContext.setInputTopic(currentRecord.getTopicName().orElse(null));
+    transformContext.setOutputTopic(currentRecord.getDestinationTopic().orElse(null));
+    transformContext.setKey(currentRecord.getKey().orElse(null));
+    transformContext.setEventTime(currentRecord.getEventTime().orElse(null));
+
+    if (currentRecord.getProperties() != null) {
+      transformContext.setProperties(new HashMap<>(currentRecord.getProperties()));
+    }
+
+    Schema<?> schema = currentRecord.getSchema();
+    if (schema instanceof KeyValueSchema && value instanceof KeyValue) {
+      KeyValueSchema<?, ?> kvSchema = (KeyValueSchema<?, ?>) schema;
+      KeyValue<?, ?> kv = (KeyValue<?, ?>) value;
+      Schema<?> keySchema = kvSchema.getKeySchema();
+      Schema<?> valueSchema = kvSchema.getValueSchema();
+      transformContext.setKeySchemaType(pulsarSchemaToTransformSchemaType(keySchema));
+      transformContext.setKeyNativeSchema(keySchema.getNativeSchema().orElse(null));
+      transformContext.setKeyObject(
+          keySchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getKey()).getNativeObject()
+              : kv.getKey());
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(valueSchema));
+      transformContext.setValueNativeSchema(valueSchema.getNativeSchema().orElse(null));
+      transformContext.setValueObject(
+          valueSchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getValue()).getNativeObject()
+              : kv.getValue());
+      transformContext
+          .getCustomContext()
+          .put("keyValueEncodingType", kvSchema.getKeyValueEncodingType());
+    } else {
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(schema));
+      transformContext.setValueNativeSchema(schema.getNativeSchema().orElse(null));
+      transformContext.setValueObject(value);
+    }
+    if (attemptJsonConversion) {
+      transformContext.setKeyObject(attemptJsonConversion(transformContext.getKeyObject()));
+      transformContext.setValueObject(attemptJsonConversion(transformContext.getValueObject()));
+    }
+    return transformContext;
+  }
+
+  private static TransformSchemaType pulsarSchemaToTransformSchemaType(Schema<?> schema) {
+    switch (schema.getSchemaInfo().getType()) {
+      case INT8:
+        return TransformSchemaType.INT8;
+      case INT16:
+        return TransformSchemaType.INT16;
+      case INT32:
+        return TransformSchemaType.INT32;
+      case INT64:
+        return TransformSchemaType.INT64;
+      case FLOAT:
+        return TransformSchemaType.FLOAT;
+      case DOUBLE:
+        return TransformSchemaType.DOUBLE;
+      case BOOLEAN:
+        return TransformSchemaType.BOOLEAN;
+      case STRING:
+        return TransformSchemaType.STRING;
+      case BYTES:
+        return TransformSchemaType.BYTES;
+      case DATE:
+        return TransformSchemaType.DATE;
+      case TIME:
+        return TransformSchemaType.TIME;
+      case TIMESTAMP:
+        return TransformSchemaType.TIMESTAMP;
+      case INSTANT:
+        return TransformSchemaType.INSTANT;
+      case LOCAL_DATE:
+        return TransformSchemaType.LOCAL_DATE;
+      case LOCAL_TIME:
+        return TransformSchemaType.LOCAL_TIME;
+      case LOCAL_DATE_TIME:
+        return TransformSchemaType.LOCAL_DATE_TIME;
+      case JSON:
+        return TransformSchemaType.JSON;
+      case AVRO:
+        return TransformSchemaType.AVRO;
+      case PROTOBUF:
+        return TransformSchemaType.PROTOBUF;
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported schema type " + schema.getSchemaInfo().getType());
+    }
+  }
+
+  public static Object attemptJsonConversion(Object value) {
+    try {
+      if (value instanceof String) {
+        return OBJECT_MAPPER.readValue((String) value, new TypeReference<Map<String, Object>>() {});
+      } else if (value instanceof byte[]) {
+        return OBJECT_MAPPER.readValue((byte[]) value, new TypeReference<Map<String, Object>>() {});
+      }
+    } catch (IOException e) {
+      if (log.isDebugEnabled()) {
+        log.debug("Cannot convert value to json", e);
+      }
+    }
+    return value;
   }
 }

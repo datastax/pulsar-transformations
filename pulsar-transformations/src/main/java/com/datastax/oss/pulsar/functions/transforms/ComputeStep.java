@@ -18,6 +18,7 @@ package com.datastax.oss.pulsar.functions.transforms;
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
 import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
+import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
 import com.datastax.oss.pulsar.functions.transforms.util.AvroUtil;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -40,12 +41,10 @@ import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
-import org.apache.pulsar.common.schema.SchemaType;
 
 /** Computes a field dynamically based on JSTL expressions and adds it to the key or the value . */
 @Builder
 public class ComputeStep implements TransformStep {
-
   public static final long MILLIS_PER_DAY = TimeUnit.DAYS.toMillis(1);
   @Builder.Default private final List<ComputeField> fields = new ArrayList<>();
   private final Map<org.apache.avro.Schema, org.apache.avro.Schema> keySchemaCache =
@@ -78,11 +77,11 @@ public class ComputeStep implements TransformStep {
   }
 
   public void computeValueFields(List<ComputeField> fields, TransformContext context) {
-    SchemaType schemaType = context.getValueSchema().getSchemaInfo().getType();
+    TransformSchemaType schemaType = context.getValueSchemaType();
     if (context.getValueObject() instanceof Map) {
       getEvaluatedFields(fields, context)
           .forEach((field, value) -> ((Map) context.getValueObject()).put(field.name(), value));
-    } else if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
+    } else if (schemaType == TransformSchemaType.AVRO || schemaType == TransformSchemaType.JSON) {
       Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
       context.addOrReplaceValueFields(evaluatedFields, valueSchemaCache);
     }
@@ -95,17 +94,16 @@ public class ComputeStep implements TransformStep {
         .findFirst()
         .ifPresent(
             field -> {
-              if (context.getKeySchema() != null
-                  && context.getKeySchema().getSchemaInfo().getType().isPrimitive()) {
+              if (context.getKeySchemaType() != null && context.getKeySchemaType().isPrimitive()) {
                 Object newKey = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema<?> newSchema;
+                TransformSchemaType newSchema;
                 if (field.getType() != null) {
                   newSchema = getPrimitiveSchema(field.getType());
                 } else {
                   newSchema = getPrimitiveSchema(newKey);
                 }
                 context.setKeyObject(newKey);
-                context.setKeySchema(newSchema);
+                context.setKeySchemaType(newSchema);
               }
             });
 
@@ -115,16 +113,16 @@ public class ComputeStep implements TransformStep {
         .findFirst()
         .ifPresent(
             field -> {
-              if (context.getValueSchema().getSchemaInfo().getType().isPrimitive()) {
+              if (context.getValueSchemaType().isPrimitive()) {
                 Object newValue = field.getEvaluator().evaluate(context);
-                org.apache.pulsar.client.api.Schema<?> newSchema;
+                TransformSchemaType newSchema;
                 if (field.getType() != null) {
                   newSchema = getPrimitiveSchema(field.getType());
                 } else {
                   newSchema = getPrimitiveSchema(newValue);
                 }
                 context.setValueObject(newValue);
-                context.setValueSchema(newSchema);
+                context.setValueSchemaType(newSchema);
               }
             });
   }
@@ -136,8 +134,8 @@ public class ComputeStep implements TransformStep {
         getEvaluatedFields(fields, context)
             .forEach((field, value) -> ((Map) keyObject).put(field.name(), value));
       } else {
-        SchemaType schemaType = context.getKeySchema().getSchemaInfo().getType();
-        if (schemaType == SchemaType.AVRO || schemaType == SchemaType.JSON) {
+        TransformSchemaType schemaType = context.getKeySchemaType();
+        if (schemaType == TransformSchemaType.AVRO || schemaType == TransformSchemaType.JSON) {
           Map<Schema.Field, Object> evaluatedFields = getEvaluatedFields(fields, context);
           context.addOrReplaceKeyFields(evaluatedFields, keySchemaCache);
         }
@@ -164,12 +162,8 @@ public class ComputeStep implements TransformStep {
   }
 
   public void computeHeaderPropertiesFields(List<ComputeField> fields, TransformContext context) {
-    Map<String, String> properties =
-        fields
-            .stream()
-            .map(field -> Map.entry(field.getName(), validateAndGetString(field, context)))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    context.setProperties(properties);
+    fields.forEach(
+        field -> context.setProperty(field.getName(), validateAndGetString(field, context)));
   }
 
   private String validateAndGetString(ComputeField field, TransformContext context) {
@@ -341,116 +335,97 @@ public class ComputeStep implements TransformStep {
         });
   }
 
-  private org.apache.pulsar.client.api.Schema<?> getPrimitiveSchema(ComputeFieldType type) {
-    org.apache.pulsar.client.api.Schema<?> schema;
+  private TransformSchemaType getPrimitiveSchema(ComputeFieldType type) {
     switch (type) {
       case STRING:
-        schema = org.apache.pulsar.client.api.Schema.STRING;
-        break;
+        return TransformSchemaType.STRING;
       case INT8:
-        schema = org.apache.pulsar.client.api.Schema.INT8;
-        break;
+        return TransformSchemaType.INT8;
       case INT16:
-        schema = org.apache.pulsar.client.api.Schema.INT16;
-        break;
+        return TransformSchemaType.INT16;
       case INT32:
-        schema = org.apache.pulsar.client.api.Schema.INT32;
-        break;
+        return TransformSchemaType.INT32;
       case INT64:
-        schema = org.apache.pulsar.client.api.Schema.INT64;
-        break;
+        return TransformSchemaType.INT64;
       case FLOAT:
-        schema = org.apache.pulsar.client.api.Schema.FLOAT;
-        break;
+        return TransformSchemaType.FLOAT;
       case DOUBLE:
-        schema = org.apache.pulsar.client.api.Schema.DOUBLE;
-        break;
+        return TransformSchemaType.DOUBLE;
       case BOOLEAN:
-        schema = org.apache.pulsar.client.api.Schema.BOOL;
-        break;
+        return TransformSchemaType.BOOLEAN;
       case DATE:
-        schema = org.apache.pulsar.client.api.Schema.DATE;
-        break;
+        return TransformSchemaType.DATE;
       case LOCAL_DATE:
-        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE;
-        break;
+        return TransformSchemaType.LOCAL_DATE;
       case TIME:
-        schema = org.apache.pulsar.client.api.Schema.TIME;
-        break;
+        return TransformSchemaType.TIME;
       case LOCAL_TIME:
-        schema = org.apache.pulsar.client.api.Schema.LOCAL_TIME;
-        break;
+        return TransformSchemaType.LOCAL_TIME;
       case LOCAL_DATE_TIME:
-        schema = org.apache.pulsar.client.api.Schema.LOCAL_DATE_TIME;
-        break;
+        return TransformSchemaType.LOCAL_DATE_TIME;
       case DATETIME:
       case INSTANT:
-        schema = org.apache.pulsar.client.api.Schema.INSTANT;
-        break;
+        return TransformSchemaType.INSTANT;
       case TIMESTAMP:
-        schema = org.apache.pulsar.client.api.Schema.TIMESTAMP;
-        break;
+        return TransformSchemaType.TIMESTAMP;
       case BYTES:
-        schema = org.apache.pulsar.client.api.Schema.BYTES;
-        break;
+        return TransformSchemaType.BYTES;
       default:
         throw new UnsupportedOperationException("Unsupported compute field type: " + type);
     }
-
-    return schema;
   }
 
-  private org.apache.pulsar.client.api.Schema<?> getPrimitiveSchema(Object value) {
+  private TransformSchemaType getPrimitiveSchema(Object value) {
     if (value == null) {
       throw new UnsupportedOperationException("Cannot get schema from null value");
     }
     if (value.getClass().equals(String.class)) {
-      return org.apache.pulsar.client.api.Schema.STRING;
+      return TransformSchemaType.STRING;
     }
     if (value.getClass().equals(byte[].class)) {
-      return org.apache.pulsar.client.api.Schema.BYTES;
+      return TransformSchemaType.BYTES;
     }
     if (value.getClass().equals(Boolean.class)) {
-      return org.apache.pulsar.client.api.Schema.BOOL;
+      return TransformSchemaType.BOOLEAN;
     }
     if (value.getClass().equals(Byte.class)) {
-      return org.apache.pulsar.client.api.Schema.INT8;
+      return TransformSchemaType.INT8;
     }
     if (value.getClass().equals(Short.class)) {
-      return org.apache.pulsar.client.api.Schema.INT16;
+      return TransformSchemaType.INT16;
     }
     if (value.getClass().equals(Integer.class)) {
-      return org.apache.pulsar.client.api.Schema.INT32;
+      return TransformSchemaType.INT32;
     }
     if (value.getClass().equals(Long.class)) {
-      return org.apache.pulsar.client.api.Schema.INT64;
+      return TransformSchemaType.INT64;
     }
     if (value.getClass().equals(Float.class)) {
-      return org.apache.pulsar.client.api.Schema.FLOAT;
+      return TransformSchemaType.FLOAT;
     }
     if (value.getClass().equals(Double.class)) {
-      return org.apache.pulsar.client.api.Schema.DOUBLE;
+      return TransformSchemaType.DOUBLE;
     }
     if (value.getClass().equals(Date.class)) {
-      return org.apache.pulsar.client.api.Schema.DATE;
+      return TransformSchemaType.DATE;
     }
     if (value.getClass().equals(Timestamp.class)) {
-      return org.apache.pulsar.client.api.Schema.TIMESTAMP;
+      return TransformSchemaType.TIMESTAMP;
     }
     if (value.getClass().equals(Time.class)) {
-      return org.apache.pulsar.client.api.Schema.TIME;
+      return TransformSchemaType.TIME;
     }
     if (value.getClass().equals(LocalDateTime.class)) {
-      return org.apache.pulsar.client.api.Schema.LOCAL_DATE_TIME;
+      return TransformSchemaType.LOCAL_DATE_TIME;
     }
     if (value.getClass().equals(LocalDate.class)) {
-      return org.apache.pulsar.client.api.Schema.LOCAL_DATE;
+      return TransformSchemaType.LOCAL_DATE;
     }
     if (value.getClass().equals(LocalTime.class)) {
-      return org.apache.pulsar.client.api.Schema.LOCAL_TIME;
+      return TransformSchemaType.LOCAL_TIME;
     }
     if (value.getClass().equals(Instant.class)) {
-      return org.apache.pulsar.client.api.Schema.INSTANT;
+      return TransformSchemaType.INSTANT;
     }
     throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }

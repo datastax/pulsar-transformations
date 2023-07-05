@@ -111,7 +111,7 @@ public class ChatCompletionsStepTest {
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
-        "test-message test-key 42 test-input-topic test-context-topic test-value");
+        "test-message test-key 42 test-input-topic test-output-topic test-value");
   }
 
   @DataProvider(name = "structuredSchemaTypes")
@@ -258,6 +258,7 @@ public class ChatCompletionsStepTest {
     Record<GenericObject> record =
         Utils.TestRecord.<GenericObject>builder()
             .key("test-key")
+            .schema(Schema.STRING)
             .value(
                 AutoConsumeSchema.wrapPrimitiveObject(
                     "test-message", SchemaType.STRING, new byte[] {}))

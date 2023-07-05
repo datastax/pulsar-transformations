@@ -34,7 +34,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.map.LazyMap;
-import org.apache.pulsar.functions.api.Record;
 
 /**
  * A java bean that adapts the underlying {@link TransformContext} to be ready for jstl expression
@@ -57,8 +56,7 @@ public class JstlTransformContextAdapter {
         }
         if (keyObject instanceof JsonNode) {
           JsonNode jsonNode = (JsonNode) keyObject;
-          Schema schema =
-              (Schema) this.transformContext.getKeySchema().getNativeSchema().orElseThrow();
+          Schema schema = (Schema) this.transformContext.getKeyNativeSchema();
           JsonNodeTransformer transformer = new JsonNodeTransformer(jsonNode, schema);
           return transformer.transform(fieldName);
         }
@@ -81,8 +79,7 @@ public class JstlTransformContextAdapter {
         }
         if (valueObject instanceof JsonNode) {
           JsonNode jsonNode = (JsonNode) valueObject;
-          Schema schema =
-              (Schema) this.transformContext.getValueSchema().getNativeSchema().orElseThrow();
+          Schema schema = (Schema) this.transformContext.getValueNativeSchema();
           JsonNodeTransformer transformer = new JsonNodeTransformer(jsonNode, schema);
           return transformer.transform(fieldName);
         }
@@ -94,19 +91,18 @@ public class JstlTransformContextAdapter {
   /** A header transformer to return message headers the user is allowed to filter on. */
   private final Transformer<String, Object> headerTransformer =
       (fieldName) -> {
-        Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
         // Allow list message headers in the expression
         switch (fieldName) {
           case "messageKey":
-            return currentRecord.getKey().orElse(null);
+            return transformContext.getKey();
           case "topicName":
-            return currentRecord.getTopicName().orElse(null);
+            return transformContext.getInputTopic();
           case "destinationTopic":
-            return currentRecord.getDestinationTopic().orElse(null);
+            return transformContext.getOutputTopic();
           case "eventTime":
-            return currentRecord.getEventTime().orElse(null);
+            return transformContext.getEventTime();
           case "properties":
-            return currentRecord.getProperties();
+            return transformContext.getProperties();
           default:
             return null;
         }

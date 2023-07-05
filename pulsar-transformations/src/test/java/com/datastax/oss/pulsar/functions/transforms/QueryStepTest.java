@@ -62,7 +62,7 @@ public class QueryStepTest {
           public List<Map<String, String>> fetchData(String query, List<Object> params) {
             assertEquals(query, "select 1");
             List<Object> expectedParams =
-                List.of("test-message", "test-context-topic", "test-key", "test-input-topic", 42L);
+                List.of("test-message", "test-output-topic", "test-key", "test-input-topic", 42L);
             assertEquals(params, expectedParams);
             return List.of(Map.of());
           }

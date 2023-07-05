@@ -16,6 +16,7 @@
 package com.datastax.oss.pulsar.functions.transforms;
 
 import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
+import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +26,6 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.pulsar.common.schema.SchemaType;
-import org.apache.pulsar.functions.api.Record;
 
 /**
  * Compute AI Embeddings for one or more records fields and put the value into a new or existing
@@ -45,7 +44,6 @@ public class QueryStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) {
-    Record<?> currentRecord = transformContext.getContext().getCurrentRecord();
     List<Object> params = new ArrayList<>();
     fields.forEach(
         field -> {
@@ -57,26 +55,26 @@ public class QueryStep implements TransformStep {
             params.add(transformContext.getKey());
           } else if (field.startsWith("properties.")) {
             String propName = field.substring("properties.".length());
-            params.add(transformContext.getOutputProperties().get(propName));
+            params.add(transformContext.getProperties().get(propName));
           } else if (field.equals("destinationTopic")) {
             params.add(transformContext.getOutputTopic());
           } else if (field.equals("topicName")) {
-            params.add(currentRecord.getTopicName().orElse(null));
+            params.add(transformContext.getInputTopic());
           } else if (field.equals("eventTime")) {
-            params.add(currentRecord.getEventTime().orElse(null));
+            params.add(transformContext.getEventTime());
           } else if (field.startsWith("value.")) {
             params.add(
                 getField(
                     "value",
                     field,
-                    transformContext.getValueSchema(),
+                    transformContext.getValueSchemaType(),
                     transformContext.getValueObject()));
           } else if (field.startsWith("key.")) {
             params.add(
                 getField(
                     "key",
                     field,
-                    transformContext.getKeySchema(),
+                    transformContext.getKeySchemaType(),
                     transformContext.getKeyObject()));
           }
         });
@@ -90,13 +88,9 @@ public class QueryStep implements TransformStep {
   }
 
   private Object getField(
-      String key,
-      String field,
-      org.apache.pulsar.client.api.Schema<?> keySchema,
-      Object keyObject) {
+      String key, String field, TransformSchemaType keySchemaType, Object keyObject) {
     String fieldName = field.substring((key.length() + 1));
-    SchemaType schemaType = keySchema.getSchemaInfo().getType();
-    switch (schemaType) {
+    switch (keySchemaType) {
       case AVRO:
         GenericRecord avroRecord = (GenericRecord) keyObject;
         return getAvroField(fieldName, avroRecord);

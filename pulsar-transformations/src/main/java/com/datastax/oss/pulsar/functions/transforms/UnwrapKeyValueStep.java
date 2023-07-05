@@ -25,14 +25,14 @@ public class UnwrapKeyValueStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    if (transformContext.getKeySchema() != null) {
+    if (transformContext.getKeySchemaType() != null) {
       if (unwrapKey) {
-        transformContext.setValueSchema(transformContext.getKeySchema());
+        transformContext.setValueSchemaType(transformContext.getKeySchemaType());
+        transformContext.setValueNativeSchema(transformContext.getKeyNativeSchema());
         transformContext.setValueObject(transformContext.getKeyObject());
       }
-      // TODO: can we avoid making the conversion to NATIVE_AVRO ?
-      transformContext.setValueModified(true);
-      transformContext.setKeySchema(null);
+      transformContext.setKeySchemaType(null);
+      transformContext.setKeyNativeSchema(null);
       transformContext.setKeyObject(null);
     }
   }
