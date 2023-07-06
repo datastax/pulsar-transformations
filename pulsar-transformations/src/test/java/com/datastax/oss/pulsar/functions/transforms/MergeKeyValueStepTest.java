@@ -41,17 +41,18 @@ public class MergeKeyValueStepTest {
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
-    GenericData.Record read =
+    GenericData.Record value =
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals(
-        read.toString(),
+        value.toString(),
         "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\", "
             + "\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}");
 
-    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
-    assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
-    assertSame(messageValue.getKey(), recordValue.getKey());
+    GenericData.Record key =
+        Utils.getRecord(messageSchema.getKeySchema(), (byte[]) messageValue.getKey());
+    assertEquals(
+        key.toString(),
+        "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}");
   }
 
   @Test
@@ -61,18 +62,32 @@ public class MergeKeyValueStepTest {
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
-    JsonNode read = (JsonNode) messageValue.getValue();
-    assertEquals(read.get("keyField1").asText(), "key1");
-    assertEquals(read.get("keyField2").asText(), "key2");
-    assertEquals(read.get("keyField3").asText(), "key3");
-    assertEquals(read.get("valueField1").asText(), "value1");
-    assertEquals(read.get("valueField2").asText(), "value2");
-    assertEquals(read.get("valueField3").asText(), "value3");
+    assertEquals(
+        messageSchema.getKeySchema().getNativeSchema().orElseThrow().toString(),
+        "{\"type\":\"record\","
+            + "\"name\":\"record\",\"fields\":[{\"name\":\"keyField1\",\"type\":\"string\"},{\"name\":\"keyField2\","
+            + "\"type\":\"string\"},{\"name\":\"keyField3\",\"type\":\"string\"}]}");
 
-    KeyValueSchema<?, ?> recordSchema = (KeyValueSchema) record.getSchema();
-    KeyValue<?, ?> recordValue = (KeyValue<?, ?>) record.getValue().getNativeObject();
-    assertSame(messageSchema.getKeySchema(), recordSchema.getKeySchema());
-    assertSame(messageValue.getKey(), recordValue.getKey());
+    assertEquals(
+        messageSchema.getValueSchema().getNativeSchema().orElseThrow().toString(),
+        "{\"type\":\"record\","
+            + "\"name\":\"record\",\"fields\":[{\"name\":\"keyField1\",\"type\":\"string\"},{\"name\":\"keyField2\","
+            + "\"type\":\"string\"},{\"name\":\"keyField3\",\"type\":\"string\"},{\"name\":\"valueField1\","
+            + "\"type\":\"string\"},{\"name\":\"valueField2\",\"type\":\"string\"},{\"name\":\"valueField3\","
+            + "\"type\":\"string\"}]}");
+
+    JsonNode value = (JsonNode) messageValue.getValue();
+    assertEquals(value.get("keyField1").asText(), "key1");
+    assertEquals(value.get("keyField2").asText(), "key2");
+    assertEquals(value.get("keyField3").asText(), "key3");
+    assertEquals(value.get("valueField1").asText(), "value1");
+    assertEquals(value.get("valueField2").asText(), "value2");
+    assertEquals(value.get("valueField3").asText(), "value3");
+
+    JsonNode key = (JsonNode) messageValue.getKey();
+    assertEquals(key.get("keyField1").asText(), "key1");
+    assertEquals(key.get("keyField2").asText(), "key2");
+    assertEquals(key.get("keyField3").asText(), "key3");
   }
 
   @Test

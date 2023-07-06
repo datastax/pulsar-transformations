@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl.predicate;
 
+import static com.datastax.oss.pulsar.functions.transforms.TransformFunction.newTransformContext;
 import static org.testng.AssertJUnit.assertEquals;
 
 import com.datastax.oss.pulsar.functions.transforms.TransformContext;
@@ -38,7 +39,7 @@ public class JstlPredicateTest {
     Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(2);
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     assertEquals(predicate.test(transformContext), match);
   }
@@ -53,7 +54,7 @@ public class JstlPredicateTest {
     Record<GenericObject> record = Utils.createNestedAvroKeyValueRecord(2);
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     predicate.test(transformContext);
   }
@@ -171,7 +172,7 @@ public class JstlPredicateTest {
         new Utils.TestRecord<>(nestedKeySchema, genericNestedKeyObject, null);
 
     TransformContext nestedKeyContext =
-        new TransformContext(
+        newTransformContext(
             new Utils.TestContext(nestedKeyRecord, new HashMap<>()),
             nestedKeyRecord.getValue().getNativeObject());
 
@@ -197,7 +198,7 @@ public class JstlPredicateTest {
         new Utils.TestRecord<>(nestedValueSchema, genericNestedValueObject, null);
 
     TransformContext nestedValueContext =
-        new TransformContext(
+        newTransformContext(
             new Utils.TestContext(nestedValueRecord, new HashMap<>()),
             nestedValueRecord.getValue().getNativeObject());
     return new Object[][] {

@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
+import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,8 +25,6 @@ import lombok.Value;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.pulsar.client.api.Schema;
-import org.apache.pulsar.common.schema.SchemaType;
 
 @Builder
 public class FlattenStep implements TransformStep {
@@ -43,38 +42,32 @@ public class FlattenStep implements TransformStep {
 
   @Override
   public void process(TransformContext transformContext) throws Exception {
-    if (part == null) {
-      validateAvro(transformContext.getKeySchema());
-      validateAvro(transformContext.getValueSchema());
-      GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
-      GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
-      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
-      transformContext.setKeyModified(true);
-      transformContext.setValueModified(true);
-    } else if ("key".equals(part)) {
-      validateAvro(transformContext.getKeySchema());
-      GenericRecord avroKeyRecord = (GenericRecord) transformContext.getKeyObject();
-      transformContext.setKeyObject(flattenGenericRecord(avroKeyRecord));
-      transformContext.setKeyModified(true);
-    } else if ("value".equals(part)) {
-      validateAvro(transformContext.getValueSchema());
-      GenericRecord avroValueRecord = (GenericRecord) transformContext.getValueObject();
-      transformContext.setValueObject(flattenGenericRecord(avroValueRecord));
-      transformContext.setValueModified(true);
-    } else {
+    if (part != null && !part.equals("key") && !part.equals("value")) {
       throw new IllegalArgumentException("Unsupported part for Flatten: " + part);
+    }
+    if ("key".equals(part) || part == null) {
+      validateAvro(transformContext.getKeySchemaType());
+      GenericRecord flattenedKey =
+          flattenGenericRecord((GenericRecord) transformContext.getKeyObject());
+      transformContext.setKeyObject(flattenedKey);
+      transformContext.setKeyNativeSchema(flattenedKey.getSchema());
+    }
+    if ("value".equals(part) || part == null) {
+      validateAvro(transformContext.getValueSchemaType());
+      GenericRecord flattenedValue =
+          flattenGenericRecord((GenericRecord) transformContext.getValueObject());
+      transformContext.setValueObject(flattenedValue);
+      transformContext.setValueNativeSchema(flattenedValue.getSchema());
     }
   }
 
-  void validateAvro(Schema<?> schema) {
-    if (schema == null) {
+  void validateAvro(TransformSchemaType schemaType) {
+    if (schemaType == null) {
       throw new IllegalStateException("Flatten requires non-null schemas!");
     }
 
-    if (schema.getSchemaInfo().getType() != SchemaType.AVRO) {
-      throw new IllegalStateException(
-          "Unsupported schema type for Flatten: " + schema.getSchemaInfo().getType());
+    if (schemaType != TransformSchemaType.AVRO) {
+      throw new IllegalStateException("Unsupported schema type for Flatten: " + schemaType.name());
     }
   }
 

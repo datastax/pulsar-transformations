@@ -15,6 +15,7 @@
  */
 package com.datastax.oss.pulsar.functions.transforms.jstl;
 
+import static com.datastax.oss.pulsar.functions.transforms.TransformFunction.newTransformContext;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -57,7 +58,7 @@ public class JstlTransformContextAdapterTest {
     */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
@@ -129,7 +130,7 @@ public class JstlTransformContextAdapterTest {
     */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
@@ -159,7 +160,7 @@ public class JstlTransformContextAdapterTest {
     */
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
@@ -193,7 +194,7 @@ public class JstlTransformContextAdapterTest {
 
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);
@@ -233,7 +234,7 @@ public class JstlTransformContextAdapterTest {
     Record<GenericObject> record = new Utils.TestRecord<>(pulsarValueSchema, valueRecord, "key");
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        newTransformContext(context, record.getValue().getNativeObject());
 
     // when
     JstlTransformContextAdapter adapter = new JstlTransformContextAdapter(transformContext);

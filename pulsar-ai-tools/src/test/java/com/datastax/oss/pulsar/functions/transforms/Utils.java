@@ -75,9 +75,9 @@ public class Utils {
       throws Exception {
     TestContext context = new TestContext(record, new HashMap<>());
     TransformContext transformContext =
-        new TransformContext(context, record.getValue().getNativeObject());
+        TransformFunction.newTransformContext(context, record.getValue().getNativeObject());
     step.process(transformContext);
-    return transformContext.send();
+    return TransformFunction.send(context, transformContext);
   }
 
   public static GenericData.Record getRecord(Schema<?> schema, byte[] value) throws IOException {
@@ -310,7 +310,7 @@ public class Utils {
             AutoConsumeSchema.wrapPrimitiveObject(
                 value, schema.getSchemaInfo().getType(), new byte[] {}),
             key);
-    return new TransformContext(
+    return TransformFunction.newTransformContext(
         new TestContext(record, new HashMap<>()), record.getValue().getNativeObject());
   }
 

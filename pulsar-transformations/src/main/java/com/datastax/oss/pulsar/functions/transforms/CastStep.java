@@ -15,9 +15,10 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import static com.datastax.oss.pulsar.functions.transforms.TransformContext.attemptJsonConversion;
+import static com.datastax.oss.pulsar.functions.transforms.TransformFunction.attemptJsonConversion;
 
 import com.datastax.oss.pulsar.functions.transforms.jstl.JstlTypeConverter;
+import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -26,39 +27,36 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Date;
 import lombok.Builder;
-import org.apache.pulsar.client.api.Schema;
-import org.apache.pulsar.common.schema.SchemaType;
 
 @Builder
 public class CastStep implements TransformStep {
-  private final SchemaType keySchemaType;
-  private final SchemaType valueSchemaType;
+  private final TransformSchemaType keySchemaType;
+  private final TransformSchemaType valueSchemaType;
 
   private final boolean attemptJsonConversion;
 
   @Override
   public void process(TransformContext transformContext) {
-    if (transformContext.getKeySchema() != null
+    if (transformContext.getKeySchemaType() != null
         && keySchemaType != null
-        && transformContext.getKeySchema().getSchemaInfo().getType() != keySchemaType) {
+        && transformContext.getKeySchemaType() != keySchemaType) {
       Object value = convertValue(transformContext.getKeyObject(), keySchemaType);
-      transformContext.setKeySchema(toSchema(keySchemaType));
+      transformContext.setKeySchemaType(keySchemaType);
       transformContext.setKeyObject(value);
     }
-    if (valueSchemaType != null
-        && transformContext.getValueSchema().getSchemaInfo().getType() != valueSchemaType) {
+    if (valueSchemaType != null && transformContext.getValueSchemaType() != valueSchemaType) {
       Object value = convertValue(transformContext.getValueObject(), valueSchemaType);
-      transformContext.setValueSchema(toSchema(valueSchemaType));
+      transformContext.setValueSchemaType(valueSchemaType);
       transformContext.setValueObject(value);
     }
   }
 
-  private Object convertValue(Object originalValue, SchemaType schemaType) {
+  private Object convertValue(Object originalValue, TransformSchemaType schemaType) {
     Object result = JstlTypeConverter.INSTANCE.coerceToType(originalValue, getJavaType(schemaType));
     return attemptJsonConversion ? attemptJsonConversion(result) : result;
   }
 
-  private Class<?> getJavaType(SchemaType type) {
+  private Class<?> getJavaType(TransformSchemaType type) {
     switch (type) {
       case STRING:
         return String.class;
@@ -97,52 +95,12 @@ public class CastStep implements TransformStep {
     }
   }
 
-  private Schema<?> toSchema(SchemaType schemaType) {
-    switch (schemaType) {
-      case STRING:
-        return Schema.STRING;
-      case BOOLEAN:
-        return Schema.BOOL;
-      case INT8:
-        return Schema.INT8;
-      case INT16:
-        return Schema.INT16;
-      case INT32:
-        return Schema.INT32;
-      case INT64:
-        return Schema.INT64;
-      case FLOAT:
-        return Schema.FLOAT;
-      case DOUBLE:
-        return Schema.DOUBLE;
-      case DATE:
-        return Schema.DATE;
-      case TIME:
-        return Schema.TIME;
-      case TIMESTAMP:
-        return Schema.TIMESTAMP;
-      case INSTANT:
-        return Schema.INSTANT;
-      case LOCAL_DATE:
-        return Schema.LOCAL_DATE;
-      case LOCAL_TIME:
-        return Schema.LOCAL_TIME;
-      case LOCAL_DATE_TIME:
-        return Schema.LOCAL_DATE_TIME;
-      case BYTES:
-        return Schema.BYTES;
-      default:
-        throw new IllegalStateException("Unexpected value: " + schemaType);
-    }
-  }
-
   public static class CastStepBuilder {
-    private SchemaType keySchemaType;
-    private SchemaType valueSchemaType;
+    private TransformSchemaType keySchemaType;
+    private TransformSchemaType valueSchemaType;
 
-    public CastStepBuilder keySchemaType(SchemaType keySchemaType) {
-      if (keySchemaType != null
-          && (!keySchemaType.isPrimitive() || keySchemaType == SchemaType.NONE)) {
+    public CastStepBuilder keySchemaType(TransformSchemaType keySchemaType) {
+      if (keySchemaType != null && keySchemaType.isStruct()) {
         throw new IllegalArgumentException(
             "Unsupported key schema-type for Cast: " + keySchemaType);
       }
@@ -150,9 +108,8 @@ public class CastStep implements TransformStep {
       return this;
     }
 
-    public CastStepBuilder valueSchemaType(SchemaType valueSchemaType) {
-      if (valueSchemaType != null
-          && (!valueSchemaType.isPrimitive() || valueSchemaType == SchemaType.NONE)) {
+    public CastStepBuilder valueSchemaType(TransformSchemaType valueSchemaType) {
+      if (valueSchemaType != null && valueSchemaType.isStruct()) {
         throw new IllegalArgumentException(
             "Unsupported value schema-type for Cast: " + valueSchemaType);
       }
