@@ -263,21 +263,21 @@ public class FlattenStepTest {
     Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
   }
 
-//    @Test(
-//      expectedExceptions = IllegalStateException.class,
-//      expectedExceptionsMessageRegExp = "Flatten requires non-null schemas!"
-//    )
-//    void testNestedSchemalessValue() throws Exception {
-//      // given
-//      Record<GenericObject> nestedKVRecord =
-//          new Utils.TestRecord<>(
-//              null,
-//              AutoConsumeSchema.wrapPrimitiveObject("value", SchemaType.STRING, new byte[] {}),
-//              "myKey");
-//
-//      // then
-//      Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
-//    }
+  @Test(
+    expectedExceptions = IllegalStateException.class,
+    expectedExceptionsMessageRegExp = "Flatten requires non-null schemas!"
+  )
+  void testNestedSchemalessValue() throws Exception {
+    // given
+    Record<GenericObject> nestedKVRecord =
+        new Utils.TestRecord<>(
+            null,
+            AutoConsumeSchema.wrapPrimitiveObject("value", SchemaType.STRING, new byte[] {}),
+            "myKey");
+
+    // then
+    Utils.process(nestedKVRecord, FlattenStep.builder().part("value").build());
+  }
 
   private void assertSchemasFlattened(
       GenericData.Record actual, GenericData.Record expected, String delimiter) {

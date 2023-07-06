@@ -376,6 +376,9 @@ public class TransformFunction
   }
 
   private static Schema<?> buildSchema(TransformSchemaType schemaType, Object nativeSchema) {
+    if (schemaType == null) {
+      throw new IllegalArgumentException("Schema type should not be null.");
+    }
     switch (schemaType) {
       case INT8:
         return Schema.INT8;
@@ -662,13 +665,13 @@ public class TransformFunction
       Schema<?> keySchema = kvSchema.getKeySchema();
       Schema<?> valueSchema = kvSchema.getValueSchema();
       transformContext.setKeySchemaType(pulsarSchemaToTransformSchemaType(keySchema));
-      transformContext.setKeyNativeSchema(keySchema.getNativeSchema().orElse(null));
+      transformContext.setKeyNativeSchema(getNativeSchema(keySchema));
       transformContext.setKeyObject(
           keySchema.getSchemaInfo().getType().isStruct()
               ? ((GenericObject) kv.getKey()).getNativeObject()
               : kv.getKey());
       transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(valueSchema));
-      transformContext.setValueNativeSchema(valueSchema.getNativeSchema().orElse(null));
+      transformContext.setValueNativeSchema(getNativeSchema(valueSchema));
       transformContext.setValueObject(
           valueSchema.getSchemaInfo().getType().isStruct()
               ? ((GenericObject) kv.getValue()).getNativeObject()
@@ -678,7 +681,7 @@ public class TransformFunction
           .put("keyValueEncodingType", kvSchema.getKeyValueEncodingType());
     } else {
       transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(schema));
-      transformContext.setValueNativeSchema(schema.getNativeSchema().orElse(null));
+      transformContext.setValueNativeSchema(getNativeSchema(schema));
       transformContext.setValueObject(value);
     }
     if (attemptJsonConversion) {
@@ -688,7 +691,17 @@ public class TransformFunction
     return transformContext;
   }
 
+  private static Object getNativeSchema(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
+    return schema.getNativeSchema().orElse(null);
+  }
+
   private static TransformSchemaType pulsarSchemaToTransformSchemaType(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
     switch (schema.getSchemaInfo().getType()) {
       case INT8:
         return TransformSchemaType.INT8;
