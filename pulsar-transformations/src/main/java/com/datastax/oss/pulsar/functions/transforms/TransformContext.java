@@ -119,9 +119,11 @@ public class TransformContext {
 
   private void dropJsonValueFields(
       Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    valueNativeSchema =
-        AvroUtil.dropAvroSchemaFields(
-            (org.apache.avro.Schema) valueNativeSchema, fields, schemaCache);
+    if (valueNativeSchema != null) {
+      valueNativeSchema =
+          AvroUtil.dropAvroSchemaFields(
+              (org.apache.avro.Schema) valueNativeSchema, fields, schemaCache);
+    }
     valueObject = ((ObjectNode) valueObject).remove(fields);
   }
 
@@ -146,9 +148,11 @@ public class TransformContext {
 
   private void dropJsonKeyFields(
       Collection<String> fields, Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    keyNativeSchema =
-        AvroUtil.dropAvroSchemaFields(
-            (org.apache.avro.Schema) keyNativeSchema, fields, schemaCache);
+    if (keyNativeSchema != null) {
+      keyNativeSchema =
+          AvroUtil.dropAvroSchemaFields(
+              (org.apache.avro.Schema) keyNativeSchema, fields, schemaCache);
+    }
     keyObject = ((ObjectNode) keyObject).remove(fields);
   }
 
@@ -175,9 +179,11 @@ public class TransformContext {
   private void addOrReplaceJsonValueFields(
       Map<org.apache.avro.Schema.Field, Object> newFields,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    valueNativeSchema =
-        AvroUtil.addOrReplaceAvroSchemaFields(
-            (org.apache.avro.Schema) valueNativeSchema, newFields.keySet(), schemaCache);
+    if (valueNativeSchema != null) {
+      valueNativeSchema =
+          AvroUtil.addOrReplaceAvroSchemaFields(
+              (org.apache.avro.Schema) valueNativeSchema, newFields.keySet(), schemaCache);
+    }
     ObjectNode json = (ObjectNode) valueObject;
     newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
     valueObject = json;
@@ -206,9 +212,11 @@ public class TransformContext {
   private void addOrReplaceJsonKeyFields(
       Map<org.apache.avro.Schema.Field, Object> newFields,
       Map<org.apache.avro.Schema, org.apache.avro.Schema> schemaCache) {
-    keyNativeSchema =
-        AvroUtil.addOrReplaceAvroSchemaFields(
-            (org.apache.avro.Schema) keyNativeSchema, newFields.keySet(), schemaCache);
+    if (keyNativeSchema != null) {
+      keyNativeSchema =
+          AvroUtil.addOrReplaceAvroSchemaFields(
+              (org.apache.avro.Schema) keyNativeSchema, newFields.keySet(), schemaCache);
+    }
     ObjectNode json = (ObjectNode) keyObject;
     newFields.forEach((field, value) -> json.set(field.name(), OBJECT_MAPPER.valueToTree(value)));
     keyObject = json;

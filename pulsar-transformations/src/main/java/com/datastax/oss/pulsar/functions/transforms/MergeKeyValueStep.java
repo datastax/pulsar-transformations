@@ -69,11 +69,15 @@ public class MergeKeyValueStep implements TransformStep {
           (org.apache.avro.Schema) transformContext.getKeyNativeSchema();
       org.apache.avro.Schema avroValueSchema =
           (org.apache.avro.Schema) transformContext.getValueNativeSchema();
-      org.apache.avro.Schema mergedSchema = getMergedSchema(avroKeySchema, avroValueSchema);
+      if (avroValueSchema != null && avroKeySchema != null) {
+        org.apache.avro.Schema mergedSchema = getMergedSchema(avroKeySchema, avroValueSchema);
+        transformContext.setValueNativeSchema(mergedSchema);
+      } else {
+        transformContext.setValueNativeSchema(null);
+      }
       ObjectNode newValue = ((ObjectNode) keyObject).deepCopy();
       newValue.setAll(((ObjectNode) valueObject).deepCopy());
       transformContext.setValueObject(newValue);
-      transformContext.setValueNativeSchema(mergedSchema);
     }
   }
 
