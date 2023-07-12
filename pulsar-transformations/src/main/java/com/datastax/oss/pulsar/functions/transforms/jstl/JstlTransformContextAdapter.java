@@ -187,7 +187,8 @@ public class JstlTransformContextAdapter {
 
       if (node instanceof ObjectNode) {
         return LazyMap.lazyMap(
-            new HashMap<>(), new JsonNodeTransformer(node, schema.getField(key).schema()));
+            new HashMap<>(),
+            new JsonNodeTransformer(node, schema != null ? schema.getField(key).schema() : null));
       }
       try {
         Object value = OBJECT_MAPPER.treeToValue(node, Object.class);
@@ -199,6 +200,9 @@ public class JstlTransformContextAdapter {
   }
 
   private static Object adaptValue(Schema schema, String key, Object value) {
+    if (schema == null) {
+      return value;
+    }
     LogicalType logicalType = AvroUtil.getLogicalType(schema.getField(key).schema());
     if (LogicalTypes.date().equals(logicalType)) {
       return LocalDate.ofEpochDay((int) value);
