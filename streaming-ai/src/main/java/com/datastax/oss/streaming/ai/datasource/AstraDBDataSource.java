@@ -147,6 +147,11 @@ public class AstraDBDataSource implements QueryStepDataSource {
 
   public CqlSession buildCqlSession(String username, String password, String secureBundle) {
 
+    // Remove the base64: prefix if present
+    if (secureBundle.startsWith("base64:")) {
+      secureBundle = secureBundle.substring("base64:".length());
+    }
+
     byte[] secureBundleDecoded = Base64.getDecoder().decode(secureBundle);
     CqlSessionBuilder builder =
         new CqlSessionBuilder()
