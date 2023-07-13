@@ -270,14 +270,13 @@ public class TransformFunctionUtil {
             AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
                 AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
                     .options(config.getOptions())
-                    .arguments(config.getArguments())
-                    .modelUrl(config.getModelUrl());
+                    .arguments(config.getArguments());
             String modelUrl = config.getModelUrl();
             if (!Strings.isNullOrEmpty(config.getModel())) {
               builder.modelName(config.getModel());
 
               // automatically build the model URL if not provided
-              if (!Strings.isNullOrEmpty(modelUrl)) {
+              if (Strings.isNullOrEmpty(modelUrl)) {
                 modelUrl = DLJ_BASE_URL + config.getModel();
                 log.info("Automatically computed model URL {}", modelUrl);
               }
