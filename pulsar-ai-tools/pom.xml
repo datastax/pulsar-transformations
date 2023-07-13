@@ -36,6 +36,11 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>${pulsar.groupId}</groupId>
+      <artifactId>pulsar-functions-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>ai.djl</groupId>
       <artifactId>api</artifactId>
       <version>${djl.version}</version>
@@ -84,11 +89,6 @@
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>${pulsar.groupId}</groupId>
-      <artifactId>pulsar-functions-api</artifactId>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
