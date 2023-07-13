@@ -13,12 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.aitools;
+package com.datastax.oss.streaming.ai.jstl.predicate;
 
-import com.datastax.oss.pulsar.functions.transforms.TransformFunction;
+import com.datastax.oss.streaming.ai.TransformStep;
+import lombok.Data;
 
 /**
- * This is a dummy class to allow having a different classname for the "ai-tools" function. In this
- * module you can find a different config-schema.yaml file that unlocks the "ai-tools" function.
+ * A convenience class to group a step and its predicate together. A convenience class to group a
+ * step and its predicate together.
  */
-public class GenAIToolkit extends TransformFunction {}
+@Data
+public class StepPredicatePair {
+  /** The candidate transform step to be invoked. */
+  private final TransformStep transformStep;
+  /** A predicate that decides whether the transform step should be invoked or not. */
+  private final TransformPredicate predicate;
+}

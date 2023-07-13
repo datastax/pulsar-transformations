@@ -13,12 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.aitools;
+package com.datastax.oss.streaming.ai.model;
 
-import com.datastax.oss.pulsar.functions.transforms.TransformFunction;
+public enum ComputeFieldType {
+  STRING,
+  INT8,
+  INT16,
+  INT32,
+  INT64,
+  FLOAT,
+  DOUBLE,
+  BOOLEAN,
+  DATE,
+  TIME,
+  TIMESTAMP,
+  INSTANT,
+  LOCAL_DATE,
+  LOCAL_TIME,
+  LOCAL_DATE_TIME,
 
-/**
- * This is a dummy class to allow having a different classname for the "ai-tools" function. In this
- * module you can find a different config-schema.yaml file that unlocks the "ai-tools" function.
- */
-public class GenAIToolkit extends TransformFunction {}
+  /**
+   * @deprecated Use TIMESTAMP, INSTANT or LOCAL_DATE_TIME instead to represent a date-time value.
+   */
+  @Deprecated
+  DATETIME,
+  BYTES,
+  DECIMAL
+}

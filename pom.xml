@@ -47,8 +47,12 @@
     <nifi-nar-maven-plugin.version>1.5.1</nifi-nar-maven-plugin.version>
     <djl.version>0.22.1</djl.version>
     <jmustache.version>1.15</jmustache.version>
+    <json-schema-validator.version>1.0.72</json-schema-validator.version>
+    <tomcat-embed-el.version>10.1.4</tomcat-embed-el.version>
+    <commons-collections4.version>4.4</commons-collections4.version>
   </properties>
   <modules>
+    <module>streaming-ai</module>
     <module>pulsar-transformations</module>
     <module>pulsar-ai-tools</module>
     <module>tests</module>
@@ -61,6 +65,18 @@
         <version>${djl.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>ai.djl.pytorch</groupId>
+        <artifactId>pytorch-jni</artifactId>
+        <version>2.0.0-${djl.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>ai.djl.pytorch</groupId>
+        <artifactId>pytorch-native-cpu</artifactId>
+        <!--classifier>osx-aarch64</classifier-->
+        <classifier>osx-x86_64</classifier>
+        <version>2.0.0</version>
       </dependency>
       <dependency>
         <groupId>${pulsar.groupId}</groupId>
@@ -85,6 +101,16 @@
         <version>${pulsar.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.networknt</groupId>
+        <artifactId>json-schema-validator</artifactId>
+        <version>${json-schema-validator.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.azure</groupId>
         <artifactId>azure-ai-openai</artifactId>
         <version>${azure-ai-openai.version}</version>
@@ -98,6 +124,16 @@
         <groupId>com.datastax.oss</groupId>
         <artifactId>java-driver-core</artifactId>
         <version>${cassandra.driver.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.tomcat.embed</groupId>
+        <artifactId>tomcat-embed-el</artifactId>
+        <version>${tomcat-embed-el.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-collections4</artifactId>
+        <version>${commons-collections4.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
