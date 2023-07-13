@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.aitools;
+package com.datastax.oss.streaming.ai.jstl.predicate;
 
-import com.datastax.oss.pulsar.functions.transforms.TransformFunction;
+import com.datastax.oss.streaming.ai.TransformContext;
+import java.util.function.Predicate;
 
 /**
- * This is a dummy class to allow having a different classname for the "ai-tools" function. In this
- * module you can find a different config-schema.yaml file that unlocks the "ai-tools" function.
+ * A predicate functional interface that applies to {@link TransformContext}. Implementations of
+ * this interface should respect the current record encapsulated in the {@link TransformContext}
+ * when evaluating the predicate.
  */
-public class GenAIToolkit extends TransformFunction {}
+@FunctionalInterface
+public interface TransformPredicate extends Predicate<TransformContext> {}

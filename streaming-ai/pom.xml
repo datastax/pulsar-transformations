@@ -23,59 +23,47 @@
     <version>3.1.1-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>pulsar-transformations</artifactId>
+  <artifactId>streaming-ai</artifactId>
   <packaging>jar</packaging>
-  <name>Pulsar Transformations</name>
+  <name>Streaming AI transformations</name>
   <properties>
     <build.dir>${project.build.directory}</build.dir>
+    <jmh.version>1.35</jmh.version>
   </properties>
   <dependencies>
     <dependency>
-      <groupId>com.datastax.oss</groupId>
-      <artifactId>streaming-ai</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
       <groupId>ai.djl</groupId>
       <artifactId>api</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>ai.djl.pytorch</groupId>
       <artifactId>pytorch-engine</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>ai.djl.pytorch</groupId>
       <artifactId>pytorch-jni</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>ai.djl.pytorch</groupId>
       <artifactId>pytorch-native-cpu</artifactId>
       <!--classifier>osx-aarch64</classifier-->
       <classifier>osx-x86_64</classifier>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>ai.djl.pytorch</groupId>
       <artifactId>pytorch-model-zoo</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>ai.djl.huggingface</groupId>
       <artifactId>tokenizers</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-functions-api</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -98,17 +86,14 @@
           <artifactId>netty-codec</artifactId>
         </exclusion>
       </exclusions>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.samskivert</groupId>
       <artifactId>jmustache</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.testng</groupId>
@@ -131,6 +116,27 @@
       <scope>provided</scope>
       <optional>true</optional>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.tomcat.embed/tomcat-embed-el -->
+    <dependency>
+      <groupId>org.apache.tomcat.embed</groupId>
+      <artifactId>tomcat-embed-el</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>${jmh.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>${jmh.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
@@ -147,26 +153,4 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.nifi</groupId>
-        <artifactId>nifi-nar-maven-plugin</artifactId>
-        <version>${nifi-nar-maven-plugin.version}</version>
-        <extensions>true</extensions>
-        <configuration>
-          <finalName>${project.artifactId}-${project.version}</finalName>
-        </configuration>
-        <executions>
-          <execution>
-            <id>default-nar</id>
-            <phase>package</phase>
-            <goals>
-              <goal>nar</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
 </project>

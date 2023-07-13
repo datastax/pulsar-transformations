@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.transforms;
+package com.datastax.oss.streaming.ai;
 
 import static com.datastax.oss.streaming.ai.FlattenStep.AVRO_READ_OFFSET_PROP;
 import static org.testng.Assert.assertEquals;
@@ -21,6 +21,8 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
+import com.datastax.oss.streaming.ai.model.TransformSchemaType;
+import com.datastax.oss.streaming.ai.util.TransformFunctionUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -37,6 +39,7 @@ import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
@@ -54,8 +57,10 @@ import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.GenericSchema;
+import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaInfoProvider;
+import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.client.impl.schema.SchemaInfoImpl;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.common.schema.KeyValue;
@@ -68,7 +73,17 @@ import org.apache.pulsar.functions.api.utils.FunctionRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class Utils {
+
+  public static Record<GenericObject> process(Record<GenericObject> record, TransformStep step)
+      throws Exception {
+    Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
+    TransformContext transformContext =
+        newTransformContext(context, record.getValue().getNativeObject());
+    step.process(transformContext);
+    return send(context, transformContext);
+  }
 
   public static GenericData.Record getRecord(Schema<?> schema, byte[] value) throws IOException {
     DatumReader<GenericData.Record> reader =
@@ -78,21 +93,27 @@ public class Utils {
   }
 
   public static Record<GenericObject> createTestAvroKeyValueRecord() {
+    return createTestStructKeyValueRecord(SchemaType.AVRO);
+  }
+
+  public static Record<GenericObject> createTestJsonKeyValueRecord() {
+    return createTestStructKeyValueRecord(SchemaType.JSON);
+  }
+
+  public static Record<GenericObject> createTestStructKeyValueRecord(SchemaType schemaType) {
     RecordSchemaBuilder keySchemaBuilder =
         org.apache.pulsar.client.api.schema.SchemaBuilder.record("record");
     keySchemaBuilder.field("keyField1").type(SchemaType.STRING);
     keySchemaBuilder.field("keyField2").type(SchemaType.STRING);
     keySchemaBuilder.field("keyField3").type(SchemaType.STRING);
-    GenericSchema<GenericRecord> keySchema =
-        Schema.generic(keySchemaBuilder.build(SchemaType.AVRO));
+    GenericSchema<GenericRecord> keySchema = Schema.generic(keySchemaBuilder.build(schemaType));
 
     RecordSchemaBuilder valueSchemaBuilder =
         org.apache.pulsar.client.api.schema.SchemaBuilder.record("record");
     valueSchemaBuilder.field("valueField1").type(SchemaType.STRING);
     valueSchemaBuilder.field("valueField2").type(SchemaType.STRING);
     valueSchemaBuilder.field("valueField3").type(SchemaType.STRING);
-    GenericSchema<GenericRecord> valueSchema =
-        Schema.generic(valueSchemaBuilder.build(SchemaType.AVRO));
+    GenericSchema<GenericRecord> valueSchema = Schema.generic(valueSchemaBuilder.build(schemaType));
 
     GenericRecord keyRecord =
         keySchema
@@ -135,9 +156,58 @@ public class Utils {
     GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
 
     Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
-        new NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
 
-    return new TestRecord<>(pulsarValueSchema, valueRecord, key);
+    return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
+  }
+
+  public static Record<GenericObject> createNestedJSONRecord(int levels, String key) {
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.JSON);
+
+    return new Utils.TestRecord<>(pulsarValueSchema, valueRecord, key);
+  }
+
+  public static Record<GenericObject> createNestedAvroKeyValueRecord(int levels) {
+    GenericAvroRecord keyRecord = createNestedAvroRecord(levels);
+    GenericAvroRecord valueRecord = createNestedAvroRecord(levels);
+
+    GenericObject genericObject =
+        new GenericObject() {
+          @Override
+          public SchemaType getSchemaType() {
+            return SchemaType.KEY_VALUE;
+          }
+
+          @Override
+          public Object getNativeObject() {
+            return new KeyValue<>(keyRecord, valueRecord);
+          }
+        };
+
+    Schema<org.apache.avro.generic.GenericRecord> pulsarKeySchema =
+        new Utils.NativeSchemaWrapper(keyRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+    Schema<org.apache.avro.generic.GenericRecord> pulsarValueSchema =
+        new Utils.NativeSchemaWrapper(valueRecord.getAvroRecord().getSchema(), SchemaType.AVRO);
+
+    Schema<KeyValue<org.apache.avro.generic.GenericRecord, org.apache.avro.generic.GenericRecord>>
+        keyValueSchema =
+            Schema.KeyValue(pulsarKeySchema, pulsarValueSchema, KeyValueEncodingType.SEPARATED);
+    Map<String, String> props = new HashMap<>();
+    props.put("p1", "v1");
+    props.put("p2", "v2");
+
+    return TestRecord.<GenericObject>builder()
+        .schema(keyValueSchema)
+        .value(genericObject)
+        .key("key1")
+        .topicName("topic-1")
+        .destinationTopic("dest-topic-1")
+        .eventTime(1662493532L)
+        .properties(props)
+        .build();
   }
 
   /**
@@ -243,6 +313,18 @@ public class Utils {
     return new GenericAvroRecord(new byte[0], nextLevelSchema, pulsarFields, nextLevelRecord);
   }
 
+  public static TransformContext createContextWithPrimitiveRecord(
+      Schema<?> schema, Object value, String key) {
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            schema,
+            AutoConsumeSchema.wrapPrimitiveObject(
+                value, schema.getSchemaInfo().getType(), new byte[] {}),
+            key);
+    return newTransformContext(
+        new Utils.TestContext(record, new HashMap<>()), record.getValue().getNativeObject());
+  }
+
   static void assertOptionalField(
       GenericData.Record record,
       String fieldName,
@@ -272,6 +354,208 @@ public class Utils {
     assertFalse(field.schema().isUnion());
     assertEquals(field.schema().getType(), expectedType);
     assertEquals(record.get(fieldName), expectedValue);
+  }
+
+  public static TransformContext newTransformContext(Context context, Object value) {
+    return newTransformContext(context, value, true);
+  }
+
+  public static TransformContext newTransformContext(
+      Context context, Object value, boolean attemptJsonConversion) {
+    Record<?> currentRecord = context.getCurrentRecord();
+    TransformContext transformContext = new TransformContext();
+    transformContext.setInputTopic(currentRecord.getTopicName().orElse(null));
+    transformContext.setOutputTopic(currentRecord.getDestinationTopic().orElse(null));
+    transformContext.setKey(currentRecord.getKey().orElse(null));
+    transformContext.setEventTime(currentRecord.getEventTime().orElse(null));
+
+    if (currentRecord.getProperties() != null) {
+      transformContext.setProperties(new HashMap<>(currentRecord.getProperties()));
+    }
+
+    Schema<?> schema = currentRecord.getSchema();
+    if (schema instanceof KeyValueSchema && value instanceof KeyValue) {
+      KeyValueSchema<?, ?> kvSchema = (KeyValueSchema<?, ?>) schema;
+      KeyValue<?, ?> kv = (KeyValue<?, ?>) value;
+      Schema<?> keySchema = kvSchema.getKeySchema();
+      Schema<?> valueSchema = kvSchema.getValueSchema();
+      transformContext.setKeySchemaType(pulsarSchemaToTransformSchemaType(keySchema));
+      transformContext.setKeyNativeSchema(getNativeSchema(keySchema));
+      transformContext.setKeyObject(
+          keySchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getKey()).getNativeObject()
+              : kv.getKey());
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(valueSchema));
+      transformContext.setValueNativeSchema(getNativeSchema(valueSchema));
+      transformContext.setValueObject(
+          valueSchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getValue()).getNativeObject()
+              : kv.getValue());
+      transformContext
+          .getCustomContext()
+          .put("keyValueEncodingType", kvSchema.getKeyValueEncodingType());
+    } else {
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(schema));
+      transformContext.setValueNativeSchema(getNativeSchema(schema));
+      transformContext.setValueObject(value);
+    }
+    if (attemptJsonConversion) {
+      transformContext.setKeyObject(
+          TransformFunctionUtil.attemptJsonConversion(transformContext.getKeyObject()));
+      transformContext.setValueObject(
+          TransformFunctionUtil.attemptJsonConversion(transformContext.getValueObject()));
+    }
+    return transformContext;
+  }
+
+  private static Object getNativeSchema(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
+    return schema.getNativeSchema().orElse(null);
+  }
+
+  private static TransformSchemaType pulsarSchemaToTransformSchemaType(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
+    switch (schema.getSchemaInfo().getType()) {
+      case INT8:
+        return TransformSchemaType.INT8;
+      case INT16:
+        return TransformSchemaType.INT16;
+      case INT32:
+        return TransformSchemaType.INT32;
+      case INT64:
+        return TransformSchemaType.INT64;
+      case FLOAT:
+        return TransformSchemaType.FLOAT;
+      case DOUBLE:
+        return TransformSchemaType.DOUBLE;
+      case BOOLEAN:
+        return TransformSchemaType.BOOLEAN;
+      case STRING:
+        return TransformSchemaType.STRING;
+      case BYTES:
+        return TransformSchemaType.BYTES;
+      case DATE:
+        return TransformSchemaType.DATE;
+      case TIME:
+        return TransformSchemaType.TIME;
+      case TIMESTAMP:
+        return TransformSchemaType.TIMESTAMP;
+      case INSTANT:
+        return TransformSchemaType.INSTANT;
+      case LOCAL_DATE:
+        return TransformSchemaType.LOCAL_DATE;
+      case LOCAL_TIME:
+        return TransformSchemaType.LOCAL_TIME;
+      case LOCAL_DATE_TIME:
+        return TransformSchemaType.LOCAL_DATE_TIME;
+      case JSON:
+        return TransformSchemaType.JSON;
+      case AVRO:
+        return TransformSchemaType.AVRO;
+      case PROTOBUF:
+        return TransformSchemaType.PROTOBUF;
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported schema type " + schema.getSchemaInfo().getType());
+    }
+  }
+
+  public static Record<GenericObject> send(Context context, TransformContext transformContext)
+      throws IOException {
+    if (transformContext.isDropCurrentRecord()) {
+      return null;
+    }
+    transformContext.convertAvroToBytes();
+    transformContext.convertMapToStringOrBytes();
+
+    Schema outputSchema;
+    Object outputObject;
+    if (transformContext.getKeySchemaType() != null) {
+      KeyValueEncodingType keyValueEncodingType =
+          (KeyValueEncodingType) transformContext.getCustomContext().get("keyValueEncodingType");
+      outputSchema =
+          Schema.KeyValue(
+              buildSchema(
+                  transformContext.getKeySchemaType(), transformContext.getKeyNativeSchema()),
+              buildSchema(
+                  transformContext.getValueSchemaType(), transformContext.getValueNativeSchema()),
+              keyValueEncodingType != null ? keyValueEncodingType : KeyValueEncodingType.INLINE);
+      Object outputKeyObject = transformContext.getKeyObject();
+      Object outputValueObject = transformContext.getValueObject();
+      outputObject = new KeyValue<>(outputKeyObject, outputValueObject);
+    } else {
+      outputSchema =
+          buildSchema(
+              transformContext.getValueSchemaType(), transformContext.getValueNativeSchema());
+      outputObject = transformContext.getValueObject();
+    }
+
+    if (log.isDebugEnabled()) {
+      log.debug("output {} schema {}", outputObject, outputSchema);
+    }
+
+    FunctionRecord.FunctionRecordBuilder<GenericObject> recordBuilder =
+        context
+            .newOutputRecordBuilder(outputSchema)
+            .destinationTopic(transformContext.getOutputTopic())
+            .value(outputObject)
+            .properties(transformContext.getProperties());
+
+    if (transformContext.getKeySchemaType() == null && transformContext.getKey() != null) {
+      recordBuilder.key(transformContext.getKey());
+    }
+
+    return recordBuilder.build();
+  }
+
+  private static Schema<?> buildSchema(TransformSchemaType schemaType, Object nativeSchema) {
+    if (schemaType == null) {
+      throw new IllegalArgumentException("Schema type should not be null.");
+    }
+    switch (schemaType) {
+      case INT8:
+        return Schema.INT8;
+      case INT16:
+        return Schema.INT16;
+      case INT32:
+        return Schema.INT32;
+      case INT64:
+        return Schema.INT64;
+      case FLOAT:
+        return Schema.FLOAT;
+      case DOUBLE:
+        return Schema.DOUBLE;
+      case BOOLEAN:
+        return Schema.BOOL;
+      case STRING:
+        return Schema.STRING;
+      case BYTES:
+        return Schema.BYTES;
+      case DATE:
+        return Schema.DATE;
+      case TIME:
+        return Schema.TIME;
+      case TIMESTAMP:
+        return Schema.TIMESTAMP;
+      case INSTANT:
+        return Schema.INSTANT;
+      case LOCAL_DATE:
+        return Schema.LOCAL_DATE;
+      case LOCAL_TIME:
+        return Schema.LOCAL_TIME;
+      case LOCAL_DATE_TIME:
+        return Schema.LOCAL_DATE_TIME;
+      case AVRO:
+        return Schema.NATIVE_AVRO(nativeSchema);
+      case JSON:
+        return new JsonNodeSchema((org.apache.avro.Schema) nativeSchema);
+      default:
+        throw new IllegalArgumentException("Unsupported schema type " + schemaType);
+    }
   }
 
   @Builder
@@ -651,7 +935,8 @@ public class Utils {
     public void recordMetric(String metricName, double value) {}
   }
 
-  public static class NativeSchemaWrapper implements Schema<org.apache.avro.generic.GenericRecord> {
+  public static class NativeSchemaWrapper
+      implements org.apache.pulsar.client.api.Schema<org.apache.avro.generic.GenericRecord> {
 
     private final SchemaInfo pulsarSchemaInfo;
     private final org.apache.avro.Schema nativeSchema;

@@ -15,40 +15,53 @@
  */
 package com.datastax.oss.pulsar.functions.transforms;
 
-import static com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
+import static com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
 import com.datastax.oss.driver.shaded.guava.common.base.Strings;
-import com.datastax.oss.pulsar.functions.transforms.datasource.AstraDBDataSource;
-import com.datastax.oss.pulsar.functions.transforms.datasource.QueryStepDataSource;
-import com.datastax.oss.pulsar.functions.transforms.embeddings.AbstractHuggingFaceEmbeddingService;
-import com.datastax.oss.pulsar.functions.transforms.embeddings.EmbeddingsService;
-import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceEmbeddingService;
-import com.datastax.oss.pulsar.functions.transforms.embeddings.HuggingFaceRestEmbeddingService;
-import com.datastax.oss.pulsar.functions.transforms.embeddings.OpenAIEmbeddingsService;
-import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.JstlPredicate;
-import com.datastax.oss.pulsar.functions.transforms.jstl.predicate.StepPredicatePair;
-import com.datastax.oss.pulsar.functions.transforms.model.ComputeField;
-import com.datastax.oss.pulsar.functions.transforms.model.ComputeFieldType;
-import com.datastax.oss.pulsar.functions.transforms.model.TransformSchemaType;
-import com.datastax.oss.pulsar.functions.transforms.model.config.CastConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.ChatCompletionsConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeAIEmbeddingsConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.ComputeConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.DataSourceConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.DropFieldsConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.FlattenConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.HuggingFaceConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.OpenAIProvider;
-import com.datastax.oss.pulsar.functions.transforms.model.config.QueryConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.StepConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.TransformStepConfig;
-import com.datastax.oss.pulsar.functions.transforms.model.config.UnwrapKeyValueConfig;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.datastax.oss.streaming.ai.CastStep;
+import com.datastax.oss.streaming.ai.ChatCompletionsStep;
+import com.datastax.oss.streaming.ai.ComputeAIEmbeddingsStep;
+import com.datastax.oss.streaming.ai.ComputeStep;
+import com.datastax.oss.streaming.ai.DropFieldStep;
+import com.datastax.oss.streaming.ai.DropStep;
+import com.datastax.oss.streaming.ai.FlattenStep;
+import com.datastax.oss.streaming.ai.JsonNodeSchema;
+import com.datastax.oss.streaming.ai.MergeKeyValueStep;
+import com.datastax.oss.streaming.ai.QueryStep;
+import com.datastax.oss.streaming.ai.TransformContext;
+import com.datastax.oss.streaming.ai.TransformStep;
+import com.datastax.oss.streaming.ai.UnwrapKeyValueStep;
+import com.datastax.oss.streaming.ai.datasource.AstraDBDataSource;
+import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
+import com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService;
+import com.datastax.oss.streaming.ai.embeddings.EmbeddingsService;
+import com.datastax.oss.streaming.ai.embeddings.HuggingFaceEmbeddingService;
+import com.datastax.oss.streaming.ai.embeddings.HuggingFaceRestEmbeddingService;
+import com.datastax.oss.streaming.ai.embeddings.OpenAIEmbeddingsService;
+import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
+import com.datastax.oss.streaming.ai.jstl.predicate.StepPredicatePair;
+import com.datastax.oss.streaming.ai.model.ComputeField;
+import com.datastax.oss.streaming.ai.model.ComputeFieldType;
+import com.datastax.oss.streaming.ai.model.TransformSchemaType;
+import com.datastax.oss.streaming.ai.model.config.CastConfig;
+import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
+import com.datastax.oss.streaming.ai.model.config.ComputeAIEmbeddingsConfig;
+import com.datastax.oss.streaming.ai.model.config.ComputeConfig;
+import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
+import com.datastax.oss.streaming.ai.model.config.DropFieldsConfig;
+import com.datastax.oss.streaming.ai.model.config.FlattenConfig;
+import com.datastax.oss.streaming.ai.model.config.HuggingFaceConfig;
+import com.datastax.oss.streaming.ai.model.config.OpenAIConfig;
+import com.datastax.oss.streaming.ai.model.config.OpenAIProvider;
+import com.datastax.oss.streaming.ai.model.config.QueryConfig;
+import com.datastax.oss.streaming.ai.model.config.StepConfig;
+import com.datastax.oss.streaming.ai.model.config.TransformStepConfig;
+import com.datastax.oss.streaming.ai.model.config.UnwrapKeyValueConfig;
+import com.datastax.oss.streaming.ai.util.TransformFunctionUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -157,7 +170,6 @@ import org.apache.pulsar.functions.api.utils.FunctionRecord;
 public class TransformFunction
     implements Function<GenericObject, Record<GenericObject>>, TransformStep {
 
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final List<String> FIELD_NAMES =
       Arrays.asList("value", "key", "destinationTopic", "messageKey", "topicName", "eventTime");
   private final List<StepPredicatePair> steps = new ArrayList<>();
@@ -314,6 +326,110 @@ public class TransformFunction
         newTransformContext(context, nativeObject, transformConfig.isAttemptJsonConversion());
     process(transformContext);
     return send(context, transformContext);
+  }
+
+  public static TransformContext newTransformContext(
+      Context context, Object value, boolean attemptJsonConversion) {
+    Record<?> currentRecord = context.getCurrentRecord();
+    TransformContext transformContext = new TransformContext();
+    transformContext.setInputTopic(currentRecord.getTopicName().orElse(null));
+    transformContext.setOutputTopic(currentRecord.getDestinationTopic().orElse(null));
+    transformContext.setKey(currentRecord.getKey().orElse(null));
+    transformContext.setEventTime(currentRecord.getEventTime().orElse(null));
+
+    if (currentRecord.getProperties() != null) {
+      transformContext.setProperties(new HashMap<>(currentRecord.getProperties()));
+    }
+
+    Schema<?> schema = currentRecord.getSchema();
+    if (schema instanceof KeyValueSchema && value instanceof KeyValue) {
+      KeyValueSchema<?, ?> kvSchema = (KeyValueSchema<?, ?>) schema;
+      KeyValue<?, ?> kv = (KeyValue<?, ?>) value;
+      Schema<?> keySchema = kvSchema.getKeySchema();
+      Schema<?> valueSchema = kvSchema.getValueSchema();
+      transformContext.setKeySchemaType(pulsarSchemaToTransformSchemaType(keySchema));
+      transformContext.setKeyNativeSchema(getNativeSchema(keySchema));
+      transformContext.setKeyObject(
+          keySchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getKey()).getNativeObject()
+              : kv.getKey());
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(valueSchema));
+      transformContext.setValueNativeSchema(getNativeSchema(valueSchema));
+      transformContext.setValueObject(
+          valueSchema.getSchemaInfo().getType().isStruct()
+              ? ((GenericObject) kv.getValue()).getNativeObject()
+              : kv.getValue());
+      transformContext
+          .getCustomContext()
+          .put("keyValueEncodingType", kvSchema.getKeyValueEncodingType());
+    } else {
+      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(schema));
+      transformContext.setValueNativeSchema(getNativeSchema(schema));
+      transformContext.setValueObject(value);
+    }
+    if (attemptJsonConversion) {
+      transformContext.setKeyObject(
+          TransformFunctionUtil.attemptJsonConversion(transformContext.getKeyObject()));
+      transformContext.setValueObject(
+          TransformFunctionUtil.attemptJsonConversion(transformContext.getValueObject()));
+    }
+    return transformContext;
+  }
+
+  private static Object getNativeSchema(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
+    return schema.getNativeSchema().orElse(null);
+  }
+
+  private static TransformSchemaType pulsarSchemaToTransformSchemaType(Schema<?> schema) {
+    if (schema == null) {
+      return null;
+    }
+    switch (schema.getSchemaInfo().getType()) {
+      case INT8:
+        return TransformSchemaType.INT8;
+      case INT16:
+        return TransformSchemaType.INT16;
+      case INT32:
+        return TransformSchemaType.INT32;
+      case INT64:
+        return TransformSchemaType.INT64;
+      case FLOAT:
+        return TransformSchemaType.FLOAT;
+      case DOUBLE:
+        return TransformSchemaType.DOUBLE;
+      case BOOLEAN:
+        return TransformSchemaType.BOOLEAN;
+      case STRING:
+        return TransformSchemaType.STRING;
+      case BYTES:
+        return TransformSchemaType.BYTES;
+      case DATE:
+        return TransformSchemaType.DATE;
+      case TIME:
+        return TransformSchemaType.TIME;
+      case TIMESTAMP:
+        return TransformSchemaType.TIMESTAMP;
+      case INSTANT:
+        return TransformSchemaType.INSTANT;
+      case LOCAL_DATE:
+        return TransformSchemaType.LOCAL_DATE;
+      case LOCAL_TIME:
+        return TransformSchemaType.LOCAL_TIME;
+      case LOCAL_DATE_TIME:
+        return TransformSchemaType.LOCAL_DATE_TIME;
+      case JSON:
+        return TransformSchemaType.JSON;
+      case AVRO:
+        return TransformSchemaType.AVRO;
+      case PROTOBUF:
+        return TransformSchemaType.PROTOBUF;
+      default:
+        throw new IllegalArgumentException(
+            "Unsupported schema type " + schema.getSchemaInfo().getType());
+    }
   }
 
   @Override
@@ -639,126 +755,5 @@ public class TransformFunction
     }
     dataSource.initialize(dataSourceConfig);
     return dataSource;
-  }
-
-  public static TransformContext newTransformContext(Context context, Object value) {
-    return newTransformContext(context, value, true);
-  }
-
-  public static TransformContext newTransformContext(
-      Context context, Object value, boolean attemptJsonConversion) {
-    Record<?> currentRecord = context.getCurrentRecord();
-    TransformContext transformContext = new TransformContext();
-    transformContext.setInputTopic(currentRecord.getTopicName().orElse(null));
-    transformContext.setOutputTopic(currentRecord.getDestinationTopic().orElse(null));
-    transformContext.setKey(currentRecord.getKey().orElse(null));
-    transformContext.setEventTime(currentRecord.getEventTime().orElse(null));
-
-    if (currentRecord.getProperties() != null) {
-      transformContext.setProperties(new HashMap<>(currentRecord.getProperties()));
-    }
-
-    Schema<?> schema = currentRecord.getSchema();
-    if (schema instanceof KeyValueSchema && value instanceof KeyValue) {
-      KeyValueSchema<?, ?> kvSchema = (KeyValueSchema<?, ?>) schema;
-      KeyValue<?, ?> kv = (KeyValue<?, ?>) value;
-      Schema<?> keySchema = kvSchema.getKeySchema();
-      Schema<?> valueSchema = kvSchema.getValueSchema();
-      transformContext.setKeySchemaType(pulsarSchemaToTransformSchemaType(keySchema));
-      transformContext.setKeyNativeSchema(getNativeSchema(keySchema));
-      transformContext.setKeyObject(
-          keySchema.getSchemaInfo().getType().isStruct()
-              ? ((GenericObject) kv.getKey()).getNativeObject()
-              : kv.getKey());
-      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(valueSchema));
-      transformContext.setValueNativeSchema(getNativeSchema(valueSchema));
-      transformContext.setValueObject(
-          valueSchema.getSchemaInfo().getType().isStruct()
-              ? ((GenericObject) kv.getValue()).getNativeObject()
-              : kv.getValue());
-      transformContext
-          .getCustomContext()
-          .put("keyValueEncodingType", kvSchema.getKeyValueEncodingType());
-    } else {
-      transformContext.setValueSchemaType(pulsarSchemaToTransformSchemaType(schema));
-      transformContext.setValueNativeSchema(getNativeSchema(schema));
-      transformContext.setValueObject(value);
-    }
-    if (attemptJsonConversion) {
-      transformContext.setKeyObject(attemptJsonConversion(transformContext.getKeyObject()));
-      transformContext.setValueObject(attemptJsonConversion(transformContext.getValueObject()));
-    }
-    return transformContext;
-  }
-
-  private static Object getNativeSchema(Schema<?> schema) {
-    if (schema == null) {
-      return null;
-    }
-    return schema.getNativeSchema().orElse(null);
-  }
-
-  private static TransformSchemaType pulsarSchemaToTransformSchemaType(Schema<?> schema) {
-    if (schema == null) {
-      return null;
-    }
-    switch (schema.getSchemaInfo().getType()) {
-      case INT8:
-        return TransformSchemaType.INT8;
-      case INT16:
-        return TransformSchemaType.INT16;
-      case INT32:
-        return TransformSchemaType.INT32;
-      case INT64:
-        return TransformSchemaType.INT64;
-      case FLOAT:
-        return TransformSchemaType.FLOAT;
-      case DOUBLE:
-        return TransformSchemaType.DOUBLE;
-      case BOOLEAN:
-        return TransformSchemaType.BOOLEAN;
-      case STRING:
-        return TransformSchemaType.STRING;
-      case BYTES:
-        return TransformSchemaType.BYTES;
-      case DATE:
-        return TransformSchemaType.DATE;
-      case TIME:
-        return TransformSchemaType.TIME;
-      case TIMESTAMP:
-        return TransformSchemaType.TIMESTAMP;
-      case INSTANT:
-        return TransformSchemaType.INSTANT;
-      case LOCAL_DATE:
-        return TransformSchemaType.LOCAL_DATE;
-      case LOCAL_TIME:
-        return TransformSchemaType.LOCAL_TIME;
-      case LOCAL_DATE_TIME:
-        return TransformSchemaType.LOCAL_DATE_TIME;
-      case JSON:
-        return TransformSchemaType.JSON;
-      case AVRO:
-        return TransformSchemaType.AVRO;
-      case PROTOBUF:
-        return TransformSchemaType.PROTOBUF;
-      default:
-        throw new IllegalArgumentException(
-            "Unsupported schema type " + schema.getSchemaInfo().getType());
-    }
-  }
-
-  public static Object attemptJsonConversion(Object value) {
-    try {
-      if (value instanceof String) {
-        return OBJECT_MAPPER.readValue((String) value, new TypeReference<Map<String, Object>>() {});
-      } else if (value instanceof byte[]) {
-        return OBJECT_MAPPER.readValue((byte[]) value, new TypeReference<Map<String, Object>>() {});
-      }
-    } catch (IOException e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Cannot convert value to json", e);
-      }
-    }
-    return value;
   }
 }

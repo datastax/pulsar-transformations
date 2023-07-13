@@ -13,12 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.datastax.oss.pulsar.functions.aitools;
+package com.datastax.oss.streaming.ai.model;
 
-import com.datastax.oss.pulsar.functions.transforms.TransformFunction;
+import java.util.Map;
+import lombok.Data;
 
-/**
- * This is a dummy class to allow having a different classname for the "ai-tools" function. In this
- * module you can find a different config-schema.yaml file that unlocks the "ai-tools" function.
- */
-public class GenAIToolkit extends TransformFunction {}
+@Data
+public class JsonRecord {
+  String topicName;
+  String destinationTopic;
+  Object key;
+  Object value;
+  Map<String, String> properties;
+  Long eventTime;
+}
