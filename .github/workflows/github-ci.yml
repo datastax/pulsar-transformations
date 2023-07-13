@@ -27,13 +27,13 @@ jobs:
         run: mvn -B license:check
 
       - name: Build with Maven skipTests
-        run: mvn -B clean install -DskipTests
+        run: mvn -B clean install -DskipTests -Dspotbugs.skip -Dlicense.skip
 
       - name: Spotbugs check
         run: mvn -B spotbugs:check
 
       - name: Unit tests
-        run: mvn -B test -DfailIfNoTests=false -pl streaming-ai,pulsar-transformations
+        run: mvn -B test -DfailIfNoTests=false -pl streaming-ai,pulsar-transformations,pulsar-ai-tools
 
   tests-ls:
     name: Integration tests on Luna Streaming
