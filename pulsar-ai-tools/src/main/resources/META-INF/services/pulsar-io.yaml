@@ -18,5 +18,5 @@
 #
 
 name: ai-tools
-description: AI tools
-functionClass: com.datastax.oss.pulsar.functions.transforms.TransformFunction
+description: Generative AI tools
+functionClass: com.datastax.oss.pulsar.functions.aitools.GenAIToolkit
