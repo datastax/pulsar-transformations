@@ -109,7 +109,7 @@ Output: `{"field1": "value1", "field2": "value2"} (STRING)`
 
 Drops fields of structured data (Currently only AVRO and JSON are supported).
 
-Step name: `drop-field`
+Step name: `drop-fields`
 
 Parameters:
 
