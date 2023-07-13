@@ -5,7 +5,7 @@ and add some useful functions for Streaming generative AI.
 
 Currently available GenAI operations are:
 * [compute-ai-embeddings](#compute-ai-embeddings): computes an Embeddings vector for a given text.
-* [query](#qyery): queries a database and enrich the message with the results.
+* [query](#query): queries a database and enrich the message with the results.
 * [ai-chat-completions](#ai-chat-completions): calls an AI model to generate a text completion.
 
 
