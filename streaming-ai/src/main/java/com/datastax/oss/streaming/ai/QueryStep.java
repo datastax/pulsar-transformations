@@ -90,6 +90,9 @@ public class QueryStep implements TransformStep {
   private Object getField(
       String key, String field, TransformSchemaType keySchemaType, Object keyObject) {
     String fieldName = field.substring((key.length() + 1));
+    if (keyObject instanceof Map) {
+      return ((Map<String, Object>) keyObject).get(fieldName);
+    }
     switch (keySchemaType) {
       case AVRO:
         GenericRecord avroRecord = (GenericRecord) keyObject;

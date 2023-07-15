@@ -33,6 +33,8 @@ import org.apache.pulsar.client.api.schema.GenericSchema;
 import org.apache.pulsar.client.api.schema.RecordSchemaBuilder;
 import org.apache.pulsar.client.api.schema.SchemaBuilder;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
+import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
@@ -123,6 +125,45 @@ public class QueryStepTest {
             "value.date",
             "value.timestamp",
             "value.time");
+    QueryStep queryStep =
+        QueryStep.builder()
+            .dataSource(dataSource)
+            .outputFieldName("value.result")
+            .query("select 1")
+            .fields(fields)
+            .build();
+
+    Utils.process(record, queryStep);
+  }
+
+  @Test
+  void testKVStringJson() throws Exception {
+    Schema<KeyValue<String, String>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED);
+
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+
+    KeyValue<String, String> keyValue = new KeyValue<>(key, value);
+
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            null);
+
+    QueryStepDataSource dataSource =
+        new QueryStepDataSource() {
+          @Override
+          public List<Map<String, String>> fetchData(String query, List<Object> params) {
+            assertEquals(query, "select 1");
+            List<Object> expectedParams = List.of("value1", "key2");
+            assertEquals(params, expectedParams);
+            return List.of(Map.of());
+          }
+        };
+    List<String> fields = Arrays.asList("value.valueField1", "key.keyField2");
     QueryStep queryStep =
         QueryStep.builder()
             .dataSource(dataSource)
