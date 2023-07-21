@@ -75,10 +75,11 @@ public class ChatCompletionsStepTest {
           .replace("'", "\"");
   private static final ObjectMapper mapper = new ObjectMapper();
   private OpenAICompletionService completionService;
+  private OpenAIClient openAIClient;
 
   @BeforeMethod
   void setup() throws Exception {
-    OpenAIClient openAIClient = mock(OpenAIClient.class);
+    openAIClient = mock(OpenAIClient.class);
     when(openAIClient.getChatCompletions(eq("test-model"), any()))
         .thenReturn(mapper.readValue(COMPLETION, ChatCompletions.class));
     this.completionService = new OpenAICompletionService(openAIClient);
@@ -109,7 +110,7 @@ public class ChatCompletionsStepTest {
                 .setContent(
                     "{{ value }} {{ key}} {{ eventTime }} {{ topicName }} {{ destinationTopic }} {{ properties.test-key }}")));
     Utils.process(record, new ChatCompletionsStep(completionService, config));
-    verify(completionService).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -158,7 +159,7 @@ public class ChatCompletionsStepTest {
     Utils.process(record, new ChatCompletionsStep(completionService, config));
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    verify(completionService).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -196,7 +197,7 @@ public class ChatCompletionsStepTest {
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    verify(completionService).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),
@@ -216,7 +217,7 @@ public class ChatCompletionsStepTest {
     Utils.process(
         Utils.createTestStructKeyValueRecord(schemaType),
         new ChatCompletionsStep(completionService, config));
-    verify(completionService).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
   }
@@ -248,7 +249,7 @@ public class ChatCompletionsStepTest {
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
-    verify(completionService).getChatCompletions(eq("test-model"), captor.capture());
+    verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
         captor.getValue().getMessages().get(0).getContent(),

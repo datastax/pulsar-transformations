@@ -46,4 +46,7 @@ public class OpenAIServiceProvider implements ServiceProvider {
     String model = (String) additionalConfiguration.get("model");
     return new OpenAIEmbeddingsService(client, model);
   }
+
+  @Override
+  public void close() {}
 }

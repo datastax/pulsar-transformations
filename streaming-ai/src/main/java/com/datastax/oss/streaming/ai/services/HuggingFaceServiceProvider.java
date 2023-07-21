@@ -102,4 +102,7 @@ public class HuggingFaceServiceProvider implements ServiceProvider {
         throw new IllegalArgumentException("Unsupported HuggingFace service type: " + provider);
     }
   }
+
+  @Override
+  public void close() {}
 }

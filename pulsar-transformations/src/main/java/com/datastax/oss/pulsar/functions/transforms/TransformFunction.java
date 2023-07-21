@@ -134,6 +134,7 @@ public class TransformFunction
   private List<StepPredicatePair> steps;
   private TransformStepConfig transformConfig;
   private QueryStepDataSource dataSource;
+  private ServiceProvider serviceProvider;
 
   @Override
   @SneakyThrows
@@ -213,7 +214,7 @@ public class TransformFunction
 
     transformConfig = mapper.convertValue(userConfigMap, TransformStepConfig.class);
 
-    ServiceProvider serviceProvider = buildServiceProvider(transformConfig);
+    serviceProvider = buildServiceProvider(transformConfig);
     dataSource = buildDataSource(transformConfig.getDatasource());
 
     steps = getTransformSteps(transformConfig, serviceProvider, dataSource);
@@ -223,6 +224,9 @@ public class TransformFunction
   public void close() throws Exception {
     if (dataSource != null) {
       dataSource.close();
+    }
+    if (serviceProvider != null) {
+      serviceProvider.close();
     }
     for (StepPredicatePair pair : steps) {
       pair.getTransformStep().close();
