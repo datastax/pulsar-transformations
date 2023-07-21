@@ -28,9 +28,9 @@ import static org.testng.Assert.assertThrows;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
+import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -198,7 +198,8 @@ public class AIToolsTest {
             .replace("'", "\"");
     when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
-    when(transformFunction.buildServiceProvider(any())).thenReturn(new OpenAIServiceProvider(client));
+    when(transformFunction.buildServiceProvider(any()))
+        .thenReturn(new OpenAIServiceProvider(client));
 
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
@@ -254,7 +255,8 @@ public class AIToolsTest {
             .replace("'", "\"");
     when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
-    when(transformFunction.buildServiceProvider(any())).thenReturn(new OpenAIServiceProvider(client));
+    when(transformFunction.buildServiceProvider(any()))
+        .thenReturn(new OpenAIServiceProvider(client));
 
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);

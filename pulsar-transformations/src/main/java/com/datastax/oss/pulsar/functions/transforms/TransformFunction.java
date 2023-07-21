@@ -20,13 +20,13 @@ import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getTransf
 import com.datastax.oss.streaming.ai.JsonNodeSchema;
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.TransformStep;
-import com.datastax.oss.streaming.ai.services.HuggingFaceServiceProvider;
-import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
 import com.datastax.oss.streaming.ai.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.streaming.ai.model.TransformSchemaType;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
 import com.datastax.oss.streaming.ai.model.config.TransformStepConfig;
+import com.datastax.oss.streaming.ai.services.HuggingFaceServiceProvider;
+import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.datastax.oss.streaming.ai.services.ServiceProvider;
 import com.datastax.oss.streaming.ai.util.TransformFunctionUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Schema;
