@@ -19,6 +19,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
+import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.model.JsonRecord;
 import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
 import com.samskivert.mustache.Mustache;
@@ -32,7 +33,7 @@ import org.apache.avro.Schema;
 
 public class ChatCompletionsStep implements TransformStep {
 
-  private final OpenAIClient client;
+  private final CompletionsService completionsService;
   private final ChatCompletionsConfig config;
 
   private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
@@ -41,8 +42,8 @@ public class ChatCompletionsStep implements TransformStep {
 
   private final Map<ChatMessage, Template> messageTemplates = new ConcurrentHashMap<>();
 
-  public ChatCompletionsStep(OpenAIClient client, ChatCompletionsConfig config) {
-    this.client = client;
+  public ChatCompletionsStep(CompletionsService completionsService, ChatCompletionsConfig config) {
+    this.completionsService = completionsService;
     this.config = config;
     config
         .getMessages()
@@ -78,7 +79,7 @@ public class ChatCompletionsStep implements TransformStep {
             .setFrequencyPenalty(config.getFrequencyPenalty());
 
     ChatCompletions chatCompletions =
-        client.getChatCompletions(config.getModel(), chatCompletionsOptions);
+        completionsService.getChatCompletions(config.getModel(), chatCompletionsOptions);
 
     String content = chatCompletions.getChoices().get(0).getMessage().getContent();
     String fieldName = config.getFieldName();

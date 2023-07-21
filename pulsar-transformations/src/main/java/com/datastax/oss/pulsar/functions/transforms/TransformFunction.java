@@ -17,16 +17,18 @@ package com.datastax.oss.pulsar.functions.transforms;
 
 import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getTransformSteps;
 
-import com.azure.ai.openai.OpenAIClient;
 import com.datastax.oss.streaming.ai.JsonNodeSchema;
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.TransformStep;
+import com.datastax.oss.streaming.ai.completions.CompletionsService;
+import com.datastax.oss.streaming.ai.services.HuggingFaceServiceProvider;
+import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
 import com.datastax.oss.streaming.ai.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.streaming.ai.model.TransformSchemaType;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
-import com.datastax.oss.streaming.ai.model.config.OpenAIConfig;
 import com.datastax.oss.streaming.ai.model.config.TransformStepConfig;
+import com.datastax.oss.streaming.ai.services.ServiceProvider;
 import com.datastax.oss.streaming.ai.util.TransformFunctionUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
@@ -134,6 +138,7 @@ public class TransformFunction
   private QueryStepDataSource dataSource;
 
   @Override
+  @SneakyThrows
   public void initialize(Context context) {
     Map<String, Object> userConfigMap = context.getUserConfigMap();
     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -209,9 +214,11 @@ public class TransformFunction
     }
 
     transformConfig = mapper.convertValue(userConfigMap, TransformStepConfig.class);
-    OpenAIClient openAIClient = buildOpenAIClient(transformConfig.getOpenai());
+
+    ServiceProvider serviceProvider = buildServiceProvider(transformConfig);
     dataSource = buildDataSource(transformConfig.getDatasource());
-    steps = getTransformSteps(transformConfig, openAIClient, dataSource);
+
+    steps = getTransformSteps(transformConfig, serviceProvider, dataSource);
   }
 
   @Override
@@ -450,8 +457,14 @@ public class TransformFunction
     return Pattern.compile("(?:^|-)(.)").matcher(kebab).replaceAll(mr -> mr.group(1).toUpperCase());
   }
 
-  protected OpenAIClient buildOpenAIClient(OpenAIConfig openAIConfig) {
-    return TransformFunctionUtil.buildOpenAIClient(openAIConfig);
+  protected ServiceProvider buildServiceProvider(TransformStepConfig config) {
+    if (config.getOpenai() != null) {
+      return new OpenAIServiceProvider(config);
+    }
+    if (config.getHuggingface() != null) {
+      return new HuggingFaceServiceProvider(config);
+    }
+    return new ServiceProvider.NoopServiceProvider();
   }
 
   protected QueryStepDataSource buildDataSource(DataSourceConfig dataSourceConfig) {
