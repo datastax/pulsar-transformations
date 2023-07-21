@@ -460,11 +460,13 @@ public class TransformFunction
   }
 
   protected ServiceProvider buildServiceProvider(TransformStepConfig config) {
-    if (config.getOpenai() != null) {
-      return new OpenAIServiceProvider(config);
-    }
-    if (config.getHuggingface() != null) {
-      return new HuggingFaceServiceProvider(config);
+    if (config != null) {
+      if (config.getOpenai() != null) {
+        return new OpenAIServiceProvider(config);
+      }
+      if (config.getHuggingface() != null) {
+        return new HuggingFaceServiceProvider(config);
+      }
     }
     return new ServiceProvider.NoopServiceProvider();
   }

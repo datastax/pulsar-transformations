@@ -20,7 +20,6 @@ Parameters:
 | Name             | Description                                                                                                                                        |
 |------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | model            | The model to use, it depends on the provider                                                                                                       |
-| compute-service  | The embeddings provider (openai, huggingface...)                                                                                                   | 
 | text             | Template for the text to compute the embeddings on. You can use the [Mustache](https://mustache.github.io/) syntax (for example {{value.field1}} ) |
 | embeddings-field | The name of the field to add or update (for example value.embeddingsvector)                                                                        |
 
