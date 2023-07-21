@@ -269,8 +269,8 @@ public class AIToolsTest {
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals("result", valueAvroRecord.get("completion").toString());
     assertEquals(
-        "{\"options\":{\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":null},\"model\":\"test-model\"}",
-        valueAvroRecord.get("log").toString());
+        valueAvroRecord.get("log").toString(),
+        "{\"options\":{\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":\"test-model\"},\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"model\":\"test-model\"}");
   }
 
   @Test

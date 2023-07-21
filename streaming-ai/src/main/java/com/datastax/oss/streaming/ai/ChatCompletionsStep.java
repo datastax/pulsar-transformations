@@ -80,6 +80,7 @@ public class ChatCompletionsStep implements TransformStep {
             .setFrequencyPenalty(config.getFrequencyPenalty());
     Map<String, Object> options = convertToMap(chatCompletionsOptions);
     options.put("model", config.getModel());
+    options.remove("messages");
 
     ChatCompletions chatCompletions = completionsService.getChatCompletions(messages, options);
 
@@ -96,7 +97,7 @@ public class ChatCompletionsStep implements TransformStep {
     if (logField != null && !logField.isEmpty()) {
       Map<String, Object> logMap = new HashMap<>();
       logMap.put("model", config.getModel());
-      logMap.put("options", chatCompletionsOptions);
+      logMap.put("options", options);
       logMap.put("messages", messages);
       transformContext.setResultField(
           TransformContext.toJson(logMap),
