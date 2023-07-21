@@ -25,8 +25,7 @@ import static org.testng.Assert.assertEquals;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatMessage;
-import com.azure.ai.openai.models.ChatRole;
+import com.datastax.oss.streaming.ai.completions.ChatMessage;
 import com.datastax.oss.streaming.ai.completions.OpenAICompletionService;
 import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -106,7 +105,7 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value }} {{ key}} {{ eventTime }} {{ topicName }} {{ destinationTopic }} {{ properties.test-key }}")));
     Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -153,7 +152,7 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
     Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -190,7 +189,7 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
     Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -211,9 +210,7 @@ public class ChatCompletionsStepTest {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(
-        List.of(
-            new ChatMessage(ChatRole.USER)
-                .setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
+        List.of(new ChatMessage("user").setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
     Utils.process(
         Utils.createTestStructKeyValueRecord(schemaType),
         new ChatCompletionsStep(completionService, config));
@@ -242,7 +239,7 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
     Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -269,7 +266,7 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getValue(), "result");
@@ -279,7 +276,7 @@ public class ChatCompletionsStepTest {
   void testKeyOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key");
     Record<?> outputRecord =
         Utils.process(
@@ -304,7 +301,7 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("destinationTopic");
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -323,7 +320,7 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("messageKey");
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -342,7 +339,7 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("properties.chat");
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -353,7 +350,7 @@ public class ChatCompletionsStepTest {
   void testAvroValueFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
@@ -371,7 +368,7 @@ public class ChatCompletionsStepTest {
   void testJsonValueFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
@@ -410,7 +407,7 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));
@@ -423,7 +420,7 @@ public class ChatCompletionsStepTest {
   void testAvroKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
@@ -441,7 +438,7 @@ public class ChatCompletionsStepTest {
   void testJsonKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
@@ -472,7 +469,7 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(record, new ChatCompletionsStep(completionService, config));

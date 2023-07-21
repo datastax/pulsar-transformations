@@ -97,6 +97,7 @@ public class ChatCompletionsStep implements TransformStep {
       Map<String, Object> logMap = new HashMap<>();
       logMap.put("model", config.getModel());
       logMap.put("options", chatCompletionsOptions);
+      logMap.put("messages", messages);
       transformContext.setResultField(
           TransformContext.toJson(logMap),
           logField,

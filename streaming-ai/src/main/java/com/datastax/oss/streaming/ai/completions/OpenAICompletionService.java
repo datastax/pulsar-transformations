@@ -15,12 +15,12 @@
  */
 package com.datastax.oss.streaming.ai.completions;
 
-import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.convertFromMap;
+import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getDouble;
+import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getInteger;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatRole;
-import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,7 +36,6 @@ public class OpenAICompletionService implements CompletionsService {
   @Override
   public ChatCompletions getChatCompletions(
       List<ChatMessage> messages, Map<String, Object> options) {
-    ChatCompletionsConfig config = convertFromMap(options, ChatCompletionsConfig.class);
     ChatCompletionsOptions chatCompletionsOptions =
         new ChatCompletionsOptions(
                 messages
@@ -47,27 +46,29 @@ public class OpenAICompletionService implements CompletionsService {
                                     ChatRole.fromString(message.getRole()))
                                 .setContent(message.getContent()))
                     .collect(Collectors.toList()))
-            .setMaxTokens(config.getMaxTokens())
-            .setTemperature(config.getTemperature())
-            .setTopP(config.getTopP())
-            .setLogitBias(config.getLogitBias())
-            .setUser(config.getUser())
-            .setStop(config.getStop())
-            .setPresencePenalty(config.getPresencePenalty())
-            .setFrequencyPenalty(config.getFrequencyPenalty());
+            .setMaxTokens(getInteger("max-token", options))
+            .setTemperature(getDouble("temperature", options))
+            .setTopP(getDouble("top-p", options))
+            .setLogitBias((Map<String, Integer>) options.get("logit-bias"))
+            .setUser((String) options.get("user"))
+            .setStop((List<String>) options.get("stop"))
+            .setPresencePenalty(getDouble("presence-penalty", options))
+            .setFrequencyPenalty(getDouble("frequency-penalty", options));
     com.azure.ai.openai.models.ChatCompletions chatCompletions =
-        client.getChatCompletions(config.getModel(), chatCompletionsOptions);
+        client.getChatCompletions((String) options.get("model"), chatCompletionsOptions);
     ChatCompletions result = new ChatCompletions();
     result.setChoices(
         chatCompletions
             .getChoices()
             .stream()
-            .map(
-                c ->
-                    new ChatChoice(
-                        new ChatMessage(
-                            c.getMessage().getRole().toString(), c.getMessage().getContent())))
+            .map(c -> new ChatChoice(convertMessage(c)))
             .collect(Collectors.toList()));
     return result;
+  }
+
+  private static ChatMessage convertMessage(com.azure.ai.openai.models.ChatChoice c) {
+    com.azure.ai.openai.models.ChatMessage message = c.getMessage();
+    return new ChatMessage(
+        message.getRole() != null ? message.getRole().toString() : null, message.getContent());
   }
 }

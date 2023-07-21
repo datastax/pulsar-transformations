@@ -307,4 +307,26 @@ public class TransformFunctionUtil {
     }
     return value;
   }
+
+  public static Double getDouble(String name, Map<String, Object> options) {
+    Object o = options.get(name);
+    if (o == null) {
+      return null;
+    }
+    if (o instanceof Number) {
+      return ((Number) o).doubleValue();
+    }
+    return Double.parseDouble(o.toString());
+  }
+
+  public static Integer getInteger(String name, Map<String, Object> options) {
+    Object o = options.get(name);
+    if (o == null) {
+      return null;
+    }
+    if (o instanceof Number) {
+      return ((Number) o).intValue();
+    }
+    return Integer.parseInt(o.toString());
+  }
 }
