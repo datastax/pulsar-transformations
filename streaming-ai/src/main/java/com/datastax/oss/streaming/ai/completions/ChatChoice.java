@@ -15,9 +15,15 @@
  */
 package com.datastax.oss.streaming.ai.completions;
 
-import java.util.List;
-import java.util.Map;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public interface CompletionsService {
-  ChatCompletions getChatCompletions(List<ChatMessage> message, Map<String, Object> options);
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ChatChoice {
+  private ChatMessage message;
 }

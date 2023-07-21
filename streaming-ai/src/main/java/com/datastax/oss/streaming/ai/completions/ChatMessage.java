@@ -15,9 +15,39 @@
  */
 package com.datastax.oss.streaming.ai.completions;
 
-import java.util.List;
-import java.util.Map;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
-public interface CompletionsService {
-  ChatCompletions getChatCompletions(List<ChatMessage> message, Map<String, Object> options);
+@ToString
+@NoArgsConstructor
+public class ChatMessage {
+  private String role;
+  private String content;
+
+  public ChatMessage(String role, String content) {
+    this.role = role;
+    this.content = content;
+  }
+
+  public ChatMessage(String role) {
+    this.role = role;
+  }
+
+  public String getRole() {
+    return role;
+  }
+
+  public ChatMessage setRole(String role) {
+    this.role = role;
+    return this;
+  }
+
+  public String getContent() {
+    return content;
+  }
+
+  public ChatMessage setContent(String content) {
+    this.content = content;
+    return this;
+  }
 }

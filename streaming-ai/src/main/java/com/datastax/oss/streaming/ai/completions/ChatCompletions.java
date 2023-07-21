@@ -16,8 +16,9 @@
 package com.datastax.oss.streaming.ai.completions;
 
 import java.util.List;
-import java.util.Map;
+import lombok.Data;
 
-public interface CompletionsService {
-  ChatCompletions getChatCompletions(List<ChatMessage> message, Map<String, Object> options);
+@Data
+public class ChatCompletions {
+  List<ChatChoice> choices;
 }

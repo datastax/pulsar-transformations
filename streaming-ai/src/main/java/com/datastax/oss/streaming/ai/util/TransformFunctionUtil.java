@@ -246,8 +246,12 @@ public class TransformFunctionUtil {
     return new UnwrapKeyValueStep(config.isUnwrapKey());
   }
 
-  private static Map<String, Object> convertToMap(Object object) {
+  public static Map<String, Object> convertToMap(Object object) {
     return new ObjectMapper().convertValue(object, Map.class);
+  }
+
+  public static <T> T convertFromMap(Map<String, Object> map, Class<T> type) {
+    return new ObjectMapper().convertValue(map, type);
   }
 
   public static TransformStep newChatCompletionsFunction(

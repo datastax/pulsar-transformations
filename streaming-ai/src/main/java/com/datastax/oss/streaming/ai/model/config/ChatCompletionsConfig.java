@@ -15,7 +15,7 @@
  */
 package com.datastax.oss.streaming.ai.model.config;
 
-import com.azure.ai.openai.models.ChatMessage;
+import com.datastax.oss.streaming.ai.completions.ChatMessage;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
