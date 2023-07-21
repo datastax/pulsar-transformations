@@ -20,7 +20,6 @@ import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getTransf
 import com.datastax.oss.streaming.ai.JsonNodeSchema;
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.TransformStep;
-import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.services.HuggingFaceServiceProvider;
 import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;

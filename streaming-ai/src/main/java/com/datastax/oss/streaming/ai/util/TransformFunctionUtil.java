@@ -15,13 +15,10 @@
  */
 package com.datastax.oss.streaming.ai.util;
 
-import static com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
-
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
-import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.streaming.ai.CastStep;
 import com.datastax.oss.streaming.ai.ChatCompletionsStep;
 import com.datastax.oss.streaming.ai.ComputeAIEmbeddingsStep;
@@ -37,11 +34,7 @@ import com.datastax.oss.streaming.ai.UnwrapKeyValueStep;
 import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.datasource.AstraDBDataSource;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
-import com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService;
 import com.datastax.oss.streaming.ai.embeddings.EmbeddingsService;
-import com.datastax.oss.streaming.ai.embeddings.HuggingFaceEmbeddingService;
-import com.datastax.oss.streaming.ai.embeddings.HuggingFaceRestEmbeddingService;
-import com.datastax.oss.streaming.ai.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
 import com.datastax.oss.streaming.ai.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.streaming.ai.model.ComputeField;
@@ -54,7 +47,6 @@ import com.datastax.oss.streaming.ai.model.config.ComputeConfig;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
 import com.datastax.oss.streaming.ai.model.config.DropFieldsConfig;
 import com.datastax.oss.streaming.ai.model.config.FlattenConfig;
-import com.datastax.oss.streaming.ai.model.config.HuggingFaceConfig;
 import com.datastax.oss.streaming.ai.model.config.OpenAIConfig;
 import com.datastax.oss.streaming.ai.model.config.OpenAIProvider;
 import com.datastax.oss.streaming.ai.model.config.QueryConfig;
@@ -71,9 +63,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -119,7 +109,8 @@ public class TransformFunctionUtil {
   public static List<StepPredicatePair> getTransformSteps(
       TransformStepConfig transformConfig,
       ServiceProvider serviceProvider,
-      QueryStepDataSource dataSource) throws Exception {
+      QueryStepDataSource dataSource)
+      throws Exception {
     TransformStep transformStep;
     List<StepPredicatePair> steps = new ArrayList<>();
     for (StepConfig step : transformConfig.getSteps()) {
@@ -147,9 +138,7 @@ public class TransformFunctionUtil {
           transformStep = newComputeFieldFunction((ComputeConfig) step);
           break;
         case "compute-ai-embeddings":
-          transformStep =
-              newComputeAIEmbeddings(
-                  (ComputeAIEmbeddingsConfig) step, serviceProvider);
+          transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step, serviceProvider);
           break;
         case "ai-chat-completions":
           transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step, serviceProvider);
@@ -247,8 +236,7 @@ public class TransformFunctionUtil {
 
   @SneakyThrows
   public static TransformStep newComputeAIEmbeddings(
-      ComputeAIEmbeddingsConfig config,
-      ServiceProvider provider) {
+      ComputeAIEmbeddingsConfig config, ServiceProvider provider) {
     EmbeddingsService embeddingsService = provider.getEmbeddingsService(convertToMap(config));
     return new ComputeAIEmbeddingsStep(
         config.getText(), config.getEmbeddingsFieldName(), embeddingsService);
@@ -264,7 +252,8 @@ public class TransformFunctionUtil {
 
   public static TransformStep newChatCompletionsFunction(
       ChatCompletionsConfig config, ServiceProvider serviceProvider) throws Exception {
-    CompletionsService completionsService = serviceProvider.getCompletionsService(convertToMap(config));
+    CompletionsService completionsService =
+        serviceProvider.getCompletionsService(convertToMap(config));
     return new ChatCompletionsStep(completionsService, config);
   }
 

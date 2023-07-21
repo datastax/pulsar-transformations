@@ -269,7 +269,8 @@ public class ChatCompletionsStepTest {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getValue(), "result");
   }
 
@@ -281,7 +282,8 @@ public class ChatCompletionsStepTest {
     config.setFieldName("key");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(completionService, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -303,7 +305,8 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
     config.setFieldName("destinationTopic");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getDestinationTopic().orElseThrow(), "result");
   }
 
@@ -321,7 +324,8 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
     config.setFieldName("messageKey");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getKey().orElseThrow(), "result");
   }
 
@@ -339,7 +343,8 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
     config.setFieldName("properties.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getProperties().get("chat"), "result");
   }
 
@@ -351,7 +356,8 @@ public class ChatCompletionsStepTest {
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(completionService, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -368,7 +374,8 @@ public class ChatCompletionsStepTest {
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(completionService, config));
+            Utils.createTestJsonKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -404,7 +411,8 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
     config.setFieldName("value.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
 
     assertEquals(outputRecord.getSchema(), schema);
     assertEquals(outputRecord.getValue(), expected);
@@ -418,7 +426,8 @@ public class ChatCompletionsStepTest {
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(completionService, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -435,7 +444,8 @@ public class ChatCompletionsStepTest {
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(completionService, config));
+            Utils.createTestJsonKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -463,7 +473,8 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
     config.setFieldName("key.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(completionService, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 

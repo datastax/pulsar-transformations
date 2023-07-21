@@ -15,7 +15,6 @@
  */
 package com.datastax.oss.streaming.ai;
 
-import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
