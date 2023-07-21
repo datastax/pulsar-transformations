@@ -25,8 +25,8 @@ import static org.testng.Assert.assertEquals;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatMessage;
-import com.azure.ai.openai.models.ChatRole;
+import com.datastax.oss.streaming.ai.completions.ChatMessage;
+import com.datastax.oss.streaming.ai.completions.OpenAICompletionService;
 import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -73,6 +73,7 @@ public class ChatCompletionsStepTest {
               + "}")
           .replace("'", "\"");
   private static final ObjectMapper mapper = new ObjectMapper();
+  private OpenAICompletionService completionService;
   private OpenAIClient openAIClient;
 
   @BeforeMethod
@@ -80,6 +81,7 @@ public class ChatCompletionsStepTest {
     openAIClient = mock(OpenAIClient.class);
     when(openAIClient.getChatCompletions(eq("test-model"), any()))
         .thenReturn(mapper.readValue(COMPLETION, ChatCompletions.class));
+    this.completionService = new OpenAICompletionService(openAIClient);
   }
 
   @Test
@@ -103,10 +105,10 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value }} {{ key}} {{ eventTime }} {{ topicName }} {{ destinationTopic }} {{ properties.test-key }}")));
-    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Utils.process(record, new ChatCompletionsStep(completionService, config));
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(
@@ -150,10 +152,10 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
-    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Utils.process(record, new ChatCompletionsStep(completionService, config));
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
@@ -187,10 +189,10 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
-    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Utils.process(record, new ChatCompletionsStep(completionService, config));
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
@@ -208,12 +210,10 @@ public class ChatCompletionsStepTest {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
     config.setMessages(
-        List.of(
-            new ChatMessage(ChatRole.USER)
-                .setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
+        List.of(new ChatMessage("user").setContent("{{ value.valueField1 }} {{ key.keyField2 }}")));
     Utils.process(
         Utils.createTestStructKeyValueRecord(schemaType),
-        new ChatCompletionsStep(openAIClient, config));
+        new ChatCompletionsStep(completionService, config));
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
     assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
@@ -239,10 +239,10 @@ public class ChatCompletionsStepTest {
     config.setModel("test-model");
     config.setMessages(
         List.of(
-            new ChatMessage(ChatRole.USER)
+            new ChatMessage("user")
                 .setContent(
                     "{{ value.firstName }} {{ value.lastName }} {{ value.age }} {{ value.date }} {{ value.timestamp }} {{ value.time }} {{ key }}")));
-    Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Utils.process(record, new ChatCompletionsStep(completionService, config));
 
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
@@ -266,8 +266,9 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getValue(), "result");
   }
 
@@ -275,11 +276,12 @@ public class ChatCompletionsStepTest {
   void testKeyOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -299,9 +301,10 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("destinationTopic");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getDestinationTopic().orElseThrow(), "result");
   }
 
@@ -317,9 +320,10 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("messageKey");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getKey().orElseThrow(), "result");
   }
 
@@ -335,9 +339,10 @@ public class ChatCompletionsStepTest {
             .build();
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("properties.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     assertEquals(outputRecord.getProperties().get("chat"), "result");
   }
 
@@ -345,11 +350,12 @@ public class ChatCompletionsStepTest {
   void testAvroValueFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -362,11 +368,12 @@ public class ChatCompletionsStepTest {
   void testJsonValueFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+            Utils.createTestJsonKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -400,9 +407,10 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("value.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
 
     assertEquals(outputRecord.getSchema(), schema);
     assertEquals(outputRecord.getValue(), expected);
@@ -412,11 +420,12 @@ public class ChatCompletionsStepTest {
   void testAvroKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestAvroKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+            Utils.createTestAvroKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -429,11 +438,12 @@ public class ChatCompletionsStepTest {
   void testJsonKeyFieldOutput() throws Exception {
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
     Record<?> outputRecord =
         Utils.process(
-            Utils.createTestJsonKeyValueRecord(), new ChatCompletionsStep(openAIClient, config));
+            Utils.createTestJsonKeyValueRecord(),
+            new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 
@@ -459,9 +469,10 @@ public class ChatCompletionsStepTest {
 
     ChatCompletionsConfig config = new ChatCompletionsConfig();
     config.setModel("test-model");
-    config.setMessages(List.of(new ChatMessage(ChatRole.USER).setContent("content")));
+    config.setMessages(List.of(new ChatMessage("user").setContent("content")));
     config.setFieldName("key.chat");
-    Record<?> outputRecord = Utils.process(record, new ChatCompletionsStep(openAIClient, config));
+    Record<?> outputRecord =
+        Utils.process(record, new ChatCompletionsStep(completionService, config));
     KeyValueSchema<?, ?> messageSchema = (KeyValueSchema<?, ?>) outputRecord.getSchema();
     KeyValue<?, ?> messageValue = (KeyValue<?, ?>) outputRecord.getValue();
 

@@ -36,6 +36,7 @@ public class ComputeAIEmbeddingsConfig extends StepConfig {
   @JsonProperty(value = "embeddings-field", required = true)
   private String embeddingsFieldName;
 
+  @Deprecated
   @JsonProperty(value = "compute-service")
   private String service;
 

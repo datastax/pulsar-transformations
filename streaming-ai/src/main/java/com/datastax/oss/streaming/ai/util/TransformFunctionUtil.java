@@ -15,13 +15,10 @@
  */
 package com.datastax.oss.streaming.ai.util;
 
-import static com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
-
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.NonAzureOpenAIKeyCredential;
 import com.azure.core.credential.AzureKeyCredential;
-import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.streaming.ai.CastStep;
 import com.datastax.oss.streaming.ai.ChatCompletionsStep;
 import com.datastax.oss.streaming.ai.ComputeAIEmbeddingsStep;
@@ -34,13 +31,10 @@ import com.datastax.oss.streaming.ai.QueryStep;
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.TransformStep;
 import com.datastax.oss.streaming.ai.UnwrapKeyValueStep;
+import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.datasource.AstraDBDataSource;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
-import com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService;
 import com.datastax.oss.streaming.ai.embeddings.EmbeddingsService;
-import com.datastax.oss.streaming.ai.embeddings.HuggingFaceEmbeddingService;
-import com.datastax.oss.streaming.ai.embeddings.HuggingFaceRestEmbeddingService;
-import com.datastax.oss.streaming.ai.embeddings.OpenAIEmbeddingsService;
 import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
 import com.datastax.oss.streaming.ai.jstl.predicate.StepPredicatePair;
 import com.datastax.oss.streaming.ai.model.ComputeField;
@@ -53,13 +47,13 @@ import com.datastax.oss.streaming.ai.model.config.ComputeConfig;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
 import com.datastax.oss.streaming.ai.model.config.DropFieldsConfig;
 import com.datastax.oss.streaming.ai.model.config.FlattenConfig;
-import com.datastax.oss.streaming.ai.model.config.HuggingFaceConfig;
 import com.datastax.oss.streaming.ai.model.config.OpenAIConfig;
 import com.datastax.oss.streaming.ai.model.config.OpenAIProvider;
 import com.datastax.oss.streaming.ai.model.config.QueryConfig;
 import com.datastax.oss.streaming.ai.model.config.StepConfig;
 import com.datastax.oss.streaming.ai.model.config.TransformStepConfig;
 import com.datastax.oss.streaming.ai.model.config.UnwrapKeyValueConfig;
+import com.datastax.oss.streaming.ai.services.ServiceProvider;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -69,7 +63,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import lombok.SneakyThrows;
@@ -115,8 +108,9 @@ public class TransformFunctionUtil {
 
   public static List<StepPredicatePair> getTransformSteps(
       TransformStepConfig transformConfig,
-      OpenAIClient openAIClient,
-      QueryStepDataSource dataSource) {
+      ServiceProvider serviceProvider,
+      QueryStepDataSource dataSource)
+      throws Exception {
     TransformStep transformStep;
     List<StepPredicatePair> steps = new ArrayList<>();
     for (StepConfig step : transformConfig.getSteps()) {
@@ -144,12 +138,10 @@ public class TransformFunctionUtil {
           transformStep = newComputeFieldFunction((ComputeConfig) step);
           break;
         case "compute-ai-embeddings":
-          transformStep =
-              newComputeAIEmbeddings(
-                  (ComputeAIEmbeddingsConfig) step, transformConfig.getHuggingface(), openAIClient);
+          transformStep = newComputeAIEmbeddings((ComputeAIEmbeddingsConfig) step, serviceProvider);
           break;
         case "ai-chat-completions":
-          transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step, openAIClient);
+          transformStep = newChatCompletionsFunction((ChatCompletionsConfig) step, serviceProvider);
           break;
         case "query":
           transformStep = newQuery((QueryConfig) step, dataSource);
@@ -244,89 +236,29 @@ public class TransformFunctionUtil {
 
   @SneakyThrows
   public static TransformStep newComputeAIEmbeddings(
-      ComputeAIEmbeddingsConfig config,
-      HuggingFaceConfig huggingConfig,
-      OpenAIClient openAIClient) {
-    String targetSvc = config.getService();
-    if (Strings.isNullOrEmpty(targetSvc)) {
-      targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.OPENAI.name();
-      if (openAIClient == null && huggingConfig != null) {
-        targetSvc = ComputeAIEmbeddingsConfig.SupportedServices.HUGGINGFACE.name();
-      }
-    }
-
-    ComputeAIEmbeddingsConfig.SupportedServices service =
-        ComputeAIEmbeddingsConfig.SupportedServices.valueOf(targetSvc.toUpperCase());
-
-    final EmbeddingsService embeddingService;
-    switch (service) {
-      case OPENAI:
-        embeddingService = new OpenAIEmbeddingsService(openAIClient, config.getModel());
-        break;
-      case HUGGINGFACE:
-        Objects.requireNonNull(huggingConfig, "huggingface config is required");
-        switch (huggingConfig.getProvider()) {
-          case LOCAL:
-            AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.HuggingFaceConfigBuilder builder =
-                AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
-                    .options(config.getOptions())
-                    .arguments(config.getArguments());
-            String modelUrl = config.getModelUrl();
-            if (!Strings.isNullOrEmpty(config.getModel())) {
-              builder.modelName(config.getModel());
-
-              // automatically build the model URL if not provided
-              if (Strings.isNullOrEmpty(modelUrl)) {
-                modelUrl = DLJ_BASE_URL + config.getModel();
-                log.info("Automatically computed model URL {}", modelUrl);
-              }
-            }
-            builder.modelUrl(modelUrl);
-
-            embeddingService = new HuggingFaceEmbeddingService(builder.build());
-            break;
-          case API:
-            Objects.requireNonNull(config.getModel(), "model name is required");
-            HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.HuggingFaceApiConfigBuilder
-                apiBuilder =
-                    HuggingFaceRestEmbeddingService.HuggingFaceApiConfig.builder()
-                        .accessKey(huggingConfig.getAccessKey())
-                        .model(config.getModel());
-
-            if (!Strings.isNullOrEmpty(huggingConfig.getApiUrl())) {
-              apiBuilder.hfUrl(huggingConfig.getApiUrl());
-            }
-            if (config.getOptions() != null && config.getOptions().size() > 0) {
-              apiBuilder.options(config.getOptions());
-            } else {
-              apiBuilder.options(Map.of("wait_for_model", "true"));
-            }
-
-            embeddingService = new HuggingFaceRestEmbeddingService(apiBuilder.build());
-            break;
-          default:
-            throw new IllegalArgumentException(
-                "Unsupported HuggingFace service type: " + huggingConfig.getProvider());
-        }
-        break;
-      default:
-        throw new IllegalArgumentException("Unsupported service: " + service);
-    }
-
+      ComputeAIEmbeddingsConfig config, ServiceProvider provider) {
+    EmbeddingsService embeddingsService = provider.getEmbeddingsService(convertToMap(config));
     return new ComputeAIEmbeddingsStep(
-        config.getText(), config.getEmbeddingsFieldName(), embeddingService);
+        config.getText(), config.getEmbeddingsFieldName(), embeddingsService);
   }
 
   public static UnwrapKeyValueStep newUnwrapKeyValueFunction(UnwrapKeyValueConfig config) {
     return new UnwrapKeyValueStep(config.isUnwrapKey());
   }
 
+  public static Map<String, Object> convertToMap(Object object) {
+    return new ObjectMapper().convertValue(object, Map.class);
+  }
+
+  public static <T> T convertFromMap(Map<String, Object> map, Class<T> type) {
+    return new ObjectMapper().convertValue(map, type);
+  }
+
   public static TransformStep newChatCompletionsFunction(
-      ChatCompletionsConfig config, OpenAIClient openAIClient) {
-    if (openAIClient == null) {
-      throw new IllegalArgumentException("The OpenAI client must be configured for this step");
-    }
-    return new ChatCompletionsStep(openAIClient, config);
+      ChatCompletionsConfig config, ServiceProvider serviceProvider) throws Exception {
+    CompletionsService completionsService =
+        serviceProvider.getCompletionsService(convertToMap(config));
+    return new ChatCompletionsStep(completionsService, config);
   }
 
   public static TransformStep newQuery(QueryConfig config, QueryStepDataSource dataSource) {
@@ -374,5 +306,27 @@ public class TransformFunctionUtil {
       }
     }
     return value;
+  }
+
+  public static Double getDouble(String name, Map<String, Object> options) {
+    Object o = options.get(name);
+    if (o == null) {
+      return null;
+    }
+    if (o instanceof Number) {
+      return ((Number) o).doubleValue();
+    }
+    return Double.parseDouble(o.toString());
+  }
+
+  public static Integer getInteger(String name, Map<String, Object> options) {
+    Object o = options.get(name);
+    if (o == null) {
+      return null;
+    }
+    if (o instanceof Number) {
+      return ((Number) o).intValue();
+    }
+    return Integer.parseInt(o.toString());
   }
 }

@@ -15,10 +15,12 @@
  */
 package com.datastax.oss.streaming.ai;
 
-import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.ChatCompletions;
+import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.convertToMap;
+
 import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatMessage;
+import com.datastax.oss.streaming.ai.completions.ChatCompletions;
+import com.datastax.oss.streaming.ai.completions.ChatMessage;
+import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.model.JsonRecord;
 import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
 import com.samskivert.mustache.Mustache;
@@ -32,7 +34,7 @@ import org.apache.avro.Schema;
 
 public class ChatCompletionsStep implements TransformStep {
 
-  private final OpenAIClient client;
+  private final CompletionsService completionsService;
   private final ChatCompletionsConfig config;
 
   private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
@@ -41,8 +43,8 @@ public class ChatCompletionsStep implements TransformStep {
 
   private final Map<ChatMessage, Template> messageTemplates = new ConcurrentHashMap<>();
 
-  public ChatCompletionsStep(OpenAIClient client, ChatCompletionsConfig config) {
-    this.client = client;
+  public ChatCompletionsStep(CompletionsService completionsService, ChatCompletionsConfig config) {
+    this.completionsService = completionsService;
     this.config = config;
     config
         .getMessages()
@@ -67,7 +69,7 @@ public class ChatCompletionsStep implements TransformStep {
             .collect(Collectors.toList());
 
     ChatCompletionsOptions chatCompletionsOptions =
-        new ChatCompletionsOptions(messages)
+        new ChatCompletionsOptions(List.of())
             .setMaxTokens(config.getMaxTokens())
             .setTemperature(config.getTemperature())
             .setTopP(config.getTopP())
@@ -76,9 +78,11 @@ public class ChatCompletionsStep implements TransformStep {
             .setStop(config.getStop())
             .setPresencePenalty(config.getPresencePenalty())
             .setFrequencyPenalty(config.getFrequencyPenalty());
+    Map<String, Object> options = convertToMap(chatCompletionsOptions);
+    options.put("model", config.getModel());
+    options.remove("messages");
 
-    ChatCompletions chatCompletions =
-        client.getChatCompletions(config.getModel(), chatCompletionsOptions);
+    ChatCompletions chatCompletions = completionsService.getChatCompletions(messages, options);
 
     String content = chatCompletions.getChoices().get(0).getMessage().getContent();
     String fieldName = config.getFieldName();
@@ -93,7 +97,8 @@ public class ChatCompletionsStep implements TransformStep {
     if (logField != null && !logField.isEmpty()) {
       Map<String, Object> logMap = new HashMap<>();
       logMap.put("model", config.getModel());
-      logMap.put("options", chatCompletionsOptions);
+      logMap.put("options", options);
+      logMap.put("messages", messages);
       transformContext.setResultField(
           TransformContext.toJson(logMap),
           logField,

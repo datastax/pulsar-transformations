@@ -30,6 +30,7 @@ import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
+import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -197,7 +198,8 @@ public class AIToolsTest {
             .replace("'", "\"");
     when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
-    when(transformFunction.buildOpenAIClient(any())).thenReturn(client);
+    when(transformFunction.buildServiceProvider(any()))
+        .thenReturn(new OpenAIServiceProvider(client));
 
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
@@ -253,7 +255,8 @@ public class AIToolsTest {
             .replace("'", "\"");
     when(client.getChatCompletions(eq("test-model"), any()))
         .thenReturn(new ObjectMapper().readValue(completion, ChatCompletions.class));
-    when(transformFunction.buildOpenAIClient(any())).thenReturn(client);
+    when(transformFunction.buildServiceProvider(any()))
+        .thenReturn(new OpenAIServiceProvider(client));
 
     Record<GenericObject> record = Utils.createTestAvroKeyValueRecord();
     Utils.TestContext context = new Utils.TestContext(record, config);
@@ -266,8 +269,8 @@ public class AIToolsTest {
         Utils.getRecord(messageSchema.getValueSchema(), (byte[]) messageValue.getValue());
     assertEquals("result", valueAvroRecord.get("completion").toString());
     assertEquals(
-        "{\"options\":{\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":null},\"model\":\"test-model\"}",
-        valueAvroRecord.get("log").toString());
+        valueAvroRecord.get("log").toString(),
+        "{\"options\":{\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":\"test-model\"},\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"model\":\"test-model\"}");
   }
 
   @Test
