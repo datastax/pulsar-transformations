@@ -27,6 +27,9 @@ public class HuggingFaceConfig {
   )
   private String apiUrl = "https://api-inference.huggingface.co/pipeline/feature-extraction/";
 
+  @JsonProperty(value = "model-check-url", defaultValue = "https://huggingface.co/api/models/")
+  private String modelUrl = "https://huggingface.co/api/models/";
+
   // for API compute provider
   @JsonProperty(value = "access-key")
   private String accessKey;
