@@ -17,7 +17,6 @@ package com.datastax.oss.streaming.ai.services;
 
 import static com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService.DLJ_BASE_URL;
 
-import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import com.datastax.oss.streaming.ai.completions.CompletionsService;
 import com.datastax.oss.streaming.ai.embeddings.AbstractHuggingFaceEmbeddingService;
 import com.datastax.oss.streaming.ai.embeddings.EmbeddingsService;
@@ -67,11 +66,11 @@ public class HuggingFaceServiceProvider implements ServiceProvider {
             AbstractHuggingFaceEmbeddingService.HuggingFaceConfig.builder()
                 .options(options)
                 .arguments(arguments);
-        if (!Strings.isNullOrEmpty(model)) {
+        if (model != null && !model.isEmpty()) {
           builder.modelName(model);
 
           // automatically build the model URL if not provided
-          if (Strings.isNullOrEmpty(modelUrl)) {
+          if (modelUrl == null || modelUrl.isEmpty()) {
             modelUrl = DLJ_BASE_URL + model;
             log.info("Automatically computed model URL {}", modelUrl);
           }
@@ -88,7 +87,7 @@ public class HuggingFaceServiceProvider implements ServiceProvider {
                     .model(model);
 
         String apiUurl = (String) providerConfiguration.get("api-url");
-        if (!Strings.isNullOrEmpty(apiUurl)) {
+        if (apiUurl != null && !apiUurl.isEmpty()) {
           apiBuilder.hfUrl(apiUurl);
         }
         if (options != null && !options.isEmpty()) {
