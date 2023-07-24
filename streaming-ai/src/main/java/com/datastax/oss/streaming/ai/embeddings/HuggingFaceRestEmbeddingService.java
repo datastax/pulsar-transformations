@@ -47,6 +47,8 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
 
     @Builder.Default public String hfUrl = HF_URL;
 
+    @Builder.Default public String hfCheckUrl = HF_CHECK_URL;
+
     @Builder.Default public Map<String, String> options = Map.of("wait_for_model", "true");
   }
 
@@ -61,6 +63,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
   private final String token;
 
   private final URL modelUrl;
+  private final URL checkUrl;
 
   private final HttpClient httpClient;
 
@@ -78,6 +81,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     this.conf = conf;
     this.model = conf.model;
     this.token = conf.accessKey;
+    this.checkUrl = new URL(conf.hfCheckUrl + model);
     this.modelUrl = new URL(conf.hfUrl + model);
 
     this.httpClient = HttpClient.newHttpClient();
@@ -85,7 +89,7 @@ public class HuggingFaceRestEmbeddingService implements EmbeddingsService {
     try {
       HttpRequest request =
           HttpRequest.newBuilder()
-              .uri(new URL(HF_CHECK_URL + model).toURI())
+              .uri(checkUrl.toURI())
               .header("Authorization", "Bearer " + token)
               .GET()
               .build();

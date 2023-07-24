@@ -90,6 +90,10 @@ public class HuggingFaceServiceProvider implements ServiceProvider {
         if (apiUurl != null && !apiUurl.isEmpty()) {
           apiBuilder.hfUrl(apiUurl);
         }
+        String modelCheckUrl = (String) providerConfiguration.get("model-check-url");
+        if (modelCheckUrl != null && !modelCheckUrl.isEmpty()) {
+          apiBuilder.hfCheckUrl(modelCheckUrl);
+        }
         if (options != null && !options.isEmpty()) {
           apiBuilder.options(options);
         } else {
