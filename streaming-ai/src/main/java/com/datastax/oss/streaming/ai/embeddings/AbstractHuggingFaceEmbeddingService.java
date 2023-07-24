@@ -22,7 +22,6 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import com.datastax.oss.driver.shaded.guava.common.base.Strings;
 import java.io.IOException;
 import java.lang.reflect.ParameterizedType;
 import java.util.List;
@@ -49,10 +48,10 @@ public abstract class AbstractHuggingFaceEmbeddingService<IN, OUT>
 
   private static Set<String> getHuggingFaceAllowedUrlPrefixes() {
     String prop = System.getenv(URL_PREFIXES_SYSTEM_PROP);
-    if (Strings.isNullOrEmpty(prop)) {
+    if (prop == null || prop.isEmpty()) {
       prop = System.getProperty(URL_PREFIXES_SYSTEM_PROP);
     }
-    if (Strings.isNullOrEmpty(prop)) {
+    if (prop == null || prop.isEmpty()) {
       prop = "file://," + DLJ_BASE_URL;
     }
     return Set.of(prop.split(","));
