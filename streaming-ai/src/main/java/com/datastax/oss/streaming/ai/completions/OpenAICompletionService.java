@@ -46,7 +46,7 @@ public class OpenAICompletionService implements CompletionsService {
                                     ChatRole.fromString(message.getRole()))
                                 .setContent(message.getContent()))
                     .collect(Collectors.toList()))
-            .setMaxTokens(getInteger("max-token", options))
+            .setMaxTokens(getInteger("max-tokens", options))
             .setTemperature(getDouble("temperature", options))
             .setTopP(getDouble("top-p", options))
             .setLogitBias((Map<String, Integer>) options.get("logit-bias"))
