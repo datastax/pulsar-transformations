@@ -15,11 +15,13 @@
  */
 package com.datastax.oss.streaming.ai.util;
 
+import ai.djl.util.Utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -33,6 +35,8 @@ import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
+
+import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getBytes;
 
 /** Convert an AVRO GenericRecord to a JsonNode. */
 public class JsonConverter {
@@ -73,7 +77,16 @@ public class JsonConverter {
       case BOOLEAN:
         return jsonNodeFactory.booleanNode((Boolean) value);
       case BYTES:
-        return jsonNodeFactory.binaryNode((byte[]) value);
+        byte[] bytes;
+        if (value instanceof byte[]) {
+          bytes = (byte[]) value;
+        } else if (value instanceof ByteBuffer) {
+          bytes = getBytes((ByteBuffer) value);
+        } else {
+            throw new IllegalArgumentException(
+                "Invalid type for field of type BYTES, expected byte[] or ByteBuffer but was " + value.getClass());
+        }
+        return jsonNodeFactory.binaryNode(bytes);
       case FIXED:
         return jsonNodeFactory.binaryNode(((GenericFixed) value).bytes());
       case ENUM: // GenericEnumSymbol
