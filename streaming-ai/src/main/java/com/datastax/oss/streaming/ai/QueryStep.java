@@ -38,6 +38,7 @@ public class QueryStep implements TransformStep {
   @Builder.Default private final List<String> fields = new ArrayList<>();
   private final String outputFieldName;
   private final String query;
+  private final boolean onlyFirst;
   private final QueryStepDataSource dataSource;
   private final Map<Schema, Schema> avroValueSchemaCache = new ConcurrentHashMap<>();
   private final Map<Schema, Schema> avroKeySchemaCache = new ConcurrentHashMap<>();
@@ -78,11 +79,28 @@ public class QueryStep implements TransformStep {
                     transformContext.getKeyObject()));
           }
         });
-    final List<Map<String, String>> results = dataSource.fetchData(query, params);
+
+    List<Map<String, String>> results = dataSource.fetchData(query, params);
+    if (results == null) {
+      results = List.of();
+    }
+    Object finalResult = results;
+    Schema schema;
+    if (onlyFirst) {
+      schema = Schema.createMap(Schema.create(Schema.Type.STRING));
+      if (results.isEmpty()) {
+        finalResult = Map.of();
+      } else {
+        finalResult = results.get(0);
+      }
+    } else {
+      schema = Schema.createArray(Schema.createMap(Schema.create(Schema.Type.STRING)));
+    }
+
     transformContext.setResultField(
-        results,
+            finalResult,
         outputFieldName,
-        Schema.createArray(Schema.createMap(Schema.create(Schema.Type.STRING))),
+        schema,
         avroKeySchemaCache,
         avroValueSchemaCache);
   }

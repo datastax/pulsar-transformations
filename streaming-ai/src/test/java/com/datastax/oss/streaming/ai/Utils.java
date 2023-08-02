@@ -76,7 +76,7 @@ import org.slf4j.LoggerFactory;
 @Slf4j
 public class Utils {
 
-  public static Record<GenericObject> process(Record<GenericObject> record, TransformStep step)
+  public static <T> Record<T> process(Record<GenericObject> record, TransformStep step)
       throws Exception {
     Utils.TestContext context = new Utils.TestContext(record, new HashMap<>());
     TransformContext transformContext =
@@ -464,7 +464,7 @@ public class Utils {
     }
   }
 
-  public static Record<GenericObject> send(Context context, TransformContext transformContext)
+  public static <T> Record<T> send(Context context, TransformContext transformContext)
       throws IOException {
     if (transformContext.isDropCurrentRecord()) {
       return null;
@@ -498,7 +498,7 @@ public class Utils {
       log.debug("output {} schema {}", outputObject, outputSchema);
     }
 
-    FunctionRecord.FunctionRecordBuilder<GenericObject> recordBuilder =
+    FunctionRecord.FunctionRecordBuilder<T> recordBuilder =
         context
             .newOutputRecordBuilder(outputSchema)
             .destinationTopic(transformContext.getOutputTopic())
