@@ -57,6 +57,7 @@ import com.datastax.oss.streaming.ai.services.ServiceProvider;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -328,5 +329,19 @@ public class TransformFunctionUtil {
       return ((Number) o).intValue();
     }
     return Integer.parseInt(o.toString());
+  }
+
+  public static byte[] getBytes(ByteBuffer byteBuffer) {
+    if (byteBuffer == null) {
+      return null;
+    }
+    if (byteBuffer.hasArray() && byteBuffer.arrayOffset() == 0
+            && byteBuffer.array().length == byteBuffer.remaining()) {
+      return byteBuffer.array();
+    }
+    // Direct buffer is not backed by array and it needs to be read from direct memory
+    byte[] array = new byte[byteBuffer.remaining()];
+    byteBuffer.get(array);
+    return array;
   }
 }
