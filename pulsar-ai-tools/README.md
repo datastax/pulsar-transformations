@@ -30,12 +30,17 @@ Step name: `query`
 
 Executes a query against the database configured in the "datasource" section.
 
+The result is a list of rows, each row is a map of fields (the key is a string, the value is always a string).
+In case of no results, the result is an empty list.
+When using the "only-first" parameter, the result is a single row, as a map. In case of no results, the result is an empty map.
+
 Parameters:
 
 | Name         | Description                                                                 |
 |--------------|-----------------------------------------------------------------------------|
 | output-field | The name of the field to add or update (for example value.embeddingsvector) |
 | query        | Template for the query, you can use '?' for parameters                      |
+| only-first   | Keep only the first row and do not return a list                            |
 | fields       | An array of field names to use to fill-in the parameters of the query       |
 
 
