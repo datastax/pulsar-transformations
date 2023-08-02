@@ -29,4 +29,7 @@ public class QueryConfig extends StepConfig {
 
   @JsonProperty(value = "output-field", required = true)
   private String outputField;
+
+  @JsonProperty(value = "only-first", required = false)
+  private boolean onlyFirst;
 }

@@ -278,6 +278,7 @@ public class TransformFunctionUtil {
     return QueryStep.builder()
         .outputFieldName(config.getOutputField())
         .query(config.getQuery())
+        .onlyFirst(config.isOnlyFirst())
         .fields(config.getFields())
         .dataSource(dataSource)
         .build();

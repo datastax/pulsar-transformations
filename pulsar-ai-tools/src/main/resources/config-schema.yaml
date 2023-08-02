@@ -386,6 +386,10 @@ components:
               type:
                 - string
               description: The query.
+            only-first:
+              type:
+                - boolean
+              description: Instead of returning a list of results, keep only the first record or null in case of empty resultset.
             output-field:
               type:
                 - string
