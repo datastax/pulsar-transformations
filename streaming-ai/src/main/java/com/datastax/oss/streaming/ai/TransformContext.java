@@ -54,6 +54,8 @@ public class TransformContext {
   private Long eventTime;
   private boolean dropCurrentRecord;
   Map<String, Object> customContext = new HashMap<>();
+  // only for fn:filter
+  private Object recordObject;
 
   public void convertMapToStringOrBytes() throws JsonProcessingException {
     if (valueObject instanceof Map) {

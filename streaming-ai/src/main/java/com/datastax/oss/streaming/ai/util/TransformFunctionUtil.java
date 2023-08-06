@@ -336,8 +336,9 @@ public class TransformFunctionUtil {
     if (byteBuffer == null) {
       return null;
     }
-    if (byteBuffer.hasArray() && byteBuffer.arrayOffset() == 0
-            && byteBuffer.array().length == byteBuffer.remaining()) {
+    if (byteBuffer.hasArray()
+        && byteBuffer.arrayOffset() == 0
+        && byteBuffer.array().length == byteBuffer.remaining()) {
       return byteBuffer.array();
     }
     // Direct buffer is not backed by array and it needs to be read from direct memory
