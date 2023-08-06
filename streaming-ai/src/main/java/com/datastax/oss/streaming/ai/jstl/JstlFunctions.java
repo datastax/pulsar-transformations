@@ -15,16 +15,24 @@
  */
 package com.datastax.oss.streaming.ai.jstl;
 
+import com.datastax.oss.streaming.ai.TransformContext;
+import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
 import jakarta.el.ELException;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.el.util.MessageFactory;
 
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
+@Slf4j
 public class JstlFunctions {
   @Setter private static Clock clock = Clock.systemUTC();
 
@@ -34,6 +42,60 @@ public class JstlFunctions {
 
   public static String lowercase(Object input) {
     return input == null ? null : toString(input).toLowerCase();
+  }
+
+  public static Object toDouble(Object input) {
+    if (input == null) {
+      return null;
+    }
+    return JstlTypeConverter.INSTANCE.coerceToDouble(input);
+  }
+
+  public static Object toInt(Object input) {
+    if (input == null) {
+      return null;
+    }
+    return JstlTypeConverter.INSTANCE.coerceToInteger(input);
+  }
+
+  public static List<Object> filter(Object input, String expression) {
+    if (input == null) {
+      return null;
+    }
+    List<Object> source;
+    if (input instanceof List) {
+      source = (List<Object>) input;
+    } else if (input instanceof Collection) {
+      source = new ArrayList<>((Collection<?>) input);
+    } else if (input.getClass().isArray()) {
+      source = new ArrayList<>(Array.getLength(input));
+      for (int i = 0; i < Array.getLength(input); i++) {
+        source.add(Array.get(input, i));
+      }
+    } else {
+      throw new IllegalArgumentException(
+          "fn:filter cannot filter object of type " + input.getClass().getName());
+    }
+    List<Object> result = new ArrayList<>();
+    JstlPredicate predicate = new JstlPredicate(expression);
+    for (Object o : source) {
+      if (log.isDebugEnabled()) {
+        log.info("Filtering object {}", o);
+      }
+      // nulls are always filtered out
+      if (o != null) {
+        TransformContext context = new TransformContext();
+        context.setRecordObject(o);
+        boolean evaluate = predicate.test(context);
+        if (log.isDebugEnabled()) {
+          log.debug("Result of evaluation is {}", evaluate);
+        }
+        if (evaluate) {
+          result.add(o);
+        }
+      }
+    }
+    return result;
   }
 
   public static boolean contains(Object input, Object value) {

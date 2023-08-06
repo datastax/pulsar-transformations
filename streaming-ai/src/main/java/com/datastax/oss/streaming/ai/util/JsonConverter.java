@@ -15,7 +15,8 @@
  */
 package com.datastax.oss.streaming.ai.util;
 
-import ai.djl.util.Utils;
+import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getBytes;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -35,8 +36,6 @@ import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
-
-import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getBytes;
 
 /** Convert an AVRO GenericRecord to a JsonNode. */
 public class JsonConverter {
@@ -83,8 +82,9 @@ public class JsonConverter {
         } else if (value instanceof ByteBuffer) {
           bytes = getBytes((ByteBuffer) value);
         } else {
-            throw new IllegalArgumentException(
-                "Invalid type for field of type BYTES, expected byte[] or ByteBuffer but was " + value.getClass());
+          throw new IllegalArgumentException(
+              "Invalid type for field of type BYTES, expected byte[] or ByteBuffer but was "
+                  + value.getClass());
         }
         return jsonNodeFactory.binaryNode(bytes);
       case FIXED:

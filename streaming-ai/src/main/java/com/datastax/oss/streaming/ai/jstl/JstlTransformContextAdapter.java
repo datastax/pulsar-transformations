@@ -140,6 +140,10 @@ public class JstlTransformContextAdapter {
         : valueObject;
   }
 
+  public Object adaptRecord() {
+    return transformContext.getRecordObject();
+  }
+
   public Map<String, Object> getHeader() {
     return lazyHeader;
   }

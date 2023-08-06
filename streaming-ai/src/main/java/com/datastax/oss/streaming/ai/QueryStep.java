@@ -98,11 +98,7 @@ public class QueryStep implements TransformStep {
     }
 
     transformContext.setResultField(
-            finalResult,
-        outputFieldName,
-        schema,
-        avroKeySchemaCache,
-        avroValueSchemaCache);
+        finalResult, outputFieldName, schema, avroKeySchemaCache, avroValueSchemaCache);
   }
 
   private Object getField(

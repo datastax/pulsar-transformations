@@ -18,6 +18,7 @@ package com.datastax.oss.streaming.ai;
 import static org.testng.Assert.assertEquals;
 
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,8 +27,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
@@ -202,72 +201,83 @@ public class QueryStepTest {
     Utils.process(record, queryStep);
   }
 
-    @Test
-    void testOnlyFirst() throws Exception {
-        Schema<KeyValue<String, String>> keyValueSchema =
-                Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED);
+  @Test
+  void testOnlyFirst() throws Exception {
+    Schema<KeyValue<String, String>> keyValueSchema =
+        Schema.KeyValue(Schema.STRING, Schema.STRING, KeyValueEncodingType.SEPARATED);
 
-        String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
-        String value =
-                "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
+    String key = "{\"keyField1\": \"key1\", \"keyField2\": \"key2\", \"keyField3\": \"key3\"}";
+    String value =
+        "{\"valueField1\": \"value1\", \"valueField2\": \"value2\", \"valueField3\": \"value3\"}";
 
-        KeyValue<String, String> keyValue = new KeyValue<>(key, value);
+    KeyValue<String, String> keyValue = new KeyValue<>(key, value);
 
-        Record<GenericObject> record =
-                new Utils.TestRecord<>(
-                        keyValueSchema,
-                        AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
-                        null);
+    Record<GenericObject> record =
+        new Utils.TestRecord<>(
+            keyValueSchema,
+            AutoConsumeSchema.wrapPrimitiveObject(keyValue, SchemaType.KEY_VALUE, new byte[] {}),
+            null);
 
-        List<String> fields = List.of();
-        QueryStepDataSource dataSource =
-                new QueryStepDataSource() {
-                    @Override
-                    public List<Map<String, String>> fetchData(String query, List<Object> params) {
-                        List<Object> expectedParams = List.of();
-                        assertEquals(params, expectedParams);
-                        switch (query) {
-                            case "select a,b from test":
-                                return List.of(Map.of("a", "10", "b", "foo"),
-                                               Map.of("a", "20", "b", "bar"));
-                            case "select a,b from test where 1=0":
-                                return List.of(Map.of());
-                            default:
-                            throw new RuntimeException("Unexpected query: " + query);
-                        }
-                    }
-                };
+    List<String> fields = List.of();
+    QueryStepDataSource dataSource =
+        new QueryStepDataSource() {
+          @Override
+          public List<Map<String, String>> fetchData(String query, List<Object> params) {
+            List<Object> expectedParams = List.of();
+            assertEquals(params, expectedParams);
+            switch (query) {
+              case "select a,b from test":
+                return List.of(Map.of("a", "10", "b", "foo"), Map.of("a", "20", "b", "bar"));
+              case "select a,b from test where 1=0":
+                return List.of(Map.of());
+              default:
+                throw new RuntimeException("Unexpected query: " + query);
+            }
+          }
+        };
 
-        QueryStep queryStepFindSomeResults =
-                QueryStep.builder()
-                        .dataSource(dataSource)
-                        .outputFieldName("value.result")
-                        .query("select a,b from test")
-                        .onlyFirst(true)
-                        .fields(fields)
-                        .build();
-        Record<?> result = Utils.process(record, queryStepFindSomeResults);
-        KeyValue<String, String> keyValueResult = (KeyValue<String, String>) result.getValue();
-        Map<String, Object> parsed = new ObjectMapper().readValue(keyValueResult.getValue(), Map.class);
-        assertEquals(parsed, Map.of("valueField1", "value1",
-                                    "valueField2", "value2",
-                                    "valueField3", "value3",
-                                    "result", Map.of("b", "foo", "a", "10")));
+    QueryStep queryStepFindSomeResults =
+        QueryStep.builder()
+            .dataSource(dataSource)
+            .outputFieldName("value.result")
+            .query("select a,b from test")
+            .onlyFirst(true)
+            .fields(fields)
+            .build();
+    Record<?> result = Utils.process(record, queryStepFindSomeResults);
+    KeyValue<String, String> keyValueResult = (KeyValue<String, String>) result.getValue();
+    Map<String, Object> parsed = new ObjectMapper().readValue(keyValueResult.getValue(), Map.class);
+    assertEquals(
+        parsed,
+        Map.of(
+            "valueField1", "value1",
+            "valueField2", "value2",
+            "valueField3", "value3",
+            "result", Map.of("b", "foo", "a", "10")));
 
-        QueryStep queryStepFindNoResults =
-                QueryStep.builder()
-                        .dataSource(dataSource)
-                        .outputFieldName("value.result")
-                        .query("select a,b from test where 1=0")
-                        .onlyFirst(true)
-                        .fields(fields)
-                        .build();
-        Record<KeyValue<String, String>> resultNoResults = Utils.process(record, queryStepFindNoResults);
-        KeyValue<String, String> keyValueResultNoResults = resultNoResults.getValue();
-        Map<String, Object> parsedNoResults = new ObjectMapper().readValue(keyValueResultNoResults.getValue(), Map.class);
-        assertEquals(parsedNoResults, Map.of("valueField1", "value1",
-                "valueField2", "value2",
-                "valueField3", "value3",
-                "result", Map.of()));
-    }
+    QueryStep queryStepFindNoResults =
+        QueryStep.builder()
+            .dataSource(dataSource)
+            .outputFieldName("value.result")
+            .query("select a,b from test where 1=0")
+            .onlyFirst(true)
+            .fields(fields)
+            .build();
+    Record<KeyValue<String, String>> resultNoResults =
+        Utils.process(record, queryStepFindNoResults);
+    KeyValue<String, String> keyValueResultNoResults = resultNoResults.getValue();
+    Map<String, Object> parsedNoResults =
+        new ObjectMapper().readValue(keyValueResultNoResults.getValue(), Map.class);
+    assertEquals(
+        parsedNoResults,
+        Map.of(
+            "valueField1",
+            "value1",
+            "valueField2",
+            "value2",
+            "valueField3",
+            "value3",
+            "result",
+            Map.of()));
+  }
 }

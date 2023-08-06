@@ -67,6 +67,12 @@ public class JstlEvaluator<T> {
         .mapFunction("fn", "str", JstlFunctions.class.getMethod("toString", Object.class));
     this.expressionContext
         .getFunctionMapper()
+        .mapFunction("fn", "toDouble", JstlFunctions.class.getMethod("toDouble", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
+        .mapFunction("fn", "toInt", JstlFunctions.class.getMethod("toInt", Object.class));
+    this.expressionContext
+        .getFunctionMapper()
         .mapFunction(
             "fn",
             "replace",
@@ -110,6 +116,11 @@ public class JstlEvaluator<T> {
     FACTORY
         .createValueExpression(expressionContext, "${value}", Object.class)
         .setValue(expressionContext, adapter.adaptValue());
+
+    // this is only for fn:filter
+    FACTORY
+        .createValueExpression(expressionContext, "${record}", Object.class)
+        .setValue(expressionContext, adapter.adaptRecord());
 
     // Register message headers as top level fields
     FACTORY

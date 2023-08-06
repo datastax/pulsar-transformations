@@ -28,6 +28,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -380,5 +383,47 @@ public class JstlFunctionsTest {
   )
   void testAddDateInvalidUnit() {
     JstlFunctions.timestampAdd(0L, 0, "lightyear");
+  }
+
+  @Test
+  void testCast() {
+    assertEquals(1.2, JstlFunctions.toDouble("1.2"));
+    assertEquals(null, JstlFunctions.toDouble(null));
+    assertEquals(1, JstlFunctions.toInt("1.2"));
+    assertEquals(null, JstlFunctions.toInt(null));
+  }
+
+  @Test
+  void testFilterQueryResults() {
+
+    // the query step always produces a list<map<string,string>> result
+    // this test verifies that it is possible to filter the result using the JSTL filter function
+    List<Map<String, String>> queryResult = new ArrayList<>();
+    queryResult.add(Map.of("name", "product1", "price", "1.2", "similarity", "0.9"));
+    queryResult.add(Map.of("name", "product2", "price", "1.7", "similarity", "0.1"));
+
+    {
+      List<Object> filter =
+          JstlFunctions.filter(queryResult, "fn:toDouble(record.similarity) >= 0.5");
+      assertEquals(1, filter.size());
+      assertEquals("product1", ((Map<String, String>) filter.get(0)).get("name"));
+    }
+
+    {
+      List<Object> filter =
+          JstlFunctions.filter(queryResult, "fn:toDouble(record.similarity) < 0.5");
+      assertEquals(1, filter.size());
+      assertEquals("product2", ((Map<String, String>) filter.get(0)).get("name"));
+    }
+
+    {
+      List<Object> filter = JstlFunctions.filter(queryResult, "false");
+      assertEquals(0, filter.size());
+    }
+
+    {
+      List<Object> filter = JstlFunctions.filter(queryResult, "true");
+      assertEquals(2, filter.size());
+    }
   }
 }

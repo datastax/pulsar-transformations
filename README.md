@@ -279,6 +279,8 @@ The Expression Language supports the following operators:
 Utility methods available under the `fn` namespace.
 For example, to get the current timestamp, use 'fn:now()'.
 The Expression Language supports the following functions:
+* `toDouble(input)`: Converts the input value to a DOUBLE number, If the input is `null`, it returns `null`.
+* `toInt(input)`: Converts the input value to an INTEGER number, If the input is `null`, it returns `null`.
 * `uppercase(input)`: Returns the string `input` uppercased, If the input is `null`, it returns `null`.
 * `lowercase(input)`: Returns the string `input` lowercased, If the input is `null`, it returns `null`.
 * `contains(input, value)`: Returns the boolean `true` if `value` exists in `input`. If `input` or `value` is `null`, it returns `false`. 
@@ -297,6 +299,7 @@ The Expression Language supports the following functions:
   * `scale` the scale of the `BigDecimal` to create.
 * `decimalFromNumber(input)`: Converts `input` to a `BigDecimal`.
     * `input` value of the BigDecimal in DOUBLE or FLOAT. If INTEGER or LONG is provided, an unscaled BigDecimal value will be returned.
+* `filter(collection, expression)`: Returns a new collection containing only the elements of `collection` for which `expression` is `true`. The current element is available under the `record` variable. An example is fn:filter(value.queryResults, "fn:toDouble(record.similarity) >= 0.5")
 For all methods, if a parameter is not in the right type, a conversion will be done using the rules described in [Type conversions](#type-conversions).
 For instance, you can do `fn:timestampAdd('2022-10-02T01:02:03Z', '42', 'hours'.bytes)`
 
