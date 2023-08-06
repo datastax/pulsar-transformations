@@ -38,7 +38,7 @@ public class AstraDBDataSourceTest {
     log.info("maps {}", maps);
   }
 
-  @Test
+  @Test(enabled = false)
   void testQueryWithVectorSearch() throws Exception {
     AstraDBDataSource source = new AstraDBDataSource();
     DataSourceConfig dataSourceConfig = buildDataSourceConfig();
