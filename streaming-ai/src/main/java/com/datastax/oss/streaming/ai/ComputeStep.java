@@ -301,6 +301,9 @@ public class ComputeStep implements TransformStep {
       case BYTES:
         schemaType = Schema.Type.BYTES;
         break;
+      case ARRAY:
+        schemaType = Schema.Type.ARRAY;
+        break;
       case DECIMAL:
         // disable caching for decimal schema because the schema is different for each precision and
         // scale combo and will result in an arbitrary numbers of schemas
@@ -484,6 +487,9 @@ public class ComputeStep implements TransformStep {
     }
     if (value.getClass().equals(BigDecimal.class)) {
       return ComputeFieldType.DECIMAL;
+    }
+    if (List.class.isAssignableFrom(value.getClass())) {
+      return ComputeFieldType.ARRAY;
     }
     throw new UnsupportedOperationException("Got an unsupported type: " + value.getClass());
   }
