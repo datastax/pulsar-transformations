@@ -318,6 +318,12 @@ public class ComputeStep implements TransformStep {
     return fieldTypeToAvroSchemaCache.computeIfAbsent(
         type,
         key -> {
+
+          if (schemaType == Schema.Type.ARRAY) {
+            // we don't know the element type of the array, so we can't create a schema
+            return Schema.createArray(Schema.createMap(Schema.create(Schema.Type.STRING)));
+          }
+
           // Handle logical types: https://avro.apache.org/docs/1.10.2/spec.html#Logical+Types
           Schema schema = Schema.create(schemaType);
           switch (key) {
