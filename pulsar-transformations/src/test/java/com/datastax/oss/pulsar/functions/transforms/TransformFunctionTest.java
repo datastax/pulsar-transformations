@@ -22,14 +22,10 @@ import static org.testng.Assert.assertThrows;
 import static org.testng.AssertJUnit.assertNull;
 
 import com.datastax.oss.streaming.ai.TransformContext;
-import com.datastax.oss.streaming.ai.model.TransformSchemaType;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -525,30 +521,34 @@ public class TransformFunctionTest {
   @Test
   void testComputeFilterList() throws Exception {
     String userConfig =
-            (""
-                    + "{'steps': ["
-                    + "    {'type': 'compute', 'fields':["
-                    + "        {'name': 'value.newQueryResults', 'expression' : 'fn:filter(value.queryResults, \\'true\\')'}"
-                    + "    ]}"
-                    + "]}")
-                    .replace("'", "\"");
+        (""
+                + "{'steps': ["
+                + "    {'type': 'compute', 'fields':["
+                + "        {'name': 'value.newQueryResults', 'expression' : 'fn:filter(value.queryResults, \\'true\\')'}"
+                + "    ]}"
+                + "]}")
+            .replace("'", "\"");
 
     Map<String, Object> config =
-            new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
+        new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType());
     TransformFunction transformFunction = new TransformFunction();
 
-    String value = "{\"queryResults\":[" +
-            "{" +
-            "\"v1\":\"v2\"" +
-            "}" +
-            "]}";
+    String value = "{\"queryResults\":[{\"v1\":\"v2\"}]}";
     Utils.TestRecord<String> testRecord = new Utils.TestRecord<>(Schema.STRING, value, null);
     Utils.TestContext context = new Utils.TestContext(testRecord, config);
     transformFunction.initialize(context);
     TransformContext transformContext = TransformFunction.newTransformContext(context, value, true);
     transformFunction.process(transformContext);
-    log.info("result: {} {}", transformContext.getValueObject(), transformContext.getValueObject().getClass());
-    assertEquals(Map.of("queryResults", List.of(Map.of("v1", "v2")), "newQueryResults", List.of(Map.of("v1","v2"))),
-            transformContext.getValueObject());
+    log.info(
+        "result: {} {}",
+        transformContext.getValueObject(),
+        transformContext.getValueObject().getClass());
+    assertEquals(
+        Map.of(
+            "queryResults",
+            List.of(Map.of("v1", "v2")),
+            "newQueryResults",
+            List.of(Map.of("v1", "v2"))),
+        transformContext.getValueObject());
   }
 }

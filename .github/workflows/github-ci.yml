@@ -23,17 +23,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: License check
-        run: mvn -B license:check
+      - name: Check code format
+        run: mvn -B license:check xml-format:xml-check fmt:check
 
       - name: Build with Maven skipTests
-        run: mvn -B clean install -DskipTests -Dspotbugs.skip -Dlicense.skip
+        run: mvn -B clean install -DskipTests -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
       - name: Spotbugs check
         run: mvn -B spotbugs:check
 
       - name: Unit tests
-        run: mvn -B test -DfailIfNoTests=false -pl streaming-ai,pulsar-transformations,pulsar-ai-tools
+        run: mvn -B test -DfailIfNoTests=false -pl streaming-ai,pulsar-transformations,pulsar-ai-tools -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
   tests-ls:
     name: Integration tests on Luna Streaming
@@ -56,10 +56,10 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Build NAR
-        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip
+        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
       - name: Integration tests on Luna Streaming 2.10
-        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$LunaStreaming210Test
+        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$LunaStreaming210Test -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
   tests-pulsar-211:
     name: Integration tests on Pulsar 2.11
@@ -82,10 +82,10 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Build NAR
-        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip
+        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
       - name: Integration tests on Pulsar 2.11
-        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$Pulsar211Test
+        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$Pulsar211Test -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
   tests-pulsar-3:
     name: Integration tests on Pulsar 3.0
@@ -108,7 +108,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Build NAR
-        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip
+        run: mvn -B clean package -pl streaming-ai,pulsar-transformations -DskipTests -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
 
       - name: Integration tests on Pulsar 3.0
-        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$Pulsar30Test
+        run: mvn -B test -DfailIfNoTests=false -pl tests -Dtest=DockerTest\$Pulsar30Test -Dspotbugs.skip -Dlicense.skip -Dfmt.skip -Dxml-format.skip
