@@ -121,19 +121,31 @@ public class QueryStep implements TransformStep {
   }
 
   private static Object getJsonField(String fieldName, JsonNode json) {
-    Object rawValue;
     JsonNode node = json.get(fieldName);
     if (node != null && !node.isNull()) {
-      if (node.isNumber()) {
-        rawValue = node.asDouble();
+      if (node.isArray()) {
+        List<Object> values = new ArrayList<>();
+        for (JsonNode elem : node) {
+          values.add(jsonNodeToPrimitive(elem));
+        }
+        return values;
       } else {
-        rawValue = node.asText();
+        return jsonNodeToPrimitive(node);
       }
     } else {
       throw new TransformFunctionException(
           String.format("Field %s is null in JSON record", fieldName));
     }
-    return rawValue;
+  }
+
+  private static Object jsonNodeToPrimitive(JsonNode node) {
+    if (node.isNumber()) {
+      return node.asDouble();
+    } else if (node.isBoolean()) {
+      return node.asBoolean();
+    } else {
+      return node.asText();
+    }
   }
 
   private static Object getAvroField(String fieldName, GenericRecord avroRecord) {

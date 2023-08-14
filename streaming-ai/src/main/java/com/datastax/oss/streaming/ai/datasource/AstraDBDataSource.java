@@ -103,12 +103,11 @@ public class AstraDBDataSource implements QueryStepDataSource {
       ColumnDefinition columnDefinition = variableDefinitions.get(i);
       if (columnDefinition.getType() instanceof CqlVectorType && value instanceof List) {
         CqlVectorType vectorType = (CqlVectorType) columnDefinition.getType();
-        List<Object> list = (List<Object>) value;
-        CqlVector.Builder builder = CqlVector.builder();
         if (vectorType.getSubtype() != DataTypes.FLOAT) {
           throw new IllegalArgumentException("Only VECTOR<FLOAT,x> is supported");
         }
-        for (Object v : list) {
+        CqlVector.Builder<Float> builder = CqlVector.builder();
+        for (Object v : (List<Object>) value) {
           if (v instanceof Number) {
             builder.add(((Number) v).floatValue());
           } else {

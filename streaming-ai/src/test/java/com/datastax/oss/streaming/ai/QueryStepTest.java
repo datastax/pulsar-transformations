@@ -27,6 +27,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
@@ -42,6 +44,9 @@ import org.apache.pulsar.functions.api.Record;
 import org.testng.annotations.Test;
 
 public class QueryStepTest {
+
+  public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   @Test
   void testPrimitive() throws Exception {
     Record<GenericObject> record =
@@ -135,6 +140,61 @@ public class QueryStepTest {
             .build();
 
     Utils.process(record, queryStep);
+  }
+
+  @Test
+  void testJson() throws Exception {
+    Schema<PoJo> schema = Schema.JSON(PoJo.class);
+    GenericSchema<GenericRecord> genericSchema = Schema.generic(schema.getSchemaInfo());
+    GenericObject genericObject =
+        new GenericObject() {
+          @Override
+          public SchemaType getSchemaType() {
+            return SchemaType.JSON;
+          }
+
+          @Override
+          public Object getNativeObject() {
+            return OBJECT_MAPPER.valueToTree(
+                new PoJo("a", 42, true, List.of("b", "c"), List.of(43, 44)));
+          }
+        };
+    Record<GenericObject> record = new Utils.TestRecord<>(genericSchema, genericObject, "my-key");
+
+    QueryStepDataSource dataSource =
+        new QueryStepDataSource() {
+          @Override
+          public List<Map<String, String>> fetchData(String query, List<Object> params) {
+            assertEquals(query, "select 1");
+            List<Object> expectedParams =
+                List.of("a", 42.0, true, List.of("b", "c"), List.of(43.0, 44.0));
+            assertEquals(params, expectedParams);
+            return List.of(Map.of());
+          }
+        };
+
+    List<String> fields =
+        Arrays.asList("value.a", "value.b", "value.c", "value.stringList", "value.numberList");
+
+    QueryStep queryStep =
+        QueryStep.builder()
+            .dataSource(dataSource)
+            .outputFieldName("value.result")
+            .query("select 1")
+            .fields(fields)
+            .build();
+
+    Utils.process(record, queryStep);
+  }
+
+  @Data
+  @AllArgsConstructor
+  static class PoJo {
+    String a;
+    Integer b;
+    Boolean c;
+    List<String> stringList;
+    List<Integer> numberList;
   }
 
   @Test
