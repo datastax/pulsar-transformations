@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.testng.annotations.DataProvider;
@@ -391,6 +392,72 @@ public class JstlFunctionsTest {
     assertEquals(null, JstlFunctions.toDouble(null));
     assertEquals(1, JstlFunctions.toInt("1.2"));
     assertEquals(null, JstlFunctions.toInt(null));
+  }
+
+  @Test
+  void testSplit() {
+    assertEquals(List.of("1", "2"), JstlFunctions.split("1,2", ","));
+    assertEquals(List.of(), JstlFunctions.split("", ","));
+    assertEquals(null, JstlFunctions.split(null, ","));
+  }
+
+  @Test
+  void testUnpack() {
+    assertEquals(map("field1", "1", "field2", "2"), JstlFunctions.unpack("1,2", "field1,field2"));
+    assertEquals(map("field1", null, "field2", null), JstlFunctions.unpack("", "field1,field2"));
+    assertEquals(null, JstlFunctions.unpack(null, "field1,field2"));
+
+    assertEquals(
+        map("field1", "1", "field2", "2", "field3", null),
+        JstlFunctions.unpack("1,2", "field1,field2,field3"));
+    assertEquals(map("field1", "1", "field2", null), JstlFunctions.unpack("1", "field1,field2"));
+
+    assertEquals(
+        map("field1", "1", "field2", "2"),
+        JstlFunctions.unpack(JstlFunctions.split("1:2", ":"), "field1,field2"));
+
+    assertEquals(
+        map("field1", 1f, "field2", 2f), JstlFunctions.unpack(List.of(1f, 2f), "field1,field2"));
+  }
+
+  @Test
+  void testToJson() throws Exception {
+    assertEquals("{\"field1\":1}", JstlFunctions.toJson(Map.of("field1", 1)));
+    assertEquals("null", JstlFunctions.toJson(null));
+    assertEquals("\"\"", JstlFunctions.toJson(""));
+    assertEquals("[1,2,3]", JstlFunctions.toJson(List.of(1, 2, 3)));
+  }
+
+  @Test
+  void testFromJson() throws Exception {
+    assertEquals(Map.of("field1", 1), JstlFunctions.fromJson("{\"field1\":1}"));
+    assertEquals(null, JstlFunctions.fromJson(null));
+    assertEquals(null, JstlFunctions.fromJson("null"));
+    assertEquals(null, JstlFunctions.fromJson(""));
+    assertEquals("", JstlFunctions.fromJson("\"\""));
+    assertEquals(List.of(1, 2, 3), JstlFunctions.fromJson("[1,2,3]"));
+  }
+
+  private static Map<String, Object> map(
+      String key, Object nullableValue, String key2, Object nullableValue2) {
+    Map<String, Object> map = new HashMap<>();
+    map.put(key, nullableValue);
+    map.put(key2, nullableValue2);
+    return map;
+  }
+
+  private static Map<String, Object> map(
+      String key,
+      Object nullableValue,
+      String key2,
+      Object nullableValue2,
+      String key3,
+      Object nullableValue3) {
+    Map<String, Object> map = new HashMap<>();
+    map.put(key, nullableValue);
+    map.put(key2, nullableValue2);
+    map.put(key3, nullableValue3);
+    return map;
   }
 
   @Test

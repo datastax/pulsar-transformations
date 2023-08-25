@@ -289,6 +289,9 @@ The Expression Language supports the following functions:
 * `coalesce(value, valueIfNull)`: Returns `value` if it is not `null`, otherwise returns `valueIfNull`.
 * `replace(input, regex, replacement)`: Replaces each substring of `input` that matches the `regex` regular expression with `replacement`. See [Java's replaceAll](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#replaceAll(java.lang.String,java.lang.String)).
 * `str(input)`: Converts `input` to a string.
+* `toJson(input)`: Converts `input` to a JSON string.
+* `fromJson(input)`: Parse `input` as JSON.
+* `split(input, separatorExpression)`: Split the input to a list of strings, this is internally using the String.split() function. An empty input corresponds to an empty list. The input is convered to a String using the str() function.
 * `now()`: Returns the current timestamp.
 * `timestampAdd(input, delta, unit)`: Returns a timestamp formed by adding `delta` in `unit` to the `input` timestamp. 
   * `input` a timestamp to add to.
@@ -302,6 +305,7 @@ The Expression Language supports the following functions:
 * `filter(collection, expression)`: Returns a new collection containing only the elements of `collection` for which `expression` is `true`. The current element is available under the `record` variable. An example is fn:filter(value.queryResults, "fn:toDouble(record.similarity) >= 0.5")
 For all methods, if a parameter is not in the right type, a conversion will be done using the rules described in [Type conversions](#type-conversions).
 For instance, you can do `fn:timestampAdd('2022-10-02T01:02:03Z', '42', 'hours'.bytes)`
+* `unpack(input, fieldsList)`: Returns a map containing the elements of `input`, for each field in the `fieldList` you will see an entry in the map. If the input is a string it is converted to a list using the `split()` function with the ',' separator
 
 When a function returns a timestamp, its type is `INSTANT`.
 
