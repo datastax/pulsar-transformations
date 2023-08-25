@@ -93,7 +93,7 @@ public class JstlFunctions {
     return Stream.of(s.split(separator)).collect(Collectors.toList());
   }
 
-  public static Map<String, Object> unpack(Object input, String fieldsExpression) {
+  public static Map<String, Object> unpack(Object input, Object fieldsExpression) {
     if (input == null) {
       return null;
     }
