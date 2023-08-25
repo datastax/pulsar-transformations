@@ -17,6 +17,8 @@ package com.datastax.oss.streaming.ai.jstl;
 
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.el.ELException;
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -26,7 +28,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.el.util.MessageFactory;
@@ -34,6 +41,8 @@ import org.apache.el.util.MessageFactory;
 /** Provides convenience methods to use in jstl expression. All functions should be static. */
 @Slf4j
 public class JstlFunctions {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   @Setter private static Clock clock = Clock.systemUTC();
 
   public static String uppercase(Object input) {
@@ -42,6 +51,21 @@ public class JstlFunctions {
 
   public static String lowercase(Object input) {
     return input == null ? null : toString(input).toLowerCase();
+  }
+
+  public static String toJson(Object input) throws Exception {
+    return MAPPER.writeValueAsString(input);
+  }
+
+  public static Object fromJson(Object input) throws Exception {
+    if (input == null) {
+      return null;
+    }
+    String s = toString(input);
+    if (s.isEmpty()) {
+      return null;
+    }
+    return MAPPER.readValue(s, Object.class);
   }
 
   public static Object toDouble(Object input) {
@@ -56,6 +80,58 @@ public class JstlFunctions {
       return null;
     }
     return JstlTypeConverter.INSTANCE.coerceToInteger(input);
+  }
+
+  public static List<String> split(Object input, Object separatorExpression) {
+    if (input == null) {
+      return null;
+    }
+    String s = toString(input);
+    if (s.isEmpty()) {
+      // special case, split would return a list with an empty string
+      return List.of();
+    }
+    String separator = toString(separatorExpression);
+    return Stream.of(s.split(separator)).collect(Collectors.toList());
+  }
+
+  public static Map<String, Object> unpack(Object input, String fieldsExpression) {
+    if (input == null) {
+      return null;
+    }
+    String fields = toString(fieldsExpression);
+    Map<String, Object> result = new HashMap<>();
+    List<Object> values;
+    if (input instanceof String) {
+      String s = (String) input;
+      if (s.isEmpty()) {
+        values = List.of();
+      } else {
+        values = Stream.of(s.split(",")).collect(Collectors.toList());
+      }
+    } else if (input instanceof List) {
+      values = (List<Object>) input;
+    } else if (input instanceof Collection) {
+      values = new ArrayList<>((Collection<Object>) input);
+    } else if (input.getClass().isArray()) {
+      values = new ArrayList<>(Array.getLength(input));
+      for (int i = 0; i < Array.getLength(input); i++) {
+        values.add(Array.get(input, i));
+      }
+    } else {
+      throw new IllegalArgumentException(
+          "fn:unpack cannot unpack object of type " + input.getClass().getName());
+    }
+    List<String> headers = Stream.of(fields.split(",")).collect(Collectors.toList());
+    for (int i = 0; i < headers.size(); i++) {
+      String header = headers.get(i);
+        if (i < values.size()) {
+            result.put(header, values.get(i));
+        } else {
+            result.put(header, null);
+        }
+    }
+    return result;
   }
 
   public static List<Object> filter(Object input, String expression) {
