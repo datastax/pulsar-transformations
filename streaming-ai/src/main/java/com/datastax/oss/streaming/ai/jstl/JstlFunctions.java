@@ -17,7 +17,6 @@ package com.datastax.oss.streaming.ai.jstl;
 
 import com.datastax.oss.streaming.ai.TransformContext;
 import com.datastax.oss.streaming.ai.jstl.predicate.JstlPredicate;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.el.ELException;
 import java.lang.reflect.Array;
@@ -33,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.el.util.MessageFactory;
@@ -125,11 +123,11 @@ public class JstlFunctions {
     List<String> headers = Stream.of(fields.split(",")).collect(Collectors.toList());
     for (int i = 0; i < headers.size(); i++) {
       String header = headers.get(i);
-        if (i < values.size()) {
-            result.put(header, values.get(i));
-        } else {
-            result.put(header, null);
-        }
+      if (i < values.size()) {
+        result.put(header, values.get(i));
+      } else {
+        result.put(header, null);
+      }
     }
     return result;
   }
