@@ -42,7 +42,7 @@
     <surefire.version>3.0.0-M5</surefire.version>
     <!-- Must match version in pulsar -->
     <avro.version>1.10.2</avro.version>
-    <azure-ai-openai.version>1.0.0-beta.2</azure-ai-openai.version>
+    <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
     <cassandra.driver.version>4.16.0</cassandra.driver.version>
     <nifi-nar-maven-plugin.version>1.5.1</nifi-nar-maven-plugin.version>
     <djl.version>0.22.1</djl.version>
