@@ -38,7 +38,13 @@ public class OpenAIEmbeddingsService implements EmbeddingsService {
     return embeddings
         .getData()
         .stream()
-        .map(embedding -> embedding.getEmbedding())
+        .map(
+            embedding ->
+                embedding
+                    .getEmbedding()
+                    .stream()
+                    .map(floatEmbedding -> (double) floatEmbedding)
+                    .collect(Collectors.toList()))
         .collect(Collectors.toList());
   }
 }

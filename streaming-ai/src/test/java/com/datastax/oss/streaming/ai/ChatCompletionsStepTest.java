@@ -25,6 +25,7 @@ import static org.testng.Assert.assertEquals;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.datastax.oss.streaming.ai.completions.ChatMessage;
 import com.datastax.oss.streaming.ai.completions.OpenAICompletionService;
 import com.datastax.oss.streaming.ai.model.config.ChatCompletionsConfig;
@@ -111,8 +112,10 @@ public class ChatCompletionsStepTest {
     Utils.process(record, new ChatCompletionsStep(completionService, config));
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
     assertEquals(
-        captor.getValue().getMessages().get(0).getContent(),
+        message.getContent().toString(),
         "test-message test-key 42 test-input-topic test-output-topic test-value");
   }
 
@@ -160,9 +163,10 @@ public class ChatCompletionsStepTest {
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
     assertEquals(
-        captor.getValue().getMessages().get(0).getContent(),
-        "Jane Doe 42 19359 1672700645006 83045006 test-key");
+        message.getContent().toString(), "Jane Doe 42 19359 1672700645006 83045006 test-key");
   }
 
   @DataProvider(name = "jsonStringSchemas")
@@ -197,10 +201,10 @@ public class ChatCompletionsStepTest {
     ArgumentCaptor<ChatCompletionsOptions> captor =
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
-
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
     assertEquals(
-        captor.getValue().getMessages().get(0).getContent(),
-        "Jane Doe 42 19359 1672700645006 83045006 test-key");
+        message.getContent().toString(), "Jane Doe 42 19359 1672700645006 83045006 test-key");
   }
 
   @Test(dataProvider = "structuredSchemaTypes")
@@ -215,8 +219,9 @@ public class ChatCompletionsStepTest {
         Utils.createTestStructKeyValueRecord(schemaType),
         new ChatCompletionsStep(completionService, config));
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
-
-    assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
+    assertEquals(message.getContent().toString(), "value1 key2");
   }
 
   @Test(dataProvider = "jsonStringSchemas")
@@ -248,9 +253,10 @@ public class ChatCompletionsStepTest {
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     verify(openAIClient).getChatCompletions(eq("test-model"), captor.capture());
 
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
     assertEquals(
-        captor.getValue().getMessages().get(0).getContent(),
-        "Jane Doe 42 19359 1672700645006 83045006 test-key");
+        message.getContent().toString(), "Jane Doe 42 19359 1672700645006 83045006 test-key");
   }
 
   @Test

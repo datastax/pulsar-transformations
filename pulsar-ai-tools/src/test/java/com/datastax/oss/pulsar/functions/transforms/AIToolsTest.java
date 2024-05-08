@@ -28,6 +28,7 @@ import static org.testng.Assert.assertThrows;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
 import com.datastax.oss.streaming.ai.datasource.QueryStepDataSource;
 import com.datastax.oss.streaming.ai.model.config.DataSourceConfig;
 import com.datastax.oss.streaming.ai.services.OpenAIServiceProvider;
@@ -210,7 +211,9 @@ public class AIToolsTest {
         ArgumentCaptor.forClass(ChatCompletionsOptions.class);
     verify(client).getChatCompletions(eq("test-model"), captor.capture());
 
-    assertEquals(captor.getValue().getMessages().get(0).getContent(), "value1 key2");
+    ChatRequestUserMessage message =
+        (ChatRequestUserMessage) captor.getValue().getMessages().get(0);
+    assertEquals(message.getContent().toString(), "value1 key2");
   }
 
   @Test
@@ -270,7 +273,7 @@ public class AIToolsTest {
     assertEquals("result", valueAvroRecord.get("completion").toString());
     assertEquals(
         valueAvroRecord.get("log").toString(),
-        "{\"options\":{\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":\"test-model\"},\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"model\":\"test-model\"}");
+        "{\"options\":{\"max_tokens\":null,\"temperature\":null,\"top_p\":null,\"logit_bias\":null,\"user\":null,\"n\":null,\"stop\":null,\"presence_penalty\":null,\"frequency_penalty\":null,\"stream\":null,\"model\":\"test-model\",\"functions\":null,\"function_call\":null,\"data_sources\":null,\"enhancements\":null,\"seed\":null,\"response_format\":null,\"tools\":null,\"tool_choice\":null,\"logprobs\":null,\"top_logprobs\":null},\"messages\":[{\"role\":\"user\",\"content\":\"value1 key2\"}],\"model\":\"test-model\"}");
   }
 
   @Test
