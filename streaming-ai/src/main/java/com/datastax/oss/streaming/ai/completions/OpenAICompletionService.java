@@ -20,8 +20,6 @@ import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getIntege
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
-
-import javax.management.relation.RoleNotFoundException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
