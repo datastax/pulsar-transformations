@@ -19,8 +19,7 @@ import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getDouble
 import static com.datastax.oss.streaming.ai.util.TransformFunctionUtil.getInteger;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.ChatRole;
+import com.azure.ai.openai.models.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,14 +37,7 @@ public class OpenAICompletionService implements CompletionsService {
       List<ChatMessage> messages, Map<String, Object> options) {
     ChatCompletionsOptions chatCompletionsOptions =
         new ChatCompletionsOptions(
-                messages
-                    .stream()
-                    .map(
-                        message ->
-                            new com.azure.ai.openai.models.ChatMessage(
-                                    ChatRole.fromString(message.getRole()))
-                                .setContent(message.getContent()))
-                    .collect(Collectors.toList()))
+                messages.stream().map(this::getChatRequestMessage).collect(Collectors.toList()))
             .setMaxTokens(getInteger("max-tokens", options))
             .setTemperature(getDouble("temperature", options))
             .setTopP(getDouble("top-p", options))
@@ -66,8 +58,25 @@ public class OpenAICompletionService implements CompletionsService {
     return result;
   }
 
+  private ChatRequestMessage getChatRequestMessage(ChatMessage message) {
+    switch (message.getRole()) {
+      case "system":
+        return new ChatRequestSystemMessage(message.getContent());
+      case "assistant":
+        return new ChatRequestAssistantMessage(message.getContent());
+      case "user":
+        return new ChatRequestUserMessage(message.getContent());
+      case "function":
+        return new ChatRequestFunctionMessage("", message.getContent());
+      case "tool":
+        return new ChatRequestToolMessage(message.getContent(), "");
+      default:
+        throw new IllegalArgumentException("Unsupported Chat Role: " + message.getRole());
+    }
+  }
+
   private static ChatMessage convertMessage(com.azure.ai.openai.models.ChatChoice c) {
-    com.azure.ai.openai.models.ChatMessage message = c.getMessage();
+    com.azure.ai.openai.models.ChatResponseMessage message = c.getMessage();
     return new ChatMessage(
         message.getRole() != null ? message.getRole().toString() : null, message.getContent());
   }
