@@ -63,12 +63,12 @@
               <goal>run</goal>
             </goals>
             <configuration>
-              <tasks>
+              <target>
                 <echo>copy proxy protocol handler</echo>
                 <copy file="${basedir}/../pulsar-transformations/target/pulsar-transformations-${project.version}.nar" tofile="${project.build.outputDirectory}/pulsar-transformations.nar">
                   <!-- this comment prevents mvn release plugin to wrongly reformat the pom -->
                 </copy>
-              </tasks>
+              </target>
             </configuration>
           </execution>
         </executions>
