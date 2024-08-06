@@ -21,7 +21,7 @@
   <groupId>com.datastax.oss</groupId>
   <artifactId>pulsar-transformations-parent</artifactId>
   <packaging>pom</packaging>
-  <version>3.1.9</version>
+  <version>3.1.10-SNAPSHOT</version>
   <name>Pulsar transformations parent</name>
   <description>A Pulsar Function that provides common basic transformations of the data</description>
   <url>https://github.com/datastax/pulsar-transformations</url>
