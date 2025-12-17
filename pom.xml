@@ -54,6 +54,7 @@
     <asynchttpclient.version>2.12.4</asynchttpclient.version>
     <aircompressor.version>0.27</aircompressor.version>
     <jackson.version>2.15.4</jackson.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
   </properties>
   <modules>
     <module>streaming-ai</module>
@@ -139,6 +140,21 @@
         <artifactId>commons-collections4</artifactId>
         <version>${commons-collections4.version}</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>${commons-lang3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-yaml</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-core</artifactId>
+        <version>${jackson.version}</version>
+      </dependency>
       <!-- Override transitive dependency version to fix vulnerability -->
       <dependency>
         <groupId>io.airlift</groupId>
@@ -151,6 +167,13 @@
         <groupId>org.asynchttpclient</groupId>
         <artifactId>async-http-client</artifactId>
         <version>${asynchttpclient.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
         <scope>runtime</scope>
       </dependency>
     </dependencies>
