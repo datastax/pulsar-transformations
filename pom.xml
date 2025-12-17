@@ -51,6 +51,8 @@
     <tomcat-embed-el.version>10.1.4</tomcat-embed-el.version>
     <commons-collections4.version>4.4</commons-collections4.version>
     <commons-lang3.version>3.18.0</commons-lang3.version>
+    <commons-compress.version>1.26.0</commons-compress.version>
+    <commons-io.version>2.14.0</commons-io.version>
     <asynchttpclient.version>2.12.4</asynchttpclient.version>
     <aircompressor.version>0.27</aircompressor.version>
     <jackson.version>2.15.4</jackson.version>
@@ -174,6 +176,20 @@
         <groupId>org.yaml</groupId>
         <artifactId>snakeyaml</artifactId>
         <version>${snakeyaml.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-compress</artifactId>
+        <version>${commons-compress.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>${commons-io.version}</version>
         <scope>runtime</scope>
       </dependency>
     </dependencies>
