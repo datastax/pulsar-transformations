@@ -80,6 +80,13 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-inline</artifactId>
     </dependency>
+    <!-- Resolve java.lang.ClassNotFoundException: io.netty.handler.codec.DefaultHeaders$ValueValidator -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec</artifactId>
+      <version>${netty.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
