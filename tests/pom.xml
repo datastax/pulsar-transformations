@@ -50,6 +50,7 @@
       <artifactId>testng</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Resolve java.lang.ClassNotFoundException: org.apache.commons.codec.Charsets -->
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>

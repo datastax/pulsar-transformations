@@ -57,6 +57,7 @@
     <aircompressor.version>0.27</aircompressor.version>
     <jackson.version>2.15.4</jackson.version>
     <snakeyaml.version>2.0</snakeyaml.version>
+    <netty.version>4.1.129.Final</netty.version>
   </properties>
   <modules>
     <module>streaming-ai</module>
@@ -190,6 +191,34 @@
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
         <version>${commons-io.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-codec-http2</artifactId>
+        <version>${netty.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-codec-http</artifactId>
+        <version>${netty.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-common</artifactId>
+        <version>${netty.version}</version>
+        <scope>runtime</scope>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-handler</artifactId>
+        <version>${netty.version}</version>
         <scope>runtime</scope>
       </dependency>
     </dependencies>
