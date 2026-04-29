@@ -595,10 +595,22 @@ public abstract class AbstractDockerTest {
                 new Gson().fromJson(userConfig, new TypeToken<Map<String, Object>>() {}.getType()))
             .build();
 
-    admin.functions().createFunction(functionConfig, null);
+    for (int i = 0; i < 600; i++) {
+      try {
+        admin.functions().createFunction(functionConfig, null);
+        break;
+      } catch (PulsarAdminException e) {
+        if (e.getMessage() != null && e.getMessage().contains("Leader not yet ready")) {
+          log.info("Function worker leader not ready yet, retrying... ({}/600)", i + 1);
+          Thread.sleep(500);
+        } else {
+          throw e;
+        }
+      }
+    }
 
     FunctionStatus functionStatus = null;
-    for (int i = 0; i < 300; i++) {
+    for (int i = 0; i < 600; i++) {
       functionStatus = admin.functions().getFunctionStatus("public", "default", functionName);
       if (functionStatus.getNumRunning() == 1) {
         break;
@@ -613,7 +625,7 @@ public abstract class AbstractDockerTest {
                   log.error("Function errored out " + f);
                 }
               });
-      Thread.sleep(100);
+      Thread.sleep(500);
     }
 
     if (functionStatus.getNumRunning() != 1) {
