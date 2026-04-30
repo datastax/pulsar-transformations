@@ -622,7 +622,9 @@ public abstract class AbstractDockerTest {
             FunctionStatus status =
                 admin.functions().getFunctionStatus("public", "default", functionName);
 
-            status.getInstances().stream()
+            status
+                .getInstances()
+                .stream()
                 .filter(f -> !StringUtils.isEmpty(f.getStatus().getError()))
                 .findFirst()
                 .ifPresent(
@@ -650,7 +652,10 @@ public abstract class AbstractDockerTest {
             future.completeExceptionally(e);
             scheduler.shutdown();
           }
-        }, 0, 2, TimeUnit.SECONDS);
+        },
+        0,
+        2,
+        TimeUnit.SECONDS);
 
     try {
       future.get();

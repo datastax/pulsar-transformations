@@ -55,7 +55,8 @@ public class PulsarContainer implements AutoCloseable {
                     .withStrategy(Wait.defaultWaitStrategy())
                     .withStrategy(Wait.forLogMessage(".*Created namespace public/default.*", 1))
                     .withStrategy(Wait.forLogMessage(".*Function worker service started.*", 1))
-                    .withStrategy(Wait.forLogMessage(".*FunctionMetaDataManager done becoming leader.*", 1)))
+                    .withStrategy(
+                        Wait.forLogMessage(".*FunctionMetaDataManager done becoming leader.*", 1)))
             .withLogConsumer(
                 (f) -> {
                   String text = f.getUtf8String().trim();
