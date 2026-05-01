@@ -53,11 +53,11 @@
     <commons-lang3.version>3.18.0</commons-lang3.version>
     <commons-compress.version>1.26.0</commons-compress.version>
     <commons-io.version>2.14.0</commons-io.version>
-    <asynchttpclient.version>2.12.4</asynchttpclient.version>
-    <aircompressor.version>0.27</aircompressor.version>
-    <jackson.version>2.15.4</jackson.version>
+    <asynchttpclient.version>2.14.5</asynchttpclient.version>
+    <aircompressor.version>2.0.3</aircompressor.version>
+    <jackson.version>2.21.2</jackson.version>
     <snakeyaml.version>2.0</snakeyaml.version>
-    <netty.version>4.1.129.Final</netty.version>
+    <netty.version>4.1.132.Final</netty.version>
   </properties>
   <modules>
     <module>streaming-ai</module>

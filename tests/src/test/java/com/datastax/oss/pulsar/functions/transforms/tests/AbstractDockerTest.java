@@ -25,12 +25,13 @@ import com.datastax.oss.pulsar.functions.transforms.tests.util.NativeSchemaWrapp
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Conversions;
@@ -596,29 +597,7 @@ public abstract class AbstractDockerTest {
             .build();
 
     admin.functions().createFunction(functionConfig, null);
-
-    FunctionStatus functionStatus = null;
-    for (int i = 0; i < 300; i++) {
-      functionStatus = admin.functions().getFunctionStatus("public", "default", functionName);
-      if (functionStatus.getNumRunning() == 1) {
-        break;
-      }
-      log.info("Function status: {}", functionStatus);
-      functionStatus
-          .getInstances()
-          .forEach(
-              f -> {
-                log.info("Function instance status: {}", f);
-                if (!StringUtils.isEmpty(f.getStatus().getError())) {
-                  log.error("Function errored out " + f);
-                }
-              });
-      Thread.sleep(100);
-    }
-
-    if (functionStatus.getNumRunning() != 1) {
-      fail("Function didn't start in time");
-    }
+    waitForFunctionRunning(functionName);
   }
 
   @Value
@@ -631,5 +610,59 @@ public abstract class AbstractDockerTest {
   private static class Pojo2 {
     String c;
     String d;
+  }
+
+  private void waitForFunctionRunning(String functionName) throws InterruptedException {
+    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    long deadline = System.currentTimeMillis() + Duration.ofMinutes(5).toMillis();
+    scheduler.scheduleWithFixedDelay(
+        () -> {
+          try {
+            FunctionStatus status =
+                admin.functions().getFunctionStatus("public", "default", functionName);
+
+            status
+                .getInstances()
+                .stream()
+                .filter(f -> !StringUtils.isEmpty(f.getStatus().getError()))
+                .findFirst()
+                .ifPresent(
+                    f ->
+                        future.completeExceptionally(
+                            new RuntimeException("Function errored out: " + f)));
+
+            if (future.isCompletedExceptionally()) {
+              scheduler.shutdown();
+              return;
+            }
+            if (status.getNumRunning() == 1) {
+              future.complete(null);
+              scheduler.shutdown();
+              return;
+            }
+            if (System.currentTimeMillis() > deadline) {
+              future.completeExceptionally(
+                  new RuntimeException("Function didn't start in time. Status: " + status));
+              scheduler.shutdown();
+              return;
+            }
+            log.info("Function not running yet, status: {}", status);
+          } catch (PulsarAdminException e) {
+            future.completeExceptionally(e);
+            scheduler.shutdown();
+          }
+        },
+        0,
+        2,
+        TimeUnit.SECONDS);
+
+    try {
+      future.get();
+    } catch (ExecutionException e) {
+      fail(e.getCause().getMessage());
+    } finally {
+      scheduler.shutdownNow();
+    }
   }
 }

@@ -17,25 +17,32 @@ package com.datastax.oss.pulsar.functions.transforms.tests;
 
 public class DockerTest {
 
-  private static final String IMAGE_LUNASTREAMING210 = "datastax/lunastreaming:2.10_4.7";
-  private static final String IMAGE_PULSAR211 = "apachepulsar/pulsar:2.11.1";
-  private static final String IMAGE_PULSAR30 = "apachepulsar/pulsar:3.0.0";
+  private static final String IMAGE_LUNASTREAMING31 = "datastax/lunastreaming:3.1.4_26";
+  private static final String IMAGE_LUNASTREAMING40 = "datastax/lunastreaming:4.0.7_7";
+  private static final String IMAGE_PULSAR30 = "apachepulsar/pulsar:3.0.17";
+  private static final String IMAGE_PULSAR40 = "apachepulsar/pulsar:4.0.10";
 
-  public static class LunaStreaming210Test extends AbstractDockerTest {
-    LunaStreaming210Test() {
-      super(IMAGE_LUNASTREAMING210);
+  public static class LunaStreaming31Test extends AbstractDockerTest {
+    LunaStreaming31Test() {
+      super(IMAGE_LUNASTREAMING31);
     }
   }
 
-  public static class Pulsar211Test extends AbstractDockerTest {
-    Pulsar211Test() {
-      super(IMAGE_PULSAR211);
+  public static class LunaStreaming40Test extends AbstractDockerTest {
+    LunaStreaming40Test() {
+      super(IMAGE_LUNASTREAMING40);
     }
   }
 
   public static class Pulsar30Test extends AbstractDockerTest {
     Pulsar30Test() {
       super(IMAGE_PULSAR30);
+    }
+  }
+
+  public static class Pulsar40Test extends AbstractDockerTest {
+    Pulsar40Test() {
+      super(IMAGE_PULSAR40);
     }
   }
 }
