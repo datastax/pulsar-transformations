@@ -57,7 +57,7 @@
     <aircompressor.version>2.0.3</aircompressor.version>
     <jackson.version>2.21.2</jackson.version>
     <snakeyaml.version>2.0</snakeyaml.version>
-    <netty.version>4.1.133.Final</netty.version>
+    <netty.version>4.1.135.Final</netty.version>
   </properties>
   <modules>
     <module>streaming-ai</module>
@@ -216,6 +216,12 @@
       <!-- Override transitive dependency version to fix vulnerability -->
       <dependency>
         <groupId>io.netty</groupId>
+        <artifactId>netty-resolver-dns</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
         <artifactId>netty-codec</artifactId>
         <version>${netty.version}</version>
       </dependency>
@@ -237,6 +243,12 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-handler-proxy</artifactId>
+        <version>${netty.version}</version>
+      </dependency>
+      <!-- Override transitive dependency version to fix vulnerability -->
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-transport-native-unix-common</artifactId>
         <version>${netty.version}</version>
       </dependency>
     </dependencies>
